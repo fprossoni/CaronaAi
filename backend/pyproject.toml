@@ -1,0 +1,33 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Carona Aí - API backend"
+readme = "README.md"
+authors = [
+    { name = "fprossoni", email = "fpasinato84@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.14.0",
+    "bcrypt>=4.2.1",
+    "fastapi[standard]>=0.141.1",
+    "geoalchemy2>=0.16.0",
+    "psycopg[binary]>=3.2.3",
+    "pydantic-settings>=2.6.1",
+    "pyjwt>=2.10.1",
+    "sqlalchemy>=2.0.36",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.0",
+    "ruff>=0.8.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.11,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+package = false
