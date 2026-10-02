@@ -22,3 +22,26 @@ node_modules/
 .DS_Store
 .idea/
 .vscode/
+
+# Databases & local data
+*.db
+*.sqlite
+*.sqlite3
+
+# Python test / lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# OSRM map data (can be gigabytes — downloaded separately)
+osrm-data/
+
+# Docker volumes
+pgdata/
+
+# Frontend build
+frontend/dist/
+frontend/dist-ssr/
+*.tsbuildinfo

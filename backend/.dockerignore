@@ -1,0 +1,41 @@
+# Python virtual environments — never copy into Docker image
+venv/
+.venv/
+env/
+.env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*$py.class
+*.pyc
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Local environment files (env vars are set via docker-compose)
+.env
+
+# Git
+.git/
+.gitignore
+
+# Alembic generated files that should be committed but not affect cache
+# (keep versions/ tracked but exclude unneeded files)
+*.pyc

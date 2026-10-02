@@ -1,0 +1,71 @@
+services:
+
+  # ── PostgreSQL + PostGIS ───────────────────────────────────────────────────
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: carona_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── OSRM (self-hosted routing) ─────────────────────────────────────────────
+  # Data preparation is done separately — see README for instructions.
+  # After preparing the data, uncomment this service.
+  #
+  # osrm:
+  #   image: osrm/osrm-backend:latest
+  #   ports:
+  #     - "5000:5000"
+  #   volumes:
+  #     - ./osrm-data:/data
+  #   command: osrm-routed --algorithm mld /data/rio-grande-do-sul-latest.osrm
+  #   restart: unless-stopped
+
+  # ── Alembic migrations ─────────────────────────────────────────────────────
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/carona_ai
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+    command: alembic upgrade head
+
+  # ── Backend (FastAPI) ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Inside Docker, use the service name "db" as host (not localhost)
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/carona_ai
+      - OSRM_URL=http://router.project-osrm.org
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./backend:/app
+    command: fastapi dev app/main.py --host 0.0.0.0 --port 8000
+
+volumes:
+  pgdata:
+
