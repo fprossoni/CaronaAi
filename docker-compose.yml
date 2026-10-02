@@ -30,6 +30,21 @@ services:
   #   command: osrm-routed --algorithm mld /data/rio-grande-do-sul-latest.osrm
   #   restart: unless-stopped
 
+  # ── Alembic migrations ─────────────────────────────────────────────────────
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/carona_ai
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+    command: alembic upgrade head
+
   # ── Backend (FastAPI) ──────────────────────────────────────────────────────
   backend:
     build:
@@ -38,16 +53,19 @@ services:
     ports:
       - "8000:8000"
     environment:
+      # Inside Docker, use the service name "db" as host (not localhost)
       - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/carona_ai
       - OSRM_URL=http://router.project-osrm.org
     env_file:
-      - .env
+      - path: .env
+        required: false
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ./backend:/app
     command: fastapi dev app/main.py --host 0.0.0.0 --port 8000
 
 volumes:
   pgdata:
+
