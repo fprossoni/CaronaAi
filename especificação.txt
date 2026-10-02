@@ -1,0 +1,308 @@
+PROJETO INTEGRADOR 
+CARONA AÍ 
+
+Definição: 
+O Carona Aí é uma plataforma web responsiva desenvolvida para facilitar o 
+compartilhamento de viagens entre estudantes da UFRGS. Focado em resolver 
+problemas de mobilidade urbana, segurança e custo de deslocamento, o sistema 
+conecta motoristas e passageiros que compartilham trajetos em comum com destino 
+ou origem nos campi da universidade.  
+A segurança é garantida por validação exclusiva via e-mail institucional 
+(@ufrgs.br). A localização exata do passageiro é mantida em sigilo até que a 
+viagem seja confirmada por ambas as partes, protegendo a privacidade dos 
+usuários.
+
+================================================================================
+ESCOPO
+================================================================================
+
+1. Autenticação e Segurança
+   - Login restrito ao domínio @ufrgs.br (confirmação por token enviado ao e-mail).
+   - O usuário insere o e-mail e recebe um código de validação.
+   - Se confirmado o código, o cadastro é efetivado.
+   - Após confirmar o cadastro, o usuário cria um perfil com:
+     • Nome, curso, foto de perfil, gênero, telefone de contato.
+     • Modelo e placa do carro (obrigatório apenas para motoristas).
+
+2. Campi da UFRGS (pontos obrigatórios)
+   Ao menos a origem OU o destino de toda viagem deve ser um dos 5 campi:
+     1. Campus do Vale
+     2. Campus Centro (Centro Histórico)
+     3. Campus Saúde
+     4. Campus Agronomia / ESEFID (Olímpico)
+     5. Campus Litoral Norte (Tramandaí)
+
+3. Gestão de Caronas (Motorista)
+   - O motorista cadastra uma viagem informando:
+     • Ponto de partida e ponto de destino (ao menos um deve ser um campus).
+     • Horário de partida (com tolerância de atraso opcional).
+     • Número de vagas disponíveis.
+   - O sistema calcula a rota padrão entre origem e destino via OSRM.
+   - O motorista pode visualizar e, opcionalmente, ajustar a rota sugerida.
+   - A viagem fica disponível para passageiros até lotação ou cancelamento.
+
+4. Busca de Caronas (Passageiro)
+   - O passageiro informa sua origem e destino desejados.
+   - O sistema retorna uma lista de motoristas ordenada pelo MENOR DESVIO 
+     DE ROTA do motorista (ver seção "Algoritmo de Matching" abaixo).
+   - Para cada motorista, o passageiro visualiza:
+     • Informações públicas do perfil (nome, curso, avaliação, foto).
+     • Horário de partida estimado.
+     • Desvio estimado em km/min (sem revelar endereço exato do passageiro 
+       ao motorista).
+     • Vagas restantes.
+   - O passageiro escolhe um motorista e envia uma SOLICITAÇÃO DE MATCH.
+   - IMPORTANTE: a localização exata (coordenadas) do passageiro NÃO é 
+     revelada ao motorista nesta etapa. O motorista vê apenas a região 
+     aproximada (bairro/zona) e o desvio estimado.
+
+5. Sistema de Match e Confirmação
+   Fluxo em duas etapas:
+   a) Solicitação (passageiro → motorista):
+      - O passageiro seleciona uma carona e solicita o match.
+      - O motorista recebe a solicitação com: perfil do passageiro, região 
+        aproximada de embarque e desvio estimado de rota.
+      - O motorista pode ACEITAR ou RECUSAR a solicitação.
+   b) Confirmação (motorista → ambos):
+      - Se o motorista ACEITAR:
+        • A vaga é decrementada.
+        • Ambos recebem notificação de carona confirmada.
+        • A localização EXATA do passageiro (ponto de encontro) é revelada 
+          ao motorista somente neste momento.
+        • Ambos recebem os contatos (WhatsApp/telefone) um do outro.
+        • O ponto de encontro é exibido no mapa interativo.
+      - Se o motorista RECUSAR:
+        • O passageiro é notificado e pode solicitar outro motorista.
+   - Verificação de bloqueio: se um usuário bloqueou o outro, a carona não 
+     aparece nos resultados de busca.
+   - Controle de vagas: vagas são decrementadas ao aceitar e restauradas 
+     em caso de cancelamento.
+
+6. Perfil e Moderação
+   - Informações públicas do usuário: nome*, curso*, foto, link para redes.
+     (* = atributos obrigatórios)
+   - Sistema de avaliação (1 a 5 estrelas) após cada viagem.
+   - Denúncias e reclamações.
+   - Histórico de viagens realizadas.
+
+7. Filtro "Só Mulheres"
+   - Caronas criadas por mulheres podem ser marcadas como exclusivas para 
+     passageiras mulheres (requer declaração de gênero no perfil).
+
+8. Mapa Interativo
+   - Visualização do trajeto da carona no mapa via Leaflet + OpenStreetMap
+     (100% gratuito, sem limites de uso, sem risco de cobrança).
+   - Antes da confirmação: mostra apenas a rota do motorista e a região 
+     aproximada do passageiro.
+   - Após a confirmação: mostra a rota ajustada com o ponto de encontro 
+     exato do passageiro.
+
+================================================================================
+ALGORITMO DE MATCHING — Menor Desvio de Rota
+================================================================================
+
+Objetivo: recomendar ao passageiro os motoristas cuja rota original sofre o menor 
+desvio ao incluir o ponto de embarque/desembarque do passageiro.
+
+Algoritmo escolhido: "Detour Distance" via OSRM Route API (self-hosted)
+Justificativa: baixo custo computacional (custo zero — OSRM roda localmente 
+via Docker), sem limites de requisições, não requer indexação geoespacial complexa.
+
+Funcionamento:
+  Para cada viagem de motorista disponível:
+
+  1. Rota original do motorista (pré-calculada no cadastro da viagem):
+     → OSRM Route(motorista.origem, motorista.destino)
+     → Resultado: distância_original (em metros) e duração_original (em seg.)
+
+  2. Rota com desvio (calculada na busca do passageiro):
+     → OSRM Route(motorista.origem, passageiro.embarque, passageiro.desembarque, motorista.destino)
+     → Resultado: distância_desvio (em metros) e duração_desvio (em seg.)
+     Nota: se o passageiro tem apenas embarque (destino é o mesmo campus), 
+     usa-se apenas um waypoint intermediário.
+
+  3. Cálculo do desvio:
+     → desvio_distância = distância_desvio - distância_original
+     → desvio_tempo = duração_desvio - duração_original
+
+  4. Filtragem:
+     → Descartar motoristas com desvio_distância > RAIO_MÁXIMO (ex: 3 km)
+       ou desvio_tempo > TEMPO_MÁXIMO (ex: 15 min).
+
+  5. Ordenação:
+     → Ordenar motoristas por desvio_distância ASC (menor desvio primeiro).
+
+Otimização (pré-filtro para reduzir chamadas ao OSRM):
+  - Antes de calcular a rota com desvio, aplicar um filtro geográfico rápido:
+    → Usar PostGIS ST_DWithin para verificar se o ponto do passageiro está 
+      dentro de um buffer (ex: 3 km) da rota do motorista (armazenada como 
+      LINESTRING no banco).
+    → Somente os motoristas que passam o pré-filtro terão suas rotas com 
+      desvio calculadas via OSRM.
+  - Isso evita chamadas desnecessárias à API OSRM para motoristas que 
+    claramente não passam perto do passageiro.
+
+Complexidade:
+  - Pré-filtro PostGIS: O(n) com índice GiST → muito rápido.
+  - Chamadas OSRM: apenas para os k motoristas pré-filtrados (k << n).
+  - Ordenação: O(k log k) → negligível.
+
+================================================================================
+FLUXO DETALHADO DO USUÁRIO
+================================================================================
+
+1. Primeiro Acesso:
+   ● Ao acessar o app é necessário criar uma conta com:
+     ○ Nome, senha e e-mail @ufrgs.br.
+   ● Validação do e-mail através de um código enviado ao e-mail institucional.
+   ● Após validação, o usuário cria seu perfil com:
+     ○ Curso, gênero, telefone de contato e modelo/placa do carro*.
+     * Apenas para motoristas.
+
+2. Tela Inicial:
+   ● 4 abas de acesso:
+     ○ Oferecer carona, pedir carona, histórico de viagens e perfil.
+
+3. Oferecer Carona (Motorista):
+   ● Define origem e destino (ao menos um deve ser um campus da UFRGS).
+   ● Visualiza a rota sugerida pelo sistema e pode ajustá-la se desejar.
+   ● Define horário de saída (com tolerância de atraso) e vagas disponíveis.
+   ● Confirma e publica a viagem.
+   ● Recebe solicitações de passageiros com: perfil, região aproximada de 
+     embarque e desvio estimado.
+   ● Pode aceitar ou recusar cada solicitação.
+
+4. Pedir Carona (Passageiro):
+   ● Define origem e destino desejados.
+   ● Recebe lista de motoristas ordenada por menor desvio de rota.
+   ● Analisa opções (perfil, horário, desvio, vagas) e solicita match com 
+     o motorista escolhido.
+   ● Recebe notificação de "aguardando aprovação do motorista".
+   ● Após resposta: recebe notificação de aprovado ou recusado.
+
+5. Viagem Confirmada:
+   ● Se o motorista aprovou, ambos recebem:
+     ○ Notificação de carona confirmada.
+     ○ Contatos de WhatsApp/telefone um do outro.
+     ○ Ponto exato de encontro no mapa (localização exata do passageiro 
+       revelada somente agora).
+     ○ Horário estimado de chegada ao ponto de encontro.
+
+================================================================================
+EXTRAS (Funcionalidades Futuras)
+================================================================================
+
+- Chat em tempo real entre motorista e passageiro (por enquanto, encaminha 
+  o contato dos caroneiros via WhatsApp/telefone).
+- Viajar a pé com amigos (compartilhar trajetos a pé).
+- Grupos para caronas frequentes (rotas recorrentes).
+- Histórico de aprovações/recusas entre perfis que já deram match.
+
+================================================================================
+TECNOLOGIAS
+================================================================================
+
+Critério principal: CUSTO ZERO. Todas as tecnologias escolhidas são gratuitas,
+open-source ou possuem free tiers suficientes para o projeto acadêmico.
+
+Stack:
+  Frontend:  React + TypeScript + Vite + Tailwind CSS
+  Backend:   Python + FastAPI (gerenciamento via uv)
+  Banco:     PostgreSQL + PostGIS (via Supabase free tier)
+  Mapas:     Leaflet + OpenStreetMap (tiles gratuitos, sem API key)
+  Routing:   OSRM self-hosted via Docker (sem limites de requisições)
+
+Por que Leaflet + OpenStreetMap em vez de Mapbox?
+  - Mapbox: free tier generoso (50k map loads/mês), MAS não tem hard cap
+    de gastos — se ultrapassar, cobra automaticamente sem aviso.
+  - Leaflet + OSM: 100% gratuito, sem limites, sem risco de cobrança.
+    Tiles servidos pela comunidade OpenStreetMap (uso permitido para
+    projetos acadêmicos com uso moderado).
+  - Leaflet é leve (~42 KB), open-source, e tem ecossistema rico de plugins.
+
+Por que OSRM self-hosted em vez de API pública?
+  - O servidor demo do OSRM (router.project-osrm.org) é apenas para testes
+    e bloqueia uso frequente.
+  - Self-hosted via Docker: sem limites de requisições, sem custo, sem
+    dependência de terceiros. Basta rodar o container localmente ou em
+    qualquer servidor.
+  - Dados: download do extrato do Rio Grande do Sul (~100 MB) do Geofabrik.
+    Requer ~4 GB RAM para preprocessamento, ~1-2 GB para runtime.
+
+Supabase (PostgreSQL + PostGIS) — Free Tier:
+  - 500 MB de storage, 500 MB RAM, 2 projetos ativos.
+  - ATENÇÃO: pausa automática após 1 semana de inatividade.
+    → Mitigação: configurar cron job externo (ex: GitHub Actions scheduled
+      workflow, gratuito) para fazer um ping periódico ao banco.
+  - PostGIS é suportado como extensão nativa do Supabase.
+  - Sem backups automáticos no free tier → manter script de backup manual.
+
+                        ┌─────────────────────────┐
+                        │        FRONTEND          │
+                        │                          │
+                        │ React + TypeScript       │
+                        │ Vite + Tailwind CSS      │
+                        │ Leaflet + OpenStreetMap  │
+                        └────────────┬────────────┘
+                                     │
+                                  HTTP/JSON
+                                     │
+                                     ▼
+                        ┌─────────────────────────┐
+                        │        BACKEND           │
+                        │                          │
+                        │ Python + FastAPI         │
+                        │ Regras de negócio        │
+                        │ API REST                 │
+                        │ Algoritmo de matching    │
+                        └────────┬─────────┬──────┘
+                                 │         │
+                    ┌────────────┘         └────────────┐
+                    ▼                                   ▼
+  ┌──────────────────────────┐       ┌──────────────────────────┐
+  │      BANCO DE DADOS      │       │    OSRM (self-hosted)    │
+  │                          │       │                          │
+  │ PostgreSQL + PostGIS     │       │ Docker container local   │
+  │ (Supabase free tier)     │       │ Dados: RS/Brasil (OSM)   │
+  │ Rotas como LINESTRING    │       │ Sem limites de requests  │
+  └──────────────────────────┘       └──────────────────────────┘
+
+================================================================================
+DEPLOY E INFRAESTRUTURA (Custo Zero)
+================================================================================
+
+Todo o deploy pode ser feito em plataformas com free tiers:
+
+  Frontend (React):
+    → Vercel ou Netlify (free tier)
+    → Build estático via Vite, deploy automático via GitHub.
+    → Sem limites práticos para o volume do projeto.
+
+  Backend (FastAPI):
+    → Render free tier (spin down após inatividade, restart automático)
+      OU Railway free tier.
+    → Alternativa: rodar localmente para demos/apresentações.
+
+  Banco de Dados (PostgreSQL + PostGIS):
+    → Supabase free tier (500 MB, pausa após 1 semana de inatividade).
+    → Manter keep-alive via GitHub Actions (cron schedule gratuito).
+
+  OSRM (Routing Engine):
+    → Docker container rodando junto ao backend (no mesmo servidor)
+      OU localmente durante desenvolvimento.
+    → Para deploy: incluir no docker-compose junto ao backend.
+    → Dados: apenas Rio Grande do Sul (~100 MB OSM, ~1 GB processado).
+
+  Resumo de custos:
+    ┌──────────────────────┬──────────────────┬─────────┐
+    │ Serviço              │ Plataforma       │ Custo   │
+    ├──────────────────────┼──────────────────┼─────────┤
+    │ Frontend             │ Vercel/Netlify   │ R$ 0    │
+    │ Backend + OSRM       │ Render/Railway   │ R$ 0    │
+    │ Banco de Dados       │ Supabase         │ R$ 0    │
+    │ Mapas (tiles)        │ OpenStreetMap    │ R$ 0    │
+    │ Routing              │ OSRM Docker      │ R$ 0    │
+    │ CI/CD + Keep-alive   │ GitHub Actions   │ R$ 0    │
+    ├──────────────────────┼──────────────────┼─────────┤
+    │ TOTAL                │                  │ R$ 0    │
+    └──────────────────────┴──────────────────┴─────────┘
