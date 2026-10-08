@@ -20,6 +20,7 @@ export interface UserPrivate extends UserPublic {
   car_model: string | null;
   car_plate: string | null;
   is_verified: boolean;
+  profile_complete: boolean;
 }
 
 export interface ProfileUpdate {

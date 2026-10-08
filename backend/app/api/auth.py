@@ -70,9 +70,9 @@ def register(
     return resp
 
 
-@router.post("/verify-email")
-def verify_email(body: VerifyEmailRequest, db: DbSession) -> dict:
-    """Verify a user's email with the 6-digit token."""
+@router.post("/verify-email", response_model=TokenResponse)
+def verify_email(body: VerifyEmailRequest, db: DbSession) -> TokenResponse:
+    """Verify a user's email with the 6-digit token and log them in."""
     user = db.execute(select(User).where(User.email == body.email)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -93,7 +93,11 @@ def verify_email(body: VerifyEmailRequest, db: DbSession) -> dict:
     token.used = True
     user.is_verified = True
     db.commit()
-    return {"message": "Email verified successfully. You can now log in."}
+
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        refresh_token=create_refresh_token(str(user.id)),
+    )
 
 
 @router.post("/login", response_model=TokenResponse)

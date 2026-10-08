@@ -8,7 +8,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setTokens: (access: string, refresh: string) => void;
   setUser: (user: UserPrivate) => void;
-  fetchUser: () => Promise<void>;
+  fetchUser: () => Promise<UserPrivate | null>;
   logout: () => void;
 }
 
@@ -26,14 +26,16 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => set({ user }),
 
-      fetchUser: async () => {
-        try {
-          const { data } = await usersApi.getMe();
-          set({ user: data, isAuthenticated: true });
-        } catch {
-          set({ user: null, isAuthenticated: false });
-        }
-      },
+fetchUser: async (): Promise<UserPrivate | null> => {
+    try {
+      const { data } = await usersApi.getMe();
+      set({ user: data, isAuthenticated: true });
+      return data;
+    } catch {
+      set({ user: null, isAuthenticated: false });
+      return null;
+    }
+  },
 
       logout: () => {
         localStorage.removeItem("access_token");

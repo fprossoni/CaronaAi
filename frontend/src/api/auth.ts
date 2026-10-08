@@ -6,7 +6,7 @@ export const authApi = {
     apiClient.post<{ message: string; dev_token?: string }>("/auth/register", data),
 
   verifyEmail: (data: { email: string; token: string }) =>
-    apiClient.post<{ message: string }>("/auth/verify-email", data),
+    apiClient.post<{ access_token: string; refresh_token: string; token_type: string }>("/auth/verify-email", data),
 
   login: (data: { email: string; password: string }) =>
     apiClient.post<{ access_token: string; refresh_token: string; token_type: string }>("/auth/login", data),

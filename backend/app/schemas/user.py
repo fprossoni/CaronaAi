@@ -1,6 +1,6 @@
 """Pydantic schemas for users and profiles."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.models.user import Gender
 
@@ -38,5 +38,12 @@ class UserPrivate(UserPublic):
     car_model: str | None
     car_plate: str | None
     is_verified: bool
+    profile_complete: bool = False
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def compute_profile_complete(self) -> "UserPrivate":
+        """A profile is complete when the mandatory fields are filled."""
+        self.profile_complete = bool(self.name and self.course and self.gender)
+        return self

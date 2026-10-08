@@ -9,18 +9,27 @@ import { OfferRidePage } from "@/pages/OfferRidePage";
 import { MyRidesPage } from "@/pages/MyRidesPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { ProfilePage } from "@/pages/ProfilePage";
+import { ProfileCompletePage } from "@/pages/ProfileCompletePage";
 import "./index.css";
 
 // ─── Protected Route ─────────────────────────────────────────────────────────
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  const location = useLocation();
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  if (user && !user.profile_complete && location.pathname !== "/profile/complete") {
+    return <Navigate to="/profile/complete" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 // ─── Bottom Navigation ────────────────────────────────────────────────────────
 const BottomNav: React.FC = () => {
   const location = useLocation();
-  const authPaths = ["/login", "/register", "/verify-email"];
+  const authPaths = ["/login", "/register", "/verify-email", "/profile/complete"];
   if (authPaths.some((p) => location.pathname.startsWith(p))) return null;
 
   const items = [
@@ -89,6 +98,7 @@ export default function App() {
           <Route path="/rides" element={<ProtectedRoute><MyRidesPage /></ProtectedRoute>} />
           <Route path="/rides/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/profile/complete" element={<ProtectedRoute><ProfileCompletePage /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
