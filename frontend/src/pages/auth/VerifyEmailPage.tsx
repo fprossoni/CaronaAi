@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { getErrorMessage } from "@/lib/errors";
 import styles from "./AuthPages.module.css";
@@ -8,6 +9,7 @@ import styles from "./AuthPages.module.css";
 export const VerifyEmailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setTokens, fetchUser } = useAuthStore();
   const state = location.state as { email?: string; devToken?: string } | null;
   const email = state?.email ?? "";
   const devToken = state?.devToken ?? "";
@@ -44,8 +46,10 @@ export const VerifyEmailPage: React.FC = () => {
     setError("");
     setLoading(true);
     try {
-      await authApi.verifyEmail({ email, token });
-      navigate("/login", { state: { verified: true } });
+      const res = await authApi.verifyEmail({ email, token });
+      setTokens(res.data.access_token, res.data.refresh_token);
+      const user = await fetchUser();
+      navigate(user && !user.profile_complete ? "/profile/complete" : "/");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Código inválido ou expirado."));
     } finally {

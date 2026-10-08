@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import Enum as PyEnum
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -35,11 +35,14 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(20))
     photo_url: Mapped[str | None] = mapped_column(String(500))
     social_link: Mapped[str | None] = mapped_column(String(500))
+    bio: Mapped[str | None] = mapped_column(String(300))
+    campuses: Mapped[list[str] | None] = mapped_column(JSON)
 
     # Driver-specific
     is_driver: Mapped[bool] = mapped_column(Boolean, default=False)
     car_model: Mapped[str | None] = mapped_column(String(100))
     car_plate: Mapped[str | None] = mapped_column(String(20))
+    car_color: Mapped[str | None] = mapped_column(String(50))
 
     # Stats
     avg_rating: Mapped[float] = mapped_column(default=0.0)

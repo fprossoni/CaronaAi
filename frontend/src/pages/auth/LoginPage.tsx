@@ -21,8 +21,8 @@ export const LoginPage: React.FC = () => {
     try {
       const { data } = await authApi.login(form);
       setTokens(data.access_token, data.refresh_token);
-      await fetchUser();
-      navigate("/");
+      const user = await fetchUser();
+      navigate(user && !user.profile_complete ? "/profile/complete" : "/");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Erro ao fazer login. Verifique suas credenciais."));
     } finally {
