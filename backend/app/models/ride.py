@@ -22,19 +22,23 @@ class RideStatus(str, PyEnum):
 
 # List of valid UFRGS campus identifiers
 UFRGS_CAMPUS = [
-    "campus_vale",
     "campus_centro",
     "campus_saude",
-    "campus_agronomia_esefid",
+    "campus_olimpico",
+    "campus_vale",
+    "campus_agronomia",
     "campus_litoral_norte",
+    "campus_agronomia_esefid",  # backward compatibility
 ]
 
 CAMPUS_COORDS: dict[str, tuple[float, float]] = {
-    "campus_vale": (-30.0734, -51.1201),
     "campus_centro": (-30.0349, -51.2177),
     "campus_saude": (-30.0395, -51.2089),
-    "campus_agronomia_esefid": (-30.0608, -51.1734),
+    "campus_olimpico": (-30.0538, -51.1789),
+    "campus_vale": (-30.0734, -51.1201),
+    "campus_agronomia": (-30.0664, -51.1378),
     "campus_litoral_norte": (-29.9794, -50.1330),
+    "campus_agronomia_esefid": (-30.0608, -51.1734),  # backward compatibility
 }
 
 

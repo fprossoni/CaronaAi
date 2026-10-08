@@ -5,7 +5,7 @@ export const profileSchema = z.object({
   curso: z.string().min(2, "Curso inválido"),
   genero: z.string().optional(),
   foto_url: z.string().url("URL de foto inválida").optional(),
-  redes_link: z.string().url("URL inválida").optional(),
+  redes_link: z.string().optional(),
   telefone: z.string().optional(),
   
   // Condicional para motorista

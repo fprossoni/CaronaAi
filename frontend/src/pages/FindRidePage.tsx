@@ -87,7 +87,7 @@ export const FindRidePage: React.FC = () => {
                 className={[styles.campusBtn, pickup.label === c.name ? styles.campusBtnActive : ""].join(" ")}
                 onClick={() => handleSelectCampus(c.id)}
               >
-                {c.name.replace("Campus ", "")}
+                {c.shortName}
               </button>
             ))}
           </div>

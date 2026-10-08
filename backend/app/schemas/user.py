@@ -11,9 +11,12 @@ class ProfileUpdate(BaseModel):
     phone: str | None = None
     photo_url: str | None = None
     social_link: str | None = None
+    bio: str | None = None
+    campuses: list[str] | None = None
     is_driver: bool = False
     car_model: str | None = None
     car_plate: str | None = None
+    car_color: str | None = None
 
 
 class UserPublic(BaseModel):
@@ -23,6 +26,8 @@ class UserPublic(BaseModel):
     course: str | None
     photo_url: str | None
     social_link: str | None
+    bio: str | None = None
+    campuses: list[str] | None = None
     avg_rating: float
     rating_count: int
     is_driver: bool
@@ -37,6 +42,7 @@ class UserPrivate(UserPublic):
     phone: str | None
     car_model: str | None
     car_plate: str | None
+    car_color: str | None = None
     is_verified: bool
     profile_complete: bool = False
 

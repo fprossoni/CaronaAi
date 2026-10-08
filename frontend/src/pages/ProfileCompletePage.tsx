@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { getErrorMessage } from "@/lib/errors";
+import { UFRGS_CAMPUS } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
 import styles from "./ProfileCompletePage.module.css";
 
@@ -16,8 +18,12 @@ interface FormState {
   preference: Preference | "";
   social: string;
   phone: string;
+  photoUrl: string;
+  bio: string;
+  campuses: string[];
   carModel: string;
   carPlate: string;
+  carColor: string;
 }
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
@@ -43,8 +49,12 @@ export const ProfileCompletePage: React.FC = () => {
     preference: user ? (user.is_driver ? "both" : "passenger") : "",
     social: user?.social_link ?? "",
     phone: user?.phone ?? "",
+    photoUrl: user?.photo_url ?? "",
+    bio: user?.bio ?? "",
+    campuses: user?.campuses ?? [],
     carModel: user?.car_model ?? "",
     carPlate: user?.car_plate ?? "",
+    carColor: user?.car_color ?? "",
   }));
   const [errors, setErrors] = useState<Partial<Record<"course" | "gender" | "preference", string>>>({});
   const [error, setError] = useState("");
@@ -65,6 +75,16 @@ export const ProfileCompletePage: React.FC = () => {
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
 
+  const handleToggleCampus = (campusId: string) => {
+    setForm((prev) => {
+      const exists = prev.campuses.includes(campusId);
+      const next = exists
+        ? prev.campuses.filter((id) => id !== campusId)
+        : [...prev.campuses, campusId];
+      return { ...prev, campuses: next };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors: typeof errors = {};
@@ -82,11 +102,15 @@ export const ProfileCompletePage: React.FC = () => {
         gender: form.gender as Gender,
         social_link: form.social.trim() || undefined,
         phone: form.phone.trim() || undefined,
+        photo_url: form.photoUrl.trim() || undefined,
+        bio: form.bio.trim() || undefined,
+        campuses: form.campuses.length > 0 ? form.campuses : undefined,
         is_driver: form.preference !== "passenger",
       };
       if (payload.is_driver) {
         payload.car_model = form.carModel.trim() || undefined;
         payload.car_plate = form.carPlate.trim() || undefined;
+        payload.car_color = form.carColor.trim() || undefined;
       }
       const { data } = await usersApi.updateMe(payload);
       setUser(data);
@@ -106,6 +130,21 @@ export const ProfileCompletePage: React.FC = () => {
         <p className={styles.subtitle}>Só mais algumas informações para terminar seu cadastro.</p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.avatarSection}>
+            <div className={styles.avatarWrap}>
+              <Avatar name={user.name} photoUrl={form.photoUrl.trim() || null} size="lg" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Input
+                label="Foto de perfil (opcional)"
+                placeholder="https://exemplo.com/sua-foto.jpg"
+                value={form.photoUrl}
+                onChange={(e) => setField("photoUrl", e.target.value)}
+                hint="Link direto para uma foto sua"
+              />
+            </div>
+          </div>
+
           <Input label="Nome" value={user.name ?? ""} disabled />
           <Input label="E-mail institucional" value={user.email} disabled />
 
@@ -117,6 +156,23 @@ export const ProfileCompletePage: React.FC = () => {
             error={errors.course}
             required
           />
+
+          <fieldset className={styles.fieldset}>
+            <legend className={styles.legend}>Campi que você frequenta (opcional)</legend>
+            <div className={styles.checkboxGrid}>
+              {UFRGS_CAMPUS.map((c) => (
+                <label key={c.id} className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={form.campuses.includes(c.id)}
+                    onChange={() => handleToggleCampus(c.id)}
+                  />
+                  <span>{c.shortName}</span>
+                </label>
+              ))}
+            </div>
+            <p className={styles.helperText}>Você pode selecionar mais de um campus.</p>
+          </fieldset>
 
           <fieldset className={styles.fieldset}>
             <legend className={styles.legend}>Gênero <span className={styles.req}>*</span></legend>
@@ -157,14 +213,33 @@ export const ProfileCompletePage: React.FC = () => {
               ))}
             </div>
             {errors.preference && <p className={styles.fieldError}>{errors.preference}</p>}
+            <p className={styles.infoNote}>
+              💡 Você poderá alterar sua preferência (motorista / passageiro) a qualquer momento no seu perfil.
+            </p>
           </fieldset>
+
+          <div className={styles.textareaWrap}>
+            <label className={styles.legend} htmlFor="bio">
+              Bio / Apresentação curta (opcional)
+            </label>
+            <textarea
+              id="bio"
+              className={styles.textarea}
+              rows={3}
+              maxLength={250}
+              placeholder="Conte um pouco sobre você (ex.: horários frequentes, estilo de viagem...)"
+              value={form.bio}
+              onChange={(e) => setField("bio", e.target.value)}
+            />
+            <span className={styles.charCount}>{form.bio.length}/250</span>
+          </div>
 
           <Input
             label="Redes sociais (opcional)"
-            placeholder="https://instagram.com/seu.perfil"
-            type="url"
+            placeholder="@seu_usuario"
             value={form.social}
             onChange={(e) => setField("social", e.target.value)}
+            hint="Informe seu @ do Instagram/Twitter ou o link do perfil"
           />
           <Input
             label="Telefone (opcional)"
@@ -182,6 +257,12 @@ export const ProfileCompletePage: React.FC = () => {
                 placeholder="Ex.: Volkswagen Gol 2022"
                 value={form.carModel}
                 onChange={(e) => setField("carModel", e.target.value)}
+              />
+              <Input
+                label="Cor"
+                placeholder="Ex.: Prata, Preto, Branco..."
+                value={form.carColor}
+                onChange={(e) => setField("carColor", e.target.value)}
               />
               <Input
                 label="Placa"
