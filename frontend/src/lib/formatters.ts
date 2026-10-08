@@ -28,3 +28,26 @@ export function formatSocialHandle(value: string): string {
   if (!clean) return "";
   return `@${clean}`;
 }
+
+/**
+ * Normalizes a Brazilian license plate:
+ * Removes non-alphanumeric characters, converts to uppercase, and limits to 7 chars.
+ */
+export function formatCarPlate(value: string): string {
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 7);
+}
+
+/**
+ * Validates a Brazilian license plate:
+ * - Traditional (cinza): ABC1234 (3 letters + 4 digits)
+ * - Mercosul: ABC1C34 (3 letters + 1 digit + 1 letter A-J + 2 digits)
+ * Pattern: ^[A-Z]{3}[0-9]([0-9]|[A-J])[0-9]{2}$
+ */
+export function isValidCarPlate(value: string): boolean {
+  const clean = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!clean) return true;
+  return /^[A-Z]{3}[0-9]([0-9]|[A-J])[0-9]{2}$/.test(clean);
+}

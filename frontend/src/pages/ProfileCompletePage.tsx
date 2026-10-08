@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/Button";
 import { CourseAutocomplete } from "@/components/ui/CourseAutocomplete";
 import { Input } from "@/components/ui/Input";
 import { getErrorMessage } from "@/lib/errors";
-import { formatPhone, formatSocialHandle } from "@/lib/formatters";
+import {
+  formatCarPlate,
+  formatPhone,
+  formatSocialHandle,
+  isValidCarPlate,
+} from "@/lib/formatters";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
 import styles from "./ProfileCompletePage.module.css";
@@ -58,7 +63,7 @@ export const ProfileCompletePage: React.FC = () => {
     carPlate: user?.car_plate ?? "",
     carColor: user?.car_color ?? "",
   }));
-  const [errors, setErrors] = useState<Partial<Record<"course" | "gender" | "preference", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"course" | "gender" | "preference" | "carPlate", string>>>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -93,6 +98,11 @@ export const ProfileCompletePage: React.FC = () => {
     if (!form.course.trim()) nextErrors.course = "Informe seu curso.";
     if (!form.gender) nextErrors.gender = "Selecione seu gênero.";
     if (!form.preference) nextErrors.preference = "Selecione uma preferência.";
+    if (isDriver && form.carPlate.trim()) {
+      if (!isValidCarPlate(form.carPlate)) {
+        nextErrors.carPlate = "Placa inválida. Use o formato ABC1234 ou ABC1C34 (letras A a J).";
+      }
+    }
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
@@ -113,7 +123,7 @@ export const ProfileCompletePage: React.FC = () => {
       };
       if (payload.is_driver) {
         payload.car_model = form.carModel.trim() || undefined;
-        payload.car_plate = form.carPlate.trim() || undefined;
+        payload.car_plate = form.carPlate.trim() ? formatCarPlate(form.carPlate) : undefined;
         payload.car_color = form.carColor.trim() || undefined;
       }
       const { data } = await usersApi.updateMe(payload);
@@ -272,9 +282,12 @@ export const ProfileCompletePage: React.FC = () => {
               />
               <Input
                 label="Placa"
-                placeholder="ABC1D23"
+                placeholder="Ex.: ABC1234 ou ABC1C34"
+                maxLength={7}
                 value={form.carPlate}
-                onChange={(e) => setField("carPlate", e.target.value)}
+                onChange={(e) => setField("carPlate", formatCarPlate(e.target.value))}
+                error={errors.carPlate}
+                hint="Formatos: ABC1234 ou ABC1C34 (letras A a J)"
               />
             </div>
           )}

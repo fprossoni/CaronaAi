@@ -1,6 +1,5 @@
-"""Pydantic schemas for users and profiles."""
-
-from pydantic import BaseModel, model_validator
+import re
+from pydantic import BaseModel, field_validator, model_validator
 
 from app.models.user import Gender
 
@@ -17,6 +16,16 @@ class ProfileUpdate(BaseModel):
     car_model: str | None = None
     car_plate: str | None = None
     car_color: str | None = None
+
+    @field_validator("car_plate")
+    @classmethod
+    def validate_car_plate(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        clean = v.strip().upper().replace("-", "")
+        if not re.match(r"^[A-Z]{3}[0-9]([0-9]|[A-J])[0-9]{2}$", clean):
+            raise ValueError("Placa inválida. Utilize o formato ABC1234 ou ABC1C34 (letras A-J).")
+        return clean
 
 
 class UserPublic(BaseModel):
