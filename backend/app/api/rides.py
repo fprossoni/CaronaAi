@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.api.deps import DbSession, DriverUser, VerifiedUser
 from app.models.ride import Ride, RideStatus
-from app.schemas.ride import RideCreate, RideDetail, RidePublic
+from app.schemas.ride import RideCreate, RideDetail, RidePublic, TripHistory, TripParticipant
 from app.services.matching import find_matching_rides
 from app.services.osrm import get_route
 
@@ -106,6 +106,101 @@ def get_my_rides(current_user: VerifiedUser, db: DbSession) -> list[Ride]:
         .order_by(Ride.departure_at.desc())
     ).scalars().all()
     return list(rides)
+
+
+@router.get("/history", response_model=list[TripHistory])
+def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
+    """Trips the user took part in — as driver or as passenger.
+
+    A trip is history when the ride was cancelled/completed or its departure
+    time has already passed. Each item lists the participants (driver +
+    accepted passengers), excluding the current user.
+    """
+    from datetime import UTC, datetime
+
+    from app.models.match import Match, MatchStatus
+
+    now = datetime.now(UTC)
+
+    def build_participants(ride: Ride, exclude_id: int) -> list[TripParticipant]:
+        participants: list[TripParticipant] = []
+        driver = ride.driver
+        if driver.id != exclude_id:
+            participants.append(TripParticipant(
+                id=driver.id,
+                name=driver.name,
+                course=driver.course,
+                photo_url=driver.photo_url,
+                avg_rating=driver.avg_rating,
+                rating_count=driver.rating_count,
+                role="driver",
+            ))
+        for m in ride.matches:
+            if m.status == MatchStatus.ACCEPTED and m.passenger_id != exclude_id:
+                p = m.passenger
+                participants.append(TripParticipant(
+                    id=p.id,
+                    name=p.name,
+                    course=p.course,
+                    photo_url=p.photo_url,
+                    avg_rating=p.avg_rating,
+                    rating_count=p.rating_count,
+                    role="passenger",
+                ))
+        return participants
+
+    def ride_status(ride: Ride) -> str:
+        return "cancelled" if ride.status == RideStatus.CANCELLED else "completed"
+
+    results: list[TripHistory] = []
+
+    # 1) As driver — rides completed/cancelled or already departed
+    driver_rides = db.execute(
+        select(Ride).where(Ride.driver_id == current_user.id)
+    ).scalars().all()
+    for ride in driver_rides:
+        is_history = ride.status in (RideStatus.COMPLETED, RideStatus.CANCELLED) or ride.departure_at <= now
+        if not is_history:
+            continue
+        results.append(TripHistory(
+            ride_id=ride.id,
+            role="driver",
+            status=ride_status(ride),
+            departure_at=ride.departure_at,
+            origin_label=ride.origin_label,
+            destination_label=ride.destination_label,
+            participants=build_participants(ride, current_user.id),
+        ))
+
+    # 2) As passenger — accepted (then completed/cancelled) or cancelled matches
+    passenger_matches = db.execute(
+        select(Match).where(Match.passenger_id == current_user.id)
+    ).scalars().all()
+    seen_rides: set[int] = set()
+    for match in passenger_matches:
+        if match.status not in (MatchStatus.ACCEPTED, MatchStatus.CANCELLED):
+            continue
+        ride = match.ride
+        if ride.id in seen_rides:
+            continue
+        seen_rides.add(ride.id)
+        is_ride_history = ride.status in (RideStatus.COMPLETED, RideStatus.CANCELLED) or ride.departure_at <= now
+        if match.status == MatchStatus.ACCEPTED and not is_ride_history:
+            continue
+        # A cancelled participation is "cancelled" regardless of the ride status
+        participation_status = "cancelled" if match.status == MatchStatus.CANCELLED else ride_status(ride)
+        results.append(TripHistory(
+            ride_id=ride.id,
+            role="passenger",
+            status=participation_status,
+            departure_at=ride.departure_at,
+            origin_label=ride.origin_label,
+            destination_label=ride.destination_label,
+            participants=build_participants(ride, current_user.id),
+        ))
+
+    results.sort(key=lambda t: t.departure_at, reverse=True)
+    return results
 
 
 @router.get("/{ride_id}", response_model=RideDetail)

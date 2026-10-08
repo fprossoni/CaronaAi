@@ -7,6 +7,7 @@ import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage";
 import { FindRidePage } from "@/pages/FindRidePage";
 import { OfferRidePage } from "@/pages/OfferRidePage";
 import { MyRidesPage } from "@/pages/MyRidesPage";
+import { HistoryPage } from "@/pages/HistoryPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import "./index.css";
 
@@ -25,7 +26,7 @@ const BottomNav: React.FC = () => {
   const items = [
     { path: "/offer", label: "Oferecer", icon: "🚗" },
     { path: "/find", label: "Pedir", icon: "🔍" },
-    { path: "/rides", label: "Histórico", icon: "📋" },
+    { path: "/rides", label: "Caronas", icon: "📋" },
     { path: "/profile", label: "Perfil", icon: "👤" },
   ];
 
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="/find" element={<ProtectedRoute><FindRidePage /></ProtectedRoute>} />
           <Route path="/offer" element={<ProtectedRoute><OfferRidePage /></ProtectedRoute>} />
           <Route path="/rides" element={<ProtectedRoute><MyRidesPage /></ProtectedRoute>} />
+          <Route path="/rides/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
           {/* Fallback */}

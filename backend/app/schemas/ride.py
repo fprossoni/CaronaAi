@@ -72,6 +72,28 @@ class RideDetail(RidePublic):
     model_config = {"from_attributes": True}
 
 
+class TripParticipant(BaseModel):
+    """A person who took part in a ride (driver or accepted passenger)."""
+    id: int
+    name: str | None
+    course: str | None
+    photo_url: str | None
+    avg_rating: float
+    rating_count: int
+    role: str  # "driver" | "passenger"
+
+
+class TripHistory(BaseModel):
+    """A trip the current user participated in (driver or passenger view)."""
+    ride_id: int
+    role: str            # "driver" | "passenger"
+    status: str          # "completed" | "cancelled"
+    departure_at: datetime
+    origin_label: str
+    destination_label: str
+    participants: list[TripParticipant]
+
+
 class SearchRidesRequest(BaseModel):
     pickup_lat: float
     pickup_lng: float

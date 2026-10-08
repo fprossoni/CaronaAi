@@ -1,10 +1,10 @@
 import { apiClient } from "./client";
-import type { MatchConfirmed, MatchForDriver, MatchPublic, MatchRequest } from "@/types/match";
+import type { MatchConfirmed, MatchForDriver, MatchPublic, MatchRequest, MatchWithRide } from "@/types/match";
 
 export const matchesApi = {
   request: (data: MatchRequest) => apiClient.post<MatchPublic>("/matches/", data),
 
-  getMyMatches: () => apiClient.get<MatchPublic[]>("/matches/my"),
+  getMyMatches: () => apiClient.get<MatchWithRide[]>("/matches/my"),
 
   getRideMatches: (rideId: number) =>
     apiClient.get<MatchForDriver[]>(`/matches/ride/${rideId}`),

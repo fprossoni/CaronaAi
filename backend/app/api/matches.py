@@ -16,7 +16,9 @@ from app.schemas.match import (
     MatchForDriver,
     MatchPublic,
     MatchRequest,
+    MatchWithRide,
 )
+from app.schemas.ride import RidePublic
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
@@ -85,20 +87,26 @@ async def request_match(
     return match
 
 
-@router.get("/my", response_model=list[MatchPublic])
-def get_my_matches(current_user: VerifiedUser, db: DbSession) -> list[Match]:
-    """Get all matches for the current passenger."""
+@router.get("/my", response_model=list[MatchWithRide])
+def get_my_matches(current_user: VerifiedUser, db: DbSession) -> list[MatchWithRide]:
+    """Get all matches for the current passenger, with ride summary."""
     matches = db.execute(
         select(Match)
         .where(Match.passenger_id == current_user.id)
         .order_by(Match.created_at.desc())
     ).scalars().all()
-    return list(matches)
+
+    results: list[MatchWithRide] = []
+    for match in matches:
+        result = MatchWithRide.model_validate(match)
+        result.ride = RidePublic.model_validate(match.ride)
+        results.append(result)
+    return results
 
 
 @router.get("/ride/{ride_id}", response_model=list[MatchForDriver])
 def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) -> list[Match]:
-    """Driver views pending match requests for their ride."""
+    """Driver views match requests (pending) and confirmed passengers (accepted) for their ride."""
     ride = db.get(Ride, ride_id)
     if not ride:
         raise HTTPException(status_code=404, detail="Ride not found")
@@ -108,7 +116,8 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
     matches = db.execute(
         select(Match)
         .where(Match.ride_id == ride_id)
-        .where(Match.status == MatchStatus.PENDING)
+        .where(Match.status.in_([MatchStatus.PENDING, MatchStatus.ACCEPTED]))
+        .order_by(Match.created_at.asc())
     ).scalars().all()
     return list(matches)
 

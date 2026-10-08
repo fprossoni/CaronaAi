@@ -57,3 +57,23 @@ export interface SearchRidesParams {
   dropoff_lng?: number;
   women_only?: boolean;
 }
+
+export interface TripParticipant {
+  id: number;
+  name: string | null;
+  course: string | null;
+  photo_url: string | null;
+  avg_rating: number;
+  rating_count: number;
+  role: "driver" | "passenger";
+}
+
+export interface TripHistory {
+  ride_id: number;
+  role: "driver" | "passenger";
+  status: "completed" | "cancelled";
+  departure_at: string;
+  origin_label: string;
+  destination_label: string;
+  participants: TripParticipant[];
+}
