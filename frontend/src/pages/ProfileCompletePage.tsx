@@ -4,8 +4,10 @@ import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { CourseAutocomplete } from "@/components/ui/CourseAutocomplete";
 import { Input } from "@/components/ui/Input";
 import { getErrorMessage } from "@/lib/errors";
+import { formatPhone, formatSocialHandle } from "@/lib/formatters";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
 import styles from "./ProfileCompletePage.module.css";
@@ -97,11 +99,13 @@ export const ProfileCompletePage: React.FC = () => {
     setError("");
     setLoading(true);
     try {
+      const formattedSocial = form.social.trim() ? formatSocialHandle(form.social) : undefined;
+      const formattedPhone = form.phone.trim() ? formatPhone(form.phone) : undefined;
       const payload: ProfileUpdate = {
         course: form.course.trim(),
         gender: form.gender as Gender,
-        social_link: form.social.trim() || undefined,
-        phone: form.phone.trim() || undefined,
+        social_link: formattedSocial,
+        phone: formattedPhone,
         photo_url: form.photoUrl.trim() || undefined,
         bio: form.bio.trim() || undefined,
         campuses: form.campuses.length > 0 ? form.campuses : undefined,
@@ -125,7 +129,6 @@ export const ProfileCompletePage: React.FC = () => {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.logo}>✨</div>
         <h1 className={styles.title}>Complete seu perfil</h1>
         <p className={styles.subtitle}>Só mais algumas informações para terminar seu cadastro.</p>
 
@@ -148,11 +151,9 @@ export const ProfileCompletePage: React.FC = () => {
           <Input label="Nome" value={user.name ?? ""} disabled />
           <Input label="E-mail institucional" value={user.email} disabled />
 
-          <Input
-            label="Curso"
-            placeholder="Ex.: Engenharia da Computação"
+          <CourseAutocomplete
             value={form.course}
-            onChange={(e) => setField("course", e.target.value)}
+            onChange={(val) => setField("course", val)}
             error={errors.course}
             required
           />
@@ -214,7 +215,7 @@ export const ProfileCompletePage: React.FC = () => {
             </div>
             {errors.preference && <p className={styles.fieldError}>{errors.preference}</p>}
             <p className={styles.infoNote}>
-              💡 Você poderá alterar sua preferência (motorista / passageiro) a qualquer momento no seu perfil.
+              Você poderá alterar sua preferência (motorista / passageiro) a qualquer momento no seu perfil.
             </p>
           </fieldset>
 
@@ -239,14 +240,19 @@ export const ProfileCompletePage: React.FC = () => {
             placeholder="@seu_usuario"
             value={form.social}
             onChange={(e) => setField("social", e.target.value)}
-            hint="Informe seu @ do Instagram/Twitter ou o link do perfil"
+            onBlur={() => {
+              if (form.social.trim()) {
+                setField("social", formatSocialHandle(form.social));
+              }
+            }}
+            hint="Digite seu nome de usuário ou o link do seu perfil"
           />
           <Input
             label="Telefone (opcional)"
-            placeholder="(51) 99999-9999"
+            placeholder="(51) 999999999"
             type="tel"
             value={form.phone}
-            onChange={(e) => setField("phone", e.target.value)}
+            onChange={(e) => setField("phone", formatPhone(e.target.value))}
           />
 
           {isDriver && (
