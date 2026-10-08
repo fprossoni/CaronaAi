@@ -25,7 +25,7 @@ const BottomNav: React.FC = () => {
   const items = [
     { path: "/offer", label: "Oferecer", icon: "🚗" },
     { path: "/find", label: "Pedir", icon: "🔍" },
-    { path: "/rides", label: "Histórico", icon: "📋" },
+    { path: "/rides", label: "Caronas", icon: "📋" },
     { path: "/profile", label: "Perfil", icon: "👤" },
   ];
 

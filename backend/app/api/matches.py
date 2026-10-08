@@ -16,7 +16,9 @@ from app.schemas.match import (
     MatchForDriver,
     MatchPublic,
     MatchRequest,
+    MatchWithRide,
 )
+from app.schemas.ride import RidePublic
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
@@ -85,15 +87,21 @@ async def request_match(
     return match
 
 
-@router.get("/my", response_model=list[MatchPublic])
-def get_my_matches(current_user: VerifiedUser, db: DbSession) -> list[Match]:
-    """Get all matches for the current passenger."""
+@router.get("/my", response_model=list[MatchWithRide])
+def get_my_matches(current_user: VerifiedUser, db: DbSession) -> list[MatchWithRide]:
+    """Get all matches for the current passenger, with ride summary."""
     matches = db.execute(
         select(Match)
         .where(Match.passenger_id == current_user.id)
         .order_by(Match.created_at.desc())
     ).scalars().all()
-    return list(matches)
+
+    results: list[MatchWithRide] = []
+    for match in matches:
+        result = MatchWithRide.model_validate(match)
+        result.ride = RidePublic.model_validate(match.ride)
+        results.append(result)
+    return results
 
 
 @router.get("/ride/{ride_id}", response_model=list[MatchForDriver])

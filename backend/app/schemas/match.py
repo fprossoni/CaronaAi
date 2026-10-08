@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.models.match import MatchStatus
+from app.schemas.ride import RidePublic
 from app.schemas.user import UserPublic
 
 
@@ -66,6 +67,15 @@ class MatchConfirmed(MatchPublic):
     passenger_phone: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class MatchWithRide(MatchPublic):
+    """A match the passenger made, including the ride summary.
+
+    Used by GET /matches/my so the passenger can see route, schedule and driver
+    without opening each ride individually.
+    """
+    ride: RidePublic
 
 
 class MatchActionRequest(BaseModel):

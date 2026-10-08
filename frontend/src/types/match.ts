@@ -1,4 +1,5 @@
 import type { UserPublic } from "./user";
+import type { RidePublic } from "./ride";
 
 export type MatchStatus = "pending" | "accepted" | "rejected" | "cancelled";
 
@@ -32,6 +33,11 @@ export interface MatchConfirmed extends MatchPublic {
   pickup_lat?: number;
   pickup_lng?: number;
   passenger_phone?: string;
+}
+
+export interface MatchWithRide extends MatchPublic {
+  // Ride summary, returned by GET /matches/my
+  ride: RidePublic;
 }
 
 export interface MatchRequest {
