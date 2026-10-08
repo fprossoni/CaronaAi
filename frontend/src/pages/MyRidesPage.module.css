@@ -20,6 +20,9 @@
 
 .sectionHeader {
   margin-bottom: var(--space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .sectionTitle {
@@ -28,6 +31,23 @@
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.historyBtn {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.historyBtn:hover {
+  color: var(--color-primary-light);
+  border-color: var(--color-primary);
 }
 
 .groupLabel {

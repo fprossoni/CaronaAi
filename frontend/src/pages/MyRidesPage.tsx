@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
 import type { RideDetail, RideStatus } from "@/types/ride";
@@ -27,6 +28,7 @@ function formatDate(iso: string): string {
 }
 
 export const MyRidesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [rides, setRides] = useState<RideDetail[]>([]);
   const [matches, setMatches] = useState<MatchWithRide[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,6 +141,13 @@ export const MyRidesPage: React.FC = () => {
 
       <div className={styles.sectionHeader}>
         <span className={styles.sectionTitle}>Ativas</span>
+        <button
+          type="button"
+          className={styles.historyBtn}
+          onClick={() => navigate("/rides/history")}
+        >
+          Histórico de Caronas
+        </button>
       </div>
 
       {!hasAnyActive && (
@@ -147,7 +156,7 @@ export const MyRidesPage: React.FC = () => {
 
       {upcomingRides.length > 0 && (
         <>
-          <p className={styles.groupLabel}>🚗 Dirigindo</p>
+          <p className={styles.groupLabel}>Caronas como Motorista</p>
           <div className={styles.rideList}>
             {upcomingRides.map((ride) => (
               <div key={ride.id} className={styles.rideCard}>
@@ -197,7 +206,7 @@ export const MyRidesPage: React.FC = () => {
 
       {activeMatches.length > 0 && (
         <>
-          <p className={styles.groupLabel}>🧑‍🤝‍🧑 Como passageiro</p>
+          <p className={styles.groupLabel}>Caronas como Passageiro</p>
           <div className={styles.rideList}>
             {activeMatches.map((match) => {
               const info = MATCH_STATUS_INFO[match.status] ?? MATCH_STATUS_INFO.pending;
