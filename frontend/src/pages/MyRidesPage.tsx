@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
 import type { RideDetail, RideStatus } from "@/types/ride";
 import type { MatchWithRide } from "@/types/match";
+import { RideRequestsModal } from "@/components/rides/RideRequestsModal";
 import { getErrorMessage } from "@/lib/errors";
 import styles from "./MyRidesPage.module.css";
 import { format } from "date-fns";
@@ -31,25 +32,67 @@ export const MyRidesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [pendingCounts, setPendingCounts] = useState<Record<number, number>>({});
+  const [modalRide, setModalRide] = useState<RideDetail | null>(null);
+
+  const loadData = useCallback(async () => {
+    const [ridesRes, matchesRes] = await Promise.all([
+      ridesApi.getMyRides(),
+      matchesApi.getMyMatches(),
+    ]);
+
+    const upcoming = ridesRes.data.filter((r) => isActiveRide(r.status));
+    const counts = await Promise.all(
+      upcoming.map(async (r) => {
+        try {
+          const { data } = await matchesApi.getRideMatches(r.id);
+          return [r.id, data.filter((m) => m.status === "pending").length] as const;
+        } catch {
+          return [r.id, 0] as const;
+        }
+      })
+    );
+
+    return {
+      rides: ridesRes.data,
+      matches: matchesRes.data,
+      pendingCounts: Object.fromEntries(counts),
+    };
+  }, []);
+
+  const commit = useCallback(
+    (data: Awaited<ReturnType<typeof loadData>>) => {
+      setRides(data.rides);
+      setMatches(data.matches);
+      setPendingCounts(data.pendingCounts);
+    },
+    []
+  );
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [ridesRes, matchesRes] = await Promise.all([
-          ridesApi.getMyRides(),
-          matchesApi.getMyMatches(),
-        ]);
-        setRides(ridesRes.data);
-        setMatches(matchesRes.data);
-      } catch (err: unknown) {
-        setError(getErrorMessage(err, "Erro ao carregar as caronas."));
-      } finally {
-        setLoading(false);
-      }
+    let active = true;
+    loadData()
+      .then((data) => {
+        if (active) commit(data);
+      })
+      .catch((err: unknown) => {
+        if (active) setError(getErrorMessage(err, "Erro ao carregar as caronas."));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
     };
+  }, [loadData, commit]);
 
-    fetchData();
-  }, []);
+  const refresh = useCallback(() => {
+    void loadData()
+      .then(commit)
+      .catch((err: unknown) => {
+        setError(getErrorMessage(err, "Erro ao carregar as caronas."));
+      });
+  }, [loadData, commit]);
 
   const handleCancelRide = async (ride: RideDetail) => {
     if (!window.confirm(`Cancelar a carona de ${formatDate(ride.departure_at)}?`)) return;
@@ -132,6 +175,13 @@ export const MyRidesPage: React.FC = () => {
                 <div className={styles.rideActions}>
                   <button
                     type="button"
+                    className={styles.requestsBtn}
+                    onClick={() => setModalRide(ride)}
+                  >
+                    👥 Solicitações ({pendingCounts[ride.id] ?? 0})
+                  </button>
+                  <button
+                    type="button"
                     className={styles.cancelBtn}
                     disabled={cancellingId === ride.id}
                     onClick={() => handleCancelRide(ride)}
@@ -187,6 +237,17 @@ export const MyRidesPage: React.FC = () => {
             })}
           </div>
         </>
+      )}
+
+      {modalRide && (
+        <RideRequestsModal
+          ride={modalRide}
+          onClose={() => {
+            setModalRide(null);
+            refresh();
+          }}
+          onChanged={refresh}
+        />
       )}
     </div>
   );

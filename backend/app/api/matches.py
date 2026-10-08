@@ -106,7 +106,7 @@ def get_my_matches(current_user: VerifiedUser, db: DbSession) -> list[MatchWithR
 
 @router.get("/ride/{ride_id}", response_model=list[MatchForDriver])
 def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) -> list[Match]:
-    """Driver views pending match requests for their ride."""
+    """Driver views match requests (pending) and confirmed passengers (accepted) for their ride."""
     ride = db.get(Ride, ride_id)
     if not ride:
         raise HTTPException(status_code=404, detail="Ride not found")
@@ -116,7 +116,8 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
     matches = db.execute(
         select(Match)
         .where(Match.ride_id == ride_id)
-        .where(Match.status == MatchStatus.PENDING)
+        .where(Match.status.in_([MatchStatus.PENDING, MatchStatus.ACCEPTED]))
+        .order_by(Match.created_at.asc())
     ).scalars().all()
     return list(matches)
 

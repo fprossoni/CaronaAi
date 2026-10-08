@@ -126,8 +126,24 @@
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-3);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
 }
+
+.requestsBtn {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--color-primary-light);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.requestsBtn:hover { background: rgba(99, 102, 241, 0.25); }
 
 .cancelBtn {
   background: transparent;
