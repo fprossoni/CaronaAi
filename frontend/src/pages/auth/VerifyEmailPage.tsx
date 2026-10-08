@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { Button } from "@/components/ui/Button";
+import { getErrorMessage } from "@/lib/errors";
 import styles from "./AuthPages.module.css";
 
 export const VerifyEmailPage: React.FC = () => {
@@ -45,8 +46,8 @@ export const VerifyEmailPage: React.FC = () => {
     try {
       await authApi.verifyEmail({ email, token });
       navigate("/login", { state: { verified: true } });
-    } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Código inválido ou expirado.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Código inválido ou expirado."));
     } finally {
       setLoading(false);
     }

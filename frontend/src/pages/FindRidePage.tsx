@@ -6,6 +6,7 @@ import { RideCard } from "@/components/rides/RideCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { matchesApi } from "@/api/matches";
+import { getErrorMessage } from "@/lib/errors";
 import styles from "./FindRidePage.module.css";
 
 export const FindRidePage: React.FC = () => {
@@ -60,8 +61,8 @@ export const FindRidePage: React.FC = () => {
         pickup_region: pickup.label, // Simplified — in prod, use reverse geocoding
       });
       alert("Solicitação enviada! Aguarde a resposta do motorista.");
-    } catch (err: any) {
-      alert(err.response?.data?.detail ?? "Erro ao solicitar carona.");
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, "Erro ao solicitar carona."));
     } finally {
       setRequestingId(null);
     }

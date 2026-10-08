@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { getErrorMessage } from "@/lib/errors";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import styles from "./OfferRidePage.module.css";
 
@@ -76,11 +77,8 @@ export const OfferRidePage: React.FC = () => {
       await ridesApi.create(payload);
       alert("Carona oferecida com sucesso!");
       navigate("/rides");
-    } catch (err: unknown) {
-      const message = (err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail
-        || (err as Error)?.message
-        || "Erro ao oferecer carona. Verifique os dados.";
-      setError(message);
+} catch (err: unknown) {
+      setError(getErrorMessage(err, "Erro ao oferecer carona. Verifique os dados."));
     } finally {
       setLoading(false);
     }

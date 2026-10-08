@@ -4,6 +4,7 @@ import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { getErrorMessage } from "@/lib/errors";
 import styles from "./AuthPages.module.css";
 
 export const LoginPage: React.FC = () => {
@@ -22,8 +23,8 @@ export const LoginPage: React.FC = () => {
       setTokens(data.access_token, data.refresh_token);
       await fetchUser();
       navigate("/");
-    } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Erro ao fazer login. Verifique suas credenciais.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erro ao fazer login. Verifique suas credenciais."));
     } finally {
       setLoading(false);
     }

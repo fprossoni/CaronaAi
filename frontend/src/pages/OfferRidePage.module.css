@@ -23,7 +23,7 @@
 }
 
 .subtitle {
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
   font-size: 1rem;
 }
 
@@ -31,7 +31,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  background: white;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   padding: 2rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -63,9 +64,9 @@
 }
 
 .shortcutBtn {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  border: none;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-md);
   padding: 0.3rem 0.8rem;
   font-size: 0.85rem;
@@ -75,7 +76,7 @@
 }
 
 .shortcutBtn:hover {
-  background: #dbeafe;
+  background: rgba(99, 102, 241, 0.3);
 }
 
 .select {
@@ -84,7 +85,8 @@
   border: 1px solid var(--color-border);
   font-size: 1rem;
   outline: none;
-  background-color: var(--color-surface);
+  color: var(--color-text);
+  background-color: var(--color-surface-2);
   transition: all 0.2s ease;
 }
 
@@ -103,6 +105,7 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
+  color: var(--color-text);
   cursor: pointer;
 }
 
@@ -116,7 +119,8 @@
   color: var(--color-danger);
   font-size: 0.9rem;
   text-align: center;
-  background: #fef2f2;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
   padding: 0.75rem;
   border-radius: var(--radius-md);
 }

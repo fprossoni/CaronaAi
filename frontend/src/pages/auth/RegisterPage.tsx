@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { getErrorMessage } from "@/lib/errors";
 import styles from "./AuthPages.module.css";
 
 export const RegisterPage: React.FC = () => {
@@ -37,8 +38,8 @@ export const RegisterPage: React.FC = () => {
           devToken: res.data.dev_token,
         },
       });
-    } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Erro no cadastro.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erro no cadastro. Verifique os dados."));
     } finally {
       setLoading(false);
     }
