@@ -9,6 +9,7 @@ Algorithm:
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from geoalchemy2.functions import ST_DWithin, ST_GeomFromText, ST_SetSRID
 from sqlalchemy import select
@@ -78,8 +79,13 @@ async def find_matching_rides(
     if women_only:
         query = query.where(Ride.women_only == True)
 
-    if departure_after:
-        query = query.where(Ride.departure_at >= departure_after)
+    # Never list rides that already departed
+    now = datetime.now(UTC)
+    if departure_after is not None and departure_after.tzinfo is None:
+        departure_after = departure_after.replace(tzinfo=UTC)
+    if departure_after is None or departure_after < now:
+        departure_after = now
+    query = query.where(Ride.departure_at >= departure_after)
 
     candidate_rides = db.execute(query).scalars().all()
     logger.debug("PostGIS pre-filter: %d candidate rides", len(candidate_rides))

@@ -96,6 +96,15 @@
 
 .requestInfo { flex: 1; min-width: 0; }
 
+.passengerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
 .passengerName {
   font-size: 15px;
   font-weight: 600;
@@ -104,6 +113,38 @@
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+.passengerAge {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.detourBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-warning);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.bestDetourBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.profileSection {
+  margin-top: var(--space-2);
 }
 
 .confirmedBadge {
@@ -149,4 +190,45 @@
   padding: var(--space-3);
   font-size: 13px;
   text-align: center;
+}
+
+.privacyNotice {
+  font-size: 11px;
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.revealedAddress {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.revealedTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #34d399;
+  margin: 0 0 4px;
+}
+
+.revealedMain {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.revealedSub {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 2px 0 0;
 }

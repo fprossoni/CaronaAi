@@ -17,6 +17,7 @@ class MatchStatus(str, PyEnum):
     ACCEPTED = "accepted"     # Driver accepted — full info revealed
     REJECTED = "rejected"     # Driver rejected
     CANCELLED = "cancelled"   # Cancelled by either party
+    SUPERSEDED = "superseded" # Auto-withdrawn: passenger was confirmed in another ride
 
 
 class Match(Base):
@@ -26,6 +27,9 @@ class Match(Base):
     ride_id: Mapped[int] = mapped_column(ForeignKey("rides.id"), index=True)
     passenger_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
+    # Requests sent together by the passenger (multi-select "matching") share a batch id
+    batch_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+
     # Passenger pickup/dropoff (exact coords — hidden until accepted)
     pickup_point = mapped_column(Geometry("POINT", srid=4326))
     dropoff_point = mapped_column(Geometry("POINT", srid=4326), nullable=True)
@@ -34,6 +38,14 @@ class Match(Base):
 
     # Approximate region shown to driver before acceptance
     pickup_region: Mapped[str] = mapped_column(String(100))   # e.g. "Bairro Petrópolis"
+
+    # Detailed address components (hidden from driver until match is accepted)
+    pickup_street: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    pickup_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pickup_complement: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    pickup_postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pickup_neighborhood: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    pickup_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Detour metrics (calculated by matching service)
     detour_meters: Mapped[float] = mapped_column(Float, default=0.0)

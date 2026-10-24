@@ -1,5 +1,6 @@
 """Re-export all models so Alembic and other modules can import from one place."""
 
+from app.models.address import UserAddress
 from app.models.match import Match, MatchStatus
 from app.models.rating import Block, Rating
 from app.models.ride import CAMPUS_COORDS, UFRGS_CAMPUS, Ride, RideStatus
@@ -17,4 +18,5 @@ __all__ = [
     "Ride",
     "RideStatus",
     "User",
+    "UserAddress",
 ]

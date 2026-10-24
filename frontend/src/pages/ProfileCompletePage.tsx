@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Avatar } from "@/components/ui/Avatar";
@@ -22,7 +22,9 @@ type Preference = "passenger" | "driver" | "both";
 interface FormState {
   course: string;
   gender: Gender | "";
+  birthDate: string; // YYYY-MM-DD
   preference: Preference | "";
+  instagram: string;
   social: string;
   phone: string;
   photoUrl: string;
@@ -48,12 +50,16 @@ const PREFERENCE_OPTIONS: { value: Preference; label: string; description: strin
 
 export const ProfileCompletePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, setUser } = useAuthStore();
+  const isEditing = location.search.includes("edit") || Boolean((location.state as { edit?: boolean } | null)?.edit);
 
   const [form, setForm] = useState<FormState>(() => ({
     course: user?.course ?? "",
     gender: user?.gender ?? "",
+    birthDate: user?.birth_date ?? "",
     preference: user ? (user.is_driver ? "both" : "passenger") : "",
+    instagram: user?.instagram ?? "",
     social: user?.social_link ?? "",
     phone: user?.phone ?? "",
     photoUrl: user?.photo_url ?? "",
@@ -63,15 +69,15 @@ export const ProfileCompletePage: React.FC = () => {
     carPlate: user?.car_plate ?? "",
     carColor: user?.car_color ?? "",
   }));
-  const [errors, setErrors] = useState<Partial<Record<"course" | "gender" | "preference" | "carPlate", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"course" | "gender" | "birthDate" | "preference" | "carPlate", string>>>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user && user.profile_complete) {
+    if (user && user.profile_complete && !isEditing) {
       navigate("/", { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, isEditing]);
 
   const isDriver = useMemo(() => form.preference !== "passenger", [form.preference]);
 
@@ -97,6 +103,18 @@ export const ProfileCompletePage: React.FC = () => {
     const nextErrors: typeof errors = {};
     if (!form.course.trim()) nextErrors.course = "Informe seu curso.";
     if (!form.gender) nextErrors.gender = "Selecione seu gênero.";
+    if (!form.birthDate) {
+      nextErrors.birthDate = "Informe sua data de nascimento.";
+    } else {
+      const birth = new Date(form.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+      if (isNaN(age) || age < 16 || age > 100) {
+        nextErrors.birthDate = "Data de nascimento inválida (idade deve ser entre 16 e 100 anos).";
+      }
+    }
     if (!form.preference) nextErrors.preference = "Selecione uma preferência.";
     if (isDriver && form.carPlate.trim()) {
       if (!isValidCarPlate(form.carPlate)) {
@@ -110,10 +128,13 @@ export const ProfileCompletePage: React.FC = () => {
     setLoading(true);
     try {
       const formattedSocial = form.social.trim() ? formatSocialHandle(form.social) : undefined;
+      const formattedInstagram = form.instagram.trim() ? formatSocialHandle(form.instagram) : undefined;
       const formattedPhone = form.phone.trim() ? formatPhone(form.phone) : undefined;
       const payload: ProfileUpdate = {
         course: form.course.trim(),
         gender: form.gender as Gender,
+        birth_date: form.birthDate,
+        instagram: formattedInstagram,
         social_link: formattedSocial,
         phone: formattedPhone,
         photo_url: form.photoUrl.trim() || undefined,
@@ -166,6 +187,16 @@ export const ProfileCompletePage: React.FC = () => {
             onChange={(val) => setField("course", val)}
             error={errors.course}
             required
+          />
+
+          <Input
+            label="Data de nascimento"
+            type="date"
+            required
+            value={form.birthDate}
+            onChange={(e) => setField("birthDate", e.target.value)}
+            error={errors.birthDate}
+            hint="Sua data exata é privada; apenas sua idade é exibida publicamente nas opções de matching"
           />
 
           <fieldset className={styles.fieldset}>
@@ -246,8 +277,21 @@ export const ProfileCompletePage: React.FC = () => {
           </div>
 
           <Input
-            label="Redes sociais (opcional)"
-            placeholder="@seu_usuario"
+            label="Instagram (recomendado para matching)"
+            placeholder="@seu_instagram"
+            value={form.instagram}
+            onChange={(e) => setField("instagram", e.target.value)}
+            onBlur={() => {
+              if (form.instagram.trim()) {
+                setField("instagram", formatSocialHandle(form.instagram));
+              }
+            }}
+            hint="Será exibido nas informações públicas de matching"
+          />
+
+          <Input
+            label="Outras redes sociais (opcional)"
+            placeholder="LinkedIn, Twitter..."
             value={form.social}
             onChange={(e) => setField("social", e.target.value)}
             onBlur={() => {
@@ -255,14 +299,15 @@ export const ProfileCompletePage: React.FC = () => {
                 setField("social", formatSocialHandle(form.social));
               }
             }}
-            hint="Digite seu nome de usuário ou o link do seu perfil"
+            hint="Link direto para seu perfil"
           />
           <Input
-            label="Telefone (opcional)"
+            label="Telefone (WhatsApp) (opcional)"
             placeholder="(51) 999999999"
             type="tel"
             value={form.phone}
             onChange={(e) => setField("phone", formatPhone(e.target.value))}
+            hint="Visível publicamente nas opções de matching para facilitar contato"
           />
 
           {isDriver && (

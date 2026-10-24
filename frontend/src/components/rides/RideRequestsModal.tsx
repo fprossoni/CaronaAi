@@ -4,6 +4,7 @@ import type { MatchForDriver } from "@/types/match";
 import { matchesApi } from "@/api/matches";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { PublicProfileInfo } from "@/components/profile/PublicProfileInfo";
 import { getErrorMessage } from "@/lib/errors";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -94,9 +95,11 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
 
         {pending.length > 0 && (
           <>
-            <p className={styles.groupLabel}>Aguardando resposta</p>
+            <p className={styles.groupLabel}>
+              Aguardando resposta ({pending.length}) — ordenados por menor desvio
+            </p>
             <div className={styles.list}>
-              {pending.map((m) => (
+              {pending.map((m, idx) => (
                 <div key={m.id} className={styles.requestCard}>
                   <div className={styles.requestRow}>
                     <Avatar
@@ -106,16 +109,27 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
                       size="md"
                     />
                     <div className={styles.requestInfo}>
-                      <p className={styles.passengerName}>{m.passenger.name ?? "Passageiro"}</p>
+                      <div className={styles.passengerHeader}>
+                        <p className={styles.passengerName}>
+                          {m.passenger.name ?? "Passageiro"}
+                          {m.passenger.age != null && (
+                            <span className={styles.passengerAge}>, {m.passenger.age} anos</span>
+                          )}
+                        </p>
+                        <span className={idx === 0 ? styles.bestDetourBadge : styles.detourBadge}>
+                          {idx === 0 ? "✦ Menor desvio: " : "Desvio: "}
+                          {formatDistance(m.detour_meters)}
+                        </span>
+                      </div>
                       <p className={styles.passengerMeta}>
-                        {m.passenger.course ?? "Curso não informado"}
+                        📍 Região: {m.pickup_region} · Solicitou às {formatTime(m.created_at)}
                       </p>
-                      <p className={styles.passengerMeta}>
-                        📍 {m.pickup_region} · {formatDistance(m.detour_meters)} de desvio
-                      </p>
-                      <p className={styles.passengerMeta}>
-                        Solicitou às {formatTime(m.created_at)}
-                      </p>
+                      <div className={styles.privacyNotice}>
+                        🔒 Endereço exato protegido · Revelado após você aceitar
+                      </div>
+                      <div className={styles.profileSection}>
+                        <PublicProfileInfo user={m.passenger} variant="compact" />
+                      </div>
                     </div>
                   </div>
                   <div className={styles.actions}>
@@ -126,7 +140,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
                       disabled={noSeats || actingId !== null}
                       onClick={() => handleRespond(m.id, "accept")}
                     >
-                      Aceitar
+                      Aceitar passageiro
                     </Button>
                     <Button
                       variant="danger"
@@ -146,7 +160,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
 
         {accepted.length > 0 && (
           <>
-            <p className={styles.groupLabel}>Confirmados</p>
+            <p className={styles.groupLabel}>Confirmados ({accepted.length})</p>
             <div className={styles.list}>
               {accepted.map((m) => (
                 <div key={m.id} className={[styles.requestCard, styles.acceptedCard].join(" ")}>
@@ -160,12 +174,31 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
                     <div className={styles.requestInfo}>
                       <p className={styles.passengerName}>
                         {m.passenger.name ?? "Passageiro"}
+                        {m.passenger.age != null && (
+                          <span className={styles.passengerAge}>, {m.passenger.age} anos</span>
+                        )}
                         <span className={styles.confirmedBadge}>✓ Confirmado</span>
                       </p>
-                      <p className={styles.passengerMeta}>
-                        {m.passenger.course ?? "Curso não informado"}
-                      </p>
-                      <p className={styles.passengerMeta}>📍 {m.pickup_region}</p>
+                      <p className={styles.passengerMeta}>📍 Região: {m.pickup_region}</p>
+
+                      {m.pickup_street && (
+                        <div className={styles.revealedAddress}>
+                          <p className={styles.revealedTitle}>📍 Ponto de Embarque Confirmado:</p>
+                          <p className={styles.revealedMain}>
+                            {m.pickup_street}, {m.pickup_number}
+                            {m.pickup_complement ? ` (${m.pickup_complement})` : ""}
+                          </p>
+                          <p className={styles.revealedSub}>
+                            {m.pickup_neighborhood ? `${m.pickup_neighborhood} · ` : ""}
+                            {m.pickup_city ? `${m.pickup_city}` : ""}
+                            {m.pickup_postal_code ? ` (CEP: ${m.pickup_postal_code})` : ""}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className={styles.profileSection}>
+                        <PublicProfileInfo user={m.passenger} variant="compact" />
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import Enum as PyEnum
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, JSON, String
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -35,8 +35,11 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(20))
     photo_url: Mapped[str | None] = mapped_column(String(500))
     social_link: Mapped[str | None] = mapped_column(String(500))
+    instagram: Mapped[str | None] = mapped_column(String(100))
     bio: Mapped[str | None] = mapped_column(String(300))
     campuses: Mapped[list[str] | None] = mapped_column(JSON)
+    # Private — only the derived `age` is exposed publicly
+    birth_date: Mapped[date | None] = mapped_column(Date)
 
     # Driver-specific
     is_driver: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -56,8 +59,22 @@ class User(Base):
     blocks_made: Mapped[list["Block"]] = relationship("Block", back_populates="blocker", foreign_keys="Block.blocker_id")
     blocks_received: Mapped[list["Block"]] = relationship("Block", back_populates="blocked", foreign_keys="Block.blocked_id")
 
+    # Saved personal addresses
+    addresses: Mapped[list["UserAddress"]] = relationship("UserAddress", back_populates="user", cascade="all, delete-orphan")
+
     # Email verification
     verification_tokens: Mapped[list["EmailVerificationToken"]] = relationship("EmailVerificationToken", back_populates="user")
+
+    @property
+    def age(self) -> int | None:
+        """Age in full years, derived from birth_date (None if not provided)."""
+        if not self.birth_date:
+            return None
+        today = date.today()
+        years = today.year - self.birth_date.year
+        if (today.month, today.day) < (self.birth_date.month, self.birth_date.day):
+            years -= 1
+        return years
 
 
 class EmailVerificationToken(Base):

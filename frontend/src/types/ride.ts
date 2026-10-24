@@ -1,4 +1,5 @@
 import type { UserPublic } from "./user";
+import type { AddressCreate } from "./address";
 
 export type RideStatus = "active" | "full" | "in_progress" | "completed" | "cancelled";
 
@@ -30,6 +31,9 @@ export interface RidePublic {
   // Set when returned from search
   detour_meters?: number;
   detour_seconds?: number;
+  // Passenger's own active request for this ride (search only)
+  my_match_id?: number | null;
+  my_match_status?: "pending" | "accepted" | null;
 }
 
 export interface RideDetail extends RidePublic {
@@ -37,13 +41,17 @@ export interface RideDetail extends RidePublic {
 }
 
 export interface RideCreate {
-  origin_label: string;
-  origin_lat: number;
-  origin_lng: number;
-  destination_label: string;
-  destination_lat: number;
-  destination_lng: number;
   campus_point: CampusId;
+  direction: "to_campus" | "from_campus";
+  address_id?: number | null;
+  custom_address?: AddressCreate | null;
+  save_address?: boolean;
+  origin_label?: string;
+  origin_lat?: number;
+  origin_lng?: number;
+  destination_label?: string;
+  destination_lat?: number;
+  destination_lng?: number;
   departure_at: string;
   delay_tolerance_minutes?: number;
   total_seats?: number;
@@ -51,9 +59,10 @@ export interface RideCreate {
 }
 
 export interface SearchRidesParams {
-  pickup_lat: number;
-  pickup_lng: number;
-  pickup_label: string;
+  address_id?: number;
+  pickup_lat?: number;
+  pickup_lng?: number;
+  pickup_label?: string;
   dropoff_lat?: number;
   dropoff_lng?: number;
   women_only?: boolean;

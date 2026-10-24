@@ -21,6 +21,7 @@ const MATCH_STATUS_INFO: Record<string, { label: string; badge: string }> = {
   accepted: { label: "Confirmada", badge: styles.badgeConfirmed },
   rejected: { label: "Recusada", badge: styles.badgeRejected },
   cancelled: { label: "Cancelada", badge: styles.badgeRejected },
+  superseded: { label: "Cancelada (outra confirmada)", badge: styles.badgeRejected },
 };
 
 function formatDate(iso: string): string {

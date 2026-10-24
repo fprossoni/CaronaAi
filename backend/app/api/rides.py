@@ -7,12 +7,23 @@ from geoalchemy2 import WKTElement
 from sqlalchemy import select
 
 from app.api.deps import DbSession, DriverUser, VerifiedUser
-from app.models.ride import Ride, RideStatus
+from app.models.address import UserAddress
+from app.models.ride import CAMPUS_COORDS, Ride, RideStatus
 from app.schemas.ride import RideCreate, RideDetail, RidePublic, TripHistory, TripParticipant
+from app.services.geocoding import geocode_address
 from app.services.matching import find_matching_rides
 from app.services.osrm import get_route
 
 router = APIRouter(prefix="/rides", tags=["rides"])
+
+CAMPUS_NAMES: dict[str, str] = {
+    "campus_centro": "UFRGS - Campus Centro",
+    "campus_saude": "UFRGS - Campus Saúde",
+    "campus_olimpico": "UFRGS - Campus Olímpico (ESEFID)",
+    "campus_vale": "UFRGS - Campus do Vale",
+    "campus_agronomia": "UFRGS - Campus Agronomia",
+    "campus_litoral_norte": "UFRGS - Campus Litoral Norte",
+}
 
 
 def _point_wkt(lat: float, lng: float) -> WKTElement:
@@ -21,10 +32,88 @@ def _point_wkt(lat: float, lng: float) -> WKTElement:
 
 @router.post("/", response_model=RideDetail, status_code=status.HTTP_201_CREATED)
 async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession) -> RideDetail:
-    """Create a new ride offer (driver only)."""
+    """Create a new ride offer (driver only).
+
+    Computes coordinates automatically from the chosen UFRGS campus and either a
+    saved personal address or a physical address geocoded via Nominatim.
+    """
+    origin_lat = body.origin_lat
+    origin_lng = body.origin_lng
+    origin_label = body.origin_label
+    destination_lat = body.destination_lat
+    destination_lng = body.destination_lng
+    destination_label = body.destination_label
+
+    # Auto-resolve coordinates if not explicitly provided
+    if origin_lat is None or destination_lat is None:
+        campus_coords = CAMPUS_COORDS.get(body.campus_point)
+        if not campus_coords:
+            raise HTTPException(status_code=400, detail="Campus selecionado inválido")
+        campus_lat, campus_lng = campus_coords
+        campus_name = CAMPUS_NAMES.get(body.campus_point, body.campus_point)
+
+        # Resolve driver's personal address
+        addr_lat: float | None = None
+        addr_lng: float | None = None
+        addr_label: str = ""
+
+        if body.address_id is not None:
+            saved_addr = db.get(UserAddress, body.address_id)
+            if not saved_addr or saved_addr.user_id != current_user.id:
+                raise HTTPException(status_code=404, detail="Endereço pessoal salvo não encontrado")
+            addr_lat = saved_addr.lat
+            addr_lng = saved_addr.lng
+            addr_label = saved_addr.full_address
+        elif body.custom_address is not None:
+            try:
+                lat, lng, neighborhood, _ = await geocode_address(
+                    street=body.custom_address.street,
+                    number=body.custom_address.number,
+                    city=body.custom_address.city,
+                    state=body.custom_address.state,
+                    country=body.custom_address.country,
+                    postal_code=body.custom_address.postal_code,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+            addr_lat, addr_lng = lat, lng
+            addr_label = f"{body.custom_address.street}, {body.custom_address.number} - {body.custom_address.city}"
+
+            if body.save_address:
+                new_addr = UserAddress(
+                    user_id=current_user.id,
+                    label=body.custom_address.label or "Endereço",
+                    street=body.custom_address.street,
+                    number=body.custom_address.number,
+                    complement=body.custom_address.complement,
+                    neighborhood=body.custom_address.neighborhood or neighborhood,
+                    postal_code=body.custom_address.postal_code,
+                    city=body.custom_address.city,
+                    state=body.custom_address.state,
+                    country=body.custom_address.country,
+                    lat=lat,
+                    lng=lng,
+                )
+                db.add(new_addr)
+                db.flush()
+        else:
+            raise HTTPException(status_code=400, detail="Selecione um endereço salvo ou informe um endereço físico")
+
+        if body.direction == "to_campus":
+            origin_lat, origin_lng = addr_lat, addr_lng
+            origin_label = origin_label or addr_label
+            destination_lat, destination_lng = campus_lat, campus_lng
+            destination_label = destination_label or campus_name
+        else:
+            origin_lat, origin_lng = campus_lat, campus_lng
+            origin_label = origin_label or campus_name
+            destination_lat, destination_lng = addr_lat, addr_lng
+            destination_label = destination_label or addr_label
+
     # Calculate route via OSRM
     route = await get_route(
-        [(body.origin_lat, body.origin_lng), (body.destination_lat, body.destination_lng)],
+        [(origin_lat, origin_lng), (destination_lat, destination_lng)],
         with_geometry=True,
     )
 
@@ -39,11 +128,11 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
 
     ride = Ride(
         driver_id=current_user.id,
-        origin_label=body.origin_label,
-        destination_label=body.destination_label,
+        origin_label=origin_label,
+        destination_label=destination_label,
         campus_point=body.campus_point,
-        origin_point=_point_wkt(body.origin_lat, body.origin_lng),
-        destination_point=_point_wkt(body.destination_lat, body.destination_lng),
+        origin_point=_point_wkt(origin_lat, origin_lng),
+        destination_point=_point_wkt(destination_lat, destination_lng),
         route_line=route_line,
         route_distance_meters=route.distance_meters,
         route_duration_seconds=route.duration_seconds,
@@ -65,17 +154,37 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
 
 @router.get("/search", response_model=list[RidePublic])
 async def search_rides(
-    pickup_lat: float,
-    pickup_lng: float,
-    pickup_label: str,
     current_user: VerifiedUser,
     db: DbSession,
+    pickup_lat: float | None = None,
+    pickup_lng: float | None = None,
+    pickup_label: str | None = None,
+    address_id: int | None = None,
     dropoff_lat: float | None = None,
     dropoff_lng: float | None = None,
     women_only: bool = False,
     departure_after: datetime | None = None,
 ) -> list[RidePublic]:
-    """Search for rides matching the passenger's pickup location."""
+    """Search for rides matching the passenger's pickup location.
+
+    Accepts an address_id (from passenger's saved addresses) or explicit coordinates.
+    Results are ordered by smallest detour for the driver.
+    """
+    if address_id is not None:
+        saved_addr = db.get(UserAddress, address_id)
+        if not saved_addr or saved_addr.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Endereço não encontrado")
+        pickup_lat = saved_addr.lat
+        pickup_lng = saved_addr.lng
+        pickup_label = pickup_label or saved_addr.full_address
+
+    if pickup_lat is None or pickup_lng is None:
+        raise HTTPException(status_code=400, detail="Informe um endereço salvo ou coordenadas de embarque")
+    if not pickup_label:
+        pickup_label = "Local de embarque"
+
+    from app.models.match import Match, MatchStatus
+
     candidates = await find_matching_rides(
         db=db,
         passenger_id=current_user.id,
@@ -87,11 +196,25 @@ async def search_rides(
         departure_after=departure_after,
     )
 
+    my_matches: dict[int, Match] = {}
+    if candidates:
+        rows = db.execute(
+            select(Match)
+            .where(Match.passenger_id == current_user.id)
+            .where(Match.ride_id.in_([c.ride.id for c in candidates]))
+            .where(Match.status.in_([MatchStatus.PENDING, MatchStatus.ACCEPTED]))
+        ).scalars().all()
+        my_matches = {m.ride_id: m for m in rows}
+
     results = []
     for c in candidates:
         ride_schema = RidePublic.model_validate(c.ride)
         ride_schema.detour_meters = c.detour_meters
         ride_schema.detour_seconds = c.detour_seconds
+        mine = my_matches.get(c.ride.id)
+        if mine:
+            ride_schema.my_match_id = mine.id
+            ride_schema.my_match_status = mine.status.value
         results.append(ride_schema)
 
     return results
