@@ -16,7 +16,7 @@
 }
 
 .subtitle {
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
   font-size: 0.95rem;
   margin-top: 6px;
 }
@@ -60,29 +60,30 @@
 }
 
 .directionBtn:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: rgba(44, 90, 160, 0.4);
 }
 
 .directionBtnActive {
   border-color: var(--color-primary, #6366f1);
-  background-color: rgba(99, 102, 241, 0.12);
+  background-color: rgba(44, 90, 160, 0.12);
   box-shadow: 0 0 0 1px var(--color-primary, #6366f1);
 }
 
 .directionIcon {
-  font-size: 1.6rem;
+  display: inline-flex;
+  color: var(--color-primary);
 }
 
 .directionBtn strong {
   display: block;
   font-size: 0.95rem;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .directionBtn p {
   margin: 2px 0 0;
   font-size: 0.78rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
 }
 
 .campusGrid {
@@ -108,28 +109,35 @@
 }
 
 .campusCard:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  background-color: rgba(99, 102, 241, 0.05);
+  border-color: rgba(44, 90, 160, 0.5);
+  background-color: rgba(44, 90, 160, 0.05);
 }
 
 .campusCardActive {
   border-color: var(--color-primary, #6366f1);
-  background-color: rgba(99, 102, 241, 0.15);
-  color: #fff;
+  background-color: rgba(44, 90, 160, 0.15);
+  color: var(--color-text);
   font-weight: 600;
 }
 
 .campusDot {
-  color: var(--color-primary, #6366f1);
-  font-size: 0.7rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.campusCardActive .campusDot {
+  background: var(--color-accent);
 }
 
 .routeSummary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px dashed rgba(99, 102, 241, 0.35);
+  background: rgba(44, 90, 160, 0.08);
+  border: 1px dashed rgba(44, 90, 160, 0.35);
   border-radius: 10px;
   padding: 12px 16px;
   gap: 12px;
@@ -146,17 +154,17 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 700;
-  color: #a5b4fc;
+  color: var(--color-primary);
 }
 
 .stepText {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .summaryArrow {
-  color: #818cf8;
+  color: var(--color-primary);
   font-size: 1.2rem;
 }
 
@@ -182,7 +190,7 @@
 }
 
 .error {
-  color: #f87171;
+  color: var(--color-danger);
   font-size: 0.88rem;
   margin: 0;
   padding: 10px;

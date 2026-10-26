@@ -3,6 +3,7 @@ import type { RidePublic } from "@/types/ride";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, CardBody, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { PublicProfileInfo } from "@/components/profile/PublicProfileInfo";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import styles from "./RideCard.module.css";
@@ -71,7 +72,7 @@ export const RideCard: React.FC<RideCardProps> = ({
         <div className={styles.driverRow}>
           {canSelect && (
             <span className={[styles.checkbox, selected ? styles.checkboxOn : ""].join(" ")} aria-hidden>
-              {selected ? "✓" : ""}
+              {selected ? <Icon name="check" size={14} strokeWidth={3} /> : null}
             </span>
           )}
           <Avatar
@@ -88,9 +89,9 @@ export const RideCard: React.FC<RideCardProps> = ({
             <p className={styles.driverCourse}>{ride.driver.course ?? ""}</p>
           </div>
           <div className={styles.badges}>
-            {rank === 1 && <span className={styles.bestBadge}>✦ Menor desvio</span>}
+            {rank === 1 && <span className={styles.bestBadge}>Menor desvio</span>}
             {ride.women_only && (
-              <span className={styles.badge}>♀ Só Mulheres</span>
+              <span className={styles.badge}>Só mulheres</span>
             )}
           </div>
         </div>
@@ -102,12 +103,12 @@ export const RideCard: React.FC<RideCardProps> = ({
         {/* Route */}
         <div className={styles.route}>
           <div className={styles.routePoint}>
-            <span className={styles.dot} style={{ background: "var(--color-secondary)" }} />
+            <span className={styles.dot} style={{ background: "var(--color-primary)" }} />
             <span className={styles.routeLabel}>{ride.origin_label}</span>
           </div>
           <div className={styles.routeLine} />
           <div className={styles.routePoint}>
-            <span className={styles.dot} style={{ background: "var(--color-primary)" }} />
+            <span className={styles.dot} style={{ background: "var(--color-accent)" }} />
             <span className={styles.routeLabel}>{ride.destination_label}</span>
           </div>
         </div>
@@ -115,21 +116,21 @@ export const RideCard: React.FC<RideCardProps> = ({
         {/* Stats */}
         <div className={styles.stats}>
           <div className={styles.stat}>
-            <span className={styles.statIcon}>🕐</span>
+            <span className={styles.statIcon}><Icon name="clock" /></span>
             <div>
               <p className={styles.statLabel}>Partida</p>
               <p className={styles.statValue}>{formatDate(ride.departure_at)} às {formatTime(ride.departure_at)}</p>
             </div>
           </div>
           <div className={styles.stat}>
-            <span className={styles.statIcon}>💺</span>
+            <span className={styles.statIcon}><Icon name="users" /></span>
             <div>
               <p className={styles.statLabel}>Vagas</p>
               <p className={styles.statValue}>{ride.available_seats} de {ride.total_seats}</p>
             </div>
           </div>
           <div className={styles.stat}>
-            <span className={styles.statIcon}>🗺️</span>
+            <span className={styles.statIcon}><Icon name="route" /></span>
             <div>
               <p className={styles.statLabel}>Rota</p>
               <p className={styles.statValue}>{formatDistance(ride.route_distance_meters)} · {formatDuration(ride.route_duration_seconds)}</p>
@@ -137,7 +138,7 @@ export const RideCard: React.FC<RideCardProps> = ({
           </div>
           {ride.detour_meters !== undefined && (
             <div className={styles.stat}>
-              <span className={styles.statIcon}>↪️</span>
+              <span className={styles.statIcon}><Icon name="pin" /></span>
               <div>
                 <p className={styles.statLabel}>Desvio</p>
                 <p className={styles.statValue} style={{ color: ride.detour_meters < 1000 ? "var(--color-secondary)" : "var(--color-warning)" }}>
@@ -153,8 +154,8 @@ export const RideCard: React.FC<RideCardProps> = ({
         <CardFooter>
           <div className={requested === "accepted" ? styles.statusConfirmed : styles.statusPending}>
             {requested === "accepted"
-              ? "✓ Match confirmado com este motorista"
-              : "⏳ Matching enviado — aguardando o motorista"}
+              ? "Match confirmado com este motorista"
+              : "Matching enviado — aguardando o motorista"}
           </div>
         </CardFooter>
       )}
@@ -171,7 +172,7 @@ export const RideCard: React.FC<RideCardProps> = ({
               onToggleSelect?.(ride);
             }}
           >
-            {selected ? "✓ Selecionada — toque para remover" : "💜 Dar matching"}
+            {selected ? "Selecionada — toque para remover" : "Dar matching"}
           </Button>
         </CardFooter>
       )}

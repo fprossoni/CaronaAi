@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Icon } from "@/components/ui/Icon";
 import { AddressSelector, type SelectedAddressValue } from "@/components/address/AddressSelector";
 import { getErrorMessage } from "@/lib/errors";
 import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
@@ -106,7 +107,7 @@ export const OfferRidePage: React.FC = () => {
               ].join(" ")}
               onClick={() => setDirection("to_campus")}
             >
-              <span className={styles.directionIcon}>🎓</span>
+              <span className={styles.directionIcon}><Icon name="school" size={24} /></span>
               <div>
                 <strong>Indo para a UFRGS</strong>
                 <p>Do seu endereço pessoal para o campus</p>
@@ -121,7 +122,7 @@ export const OfferRidePage: React.FC = () => {
               ].join(" ")}
               onClick={() => setDirection("from_campus")}
             >
-              <span className={styles.directionIcon}>🏠</span>
+              <span className={styles.directionIcon}><Icon name="home" size={24} /></span>
               <div>
                 <strong>Saindo da UFRGS</strong>
                 <p>Do campus de volta para seu destino</p>
@@ -144,7 +145,7 @@ export const OfferRidePage: React.FC = () => {
                 ].join(" ")}
                 onClick={() => setCampusPoint(c.id)}
               >
-                <span className={styles.campusDot}>●</span>
+                <span className={styles.campusDot} />
                 <span className={styles.campusName}>{c.name}</span>
               </button>
             ))}
@@ -175,7 +176,7 @@ export const OfferRidePage: React.FC = () => {
                 : selectedCampus?.name ?? "Campus UFRGS"}
             </span>
           </div>
-          <span className={styles.summaryArrow}>➔</span>
+          <span className={styles.summaryArrow}><Icon name="arrowRight" /></span>
           <div className={styles.summaryStep}>
             <span className={styles.stepBadge}>Destino</span>
             <span className={styles.stepText}>
@@ -234,7 +235,7 @@ export const OfferRidePage: React.FC = () => {
         {error && <p className={styles.error}>{error}</p>}
 
         <Button type="submit" fullWidth loading={loading}>
-          🚗 Publicar Carona
+          <Icon name="car" /> Publicar carona
         </Button>
       </form>
     </div>

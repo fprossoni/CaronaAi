@@ -16,7 +16,7 @@
 }
 
 .subtitle {
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
   font-size: 0.95rem;
   margin-top: 6px;
 }
@@ -60,29 +60,30 @@
 }
 
 .directionBtn:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: rgba(44, 90, 160, 0.4);
 }
 
 .directionBtnActive {
   border-color: var(--color-primary, #6366f1);
-  background-color: rgba(99, 102, 241, 0.12);
+  background-color: rgba(44, 90, 160, 0.12);
   box-shadow: 0 0 0 1px var(--color-primary, #6366f1);
 }
 
 .directionIcon {
-  font-size: 1.6rem;
+  display: inline-flex;
+  color: var(--color-primary);
 }
 
 .directionBtn strong {
   display: block;
   font-size: 0.95rem;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .directionBtn p {
   margin: 2px 0 0;
   font-size: 0.78rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
 }
 
 .campusGrid {
@@ -108,24 +109,31 @@
 }
 
 .campusCard:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  background-color: rgba(99, 102, 241, 0.05);
+  border-color: rgba(44, 90, 160, 0.5);
+  background-color: rgba(44, 90, 160, 0.05);
 }
 
 .campusCardActive {
   border-color: var(--color-primary, #6366f1);
-  background-color: rgba(99, 102, 241, 0.15);
-  color: #fff;
+  background-color: rgba(44, 90, 160, 0.15);
+  color: var(--color-text);
   font-weight: 600;
 }
 
 .campusDot {
-  color: var(--color-primary, #6366f1);
-  font-size: 0.7rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.campusCardActive .campusDot {
+  background: var(--color-accent);
 }
 
 .error {
-  color: #f87171;
+  color: var(--color-danger);
   font-size: 0.88rem;
   margin: 0;
   padding: 10px;
@@ -154,7 +162,7 @@
 
 .resultsHint {
   font-size: 0.85rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
   margin-top: 4px;
   line-height: 1.4;
 }
@@ -162,7 +170,7 @@
 .selectAllBtn {
   background: var(--color-surface, #1e1e2d);
   border: 1px solid var(--color-border, #2d2d3f);
-  color: #a5b4fc;
+  color: var(--color-primary);
   font-size: 0.82rem;
   font-weight: 600;
   padding: 8px 14px;
@@ -173,7 +181,7 @@
 }
 
 .selectAllBtn:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(44, 90, 160, 0.15);
   border-color: var(--color-primary, #6366f1);
 }
 
@@ -189,14 +197,14 @@
 }
 
 .feedbackOk {
-  color: #34d399;
+  color: var(--color-success);
   font-size: 0.88rem;
   font-weight: 500;
   margin: 0;
 }
 
 .feedbackSkip {
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: 0.82rem;
   margin: 0;
 }
@@ -217,7 +225,7 @@
   pointer-events: auto;
   background: var(--color-surface, #1e1e2d);
   border: 1px solid var(--color-primary, #6366f1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 10px 30px rgba(20, 30, 50, 0.12);
   border-radius: 9999px;
   padding: 8px 14px 8px 20px;
   display: flex;
@@ -235,12 +243,12 @@
 .actionCountNum {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #a5b4fc;
+  color: var(--color-primary);
 }
 
 .actionCountLabel {
   font-size: 0.85rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
 }
 
 @keyframes slideUp {
@@ -257,7 +265,7 @@
 .empty {
   text-align: center;
   padding: 48px 16px;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
 }
 
 .emptyHint {

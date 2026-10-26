@@ -19,22 +19,20 @@
 
 /* Variants */
 .primary {
-  background: var(--gradient-primary);
+  background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
 }
 .primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55);
+  background: var(--color-primary-dark);
 }
 
 .secondary {
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
 }
 .secondary:hover:not(:disabled) {
-  background: var(--color-border);
+  background: var(--color-primary-soft);
 }
 
 .ghost {
@@ -42,17 +40,16 @@
   color: var(--color-primary-light);
 }
 .ghost:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(44, 90, 160, 0.1);
 }
 
 .danger {
-  background: var(--color-danger);
-  color: #fff;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  background: #fff;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
 }
 .danger:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+  background: var(--color-accent-soft);
 }
 
 .fullWidth { width: 100%; }
@@ -67,8 +64,8 @@
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border: 2px solid rgba(127, 127, 127, 0.3);
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

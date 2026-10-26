@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { SavedAddressesManager } from "@/components/profile/SavedAddressesManager";
 import styles from "./ProfilePage.module.css";
 
@@ -52,7 +53,9 @@ export const ProfilePage: React.FC = () => {
 
         <div className={styles.stats}>
           <div className={styles.statBox}>
-            <span className={styles.statValue}>⭐ {user.avg_rating.toFixed(1)}</span>
+            <span className={styles.statValue}>
+              <Icon name="star" size={14} fill="#d4a017" stroke="#d4a017" /> {user.avg_rating.toFixed(1)}
+            </span>
             <span className={styles.statLabel}>Avaliação</span>
           </div>
           <div className={styles.statBox}>

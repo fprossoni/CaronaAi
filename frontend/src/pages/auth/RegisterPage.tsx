@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Icon } from "@/components/ui/Icon";
 import { getErrorMessage } from "@/lib/errors";
 import styles from "./AuthPages.module.css";
 
@@ -48,7 +49,9 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.logo}>🚗</div>
+        <div className={styles.logo}>
+          <Icon name="car" size={36} />
+        </div>
         <h1 className={styles.title}>Criar conta</h1>
         <p className={styles.subtitle}>Use seu e-mail @ufrgs.br</p>
 

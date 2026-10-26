@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import type { TripHistory } from "@/types/ride";
 import { Avatar } from "@/components/ui/Avatar";
+import { Icon } from "@/components/ui/Icon";
 import { getErrorMessage } from "@/lib/errors";
 import styles from "./HistoryPage.module.css";
 import { format } from "date-fns";
@@ -101,12 +102,12 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onReport }) => {
 
       <div className={styles.tripRoute}>
         <div className={styles.routeItem}>
-          <div className={styles.routeIcon}>🔵</div>
+          <span className={styles.routeIcon}><Icon name="pin" size={16} /></span>
           <div className={styles.routeText}>{trip.origin_label}</div>
         </div>
         <div className={styles.routeLine} />
         <div className={styles.routeItem}>
-          <div className={styles.routeIcon}>📍</div>
+          <span className={styles.routeIcon}><Icon name="flag" size={16} /></span>
           <div className={styles.routeText}>{trip.destination_label}</div>
         </div>
       </div>

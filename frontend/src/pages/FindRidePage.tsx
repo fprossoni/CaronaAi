@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { addressesApi } from "@/api/addresses";
 import type { RidePublic } from "@/types/ride";
 import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
 import { RideCard } from "@/components/rides/RideCard";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { AddressSelector, type SelectedAddressValue } from "@/components/address/AddressSelector";
 import { matchesApi } from "@/api/matches";
 import { getErrorMessage } from "@/lib/errors";
@@ -15,9 +17,18 @@ interface BatchFeedback {
   skipped: { ride_id: number; reason: string }[];
 }
 
+/** Optional pre-selection coming from the home page search bar. */
+interface FindRideLocationState {
+  campus?: CampusId;
+  direction?: "to_campus" | "from_campus";
+}
+
 export const FindRidePage: React.FC = () => {
-  const [direction, setDirection] = useState<"to_campus" | "from_campus">("to_campus");
-  const [campusPoint, setCampusPoint] = useState<CampusId>(UFRGS_CAMPUS[0].id);
+  const prefill = (useLocation().state ?? {}) as FindRideLocationState;
+  const [direction, setDirection] = useState<"to_campus" | "from_campus">(prefill.direction ?? "to_campus");
+  const [campusPoint, setCampusPoint] = useState<CampusId>(
+    prefill.campus && UFRGS_CAMPUS.some((c) => c.id === prefill.campus) ? prefill.campus : UFRGS_CAMPUS[0].id
+  );
 
   const [addressValue, setAddressValue] = useState<SelectedAddressValue>({
     type: "saved",
@@ -217,7 +228,7 @@ export const FindRidePage: React.FC = () => {
               ].join(" ")}
               onClick={() => setDirection("to_campus")}
             >
-              <span className={styles.directionIcon}>🎓</span>
+              <span className={styles.directionIcon}><Icon name="school" size={24} /></span>
               <div>
                 <strong>Indo para a UFRGS</strong>
                 <p>Embarque no seu endereço → Chegada no campus</p>
@@ -232,7 +243,7 @@ export const FindRidePage: React.FC = () => {
               ].join(" ")}
               onClick={() => setDirection("from_campus")}
             >
-              <span className={styles.directionIcon}>🏠</span>
+              <span className={styles.directionIcon}><Icon name="home" size={24} /></span>
               <div>
                 <strong>Saindo da UFRGS</strong>
                 <p>Embarque no campus → Chegada no seu endereço</p>
@@ -255,7 +266,7 @@ export const FindRidePage: React.FC = () => {
                 ].join(" ")}
                 onClick={() => setCampusPoint(c.id)}
               >
-                <span className={styles.campusDot}>●</span>
+                <span className={styles.campusDot} />
                 <span className={styles.campusName}>{c.name}</span>
               </button>
             ))}
@@ -279,7 +290,7 @@ export const FindRidePage: React.FC = () => {
         {error && <p className={styles.error}>{error}</p>}
 
         <Button type="submit" fullWidth loading={loading}>
-          🔍 Buscar Caronas Disponíveis
+          <Icon name="search" /> Buscar caronas disponíveis
         </Button>
       </form>
 
@@ -287,7 +298,7 @@ export const FindRidePage: React.FC = () => {
         <div className={styles.results}>
           {rides.length === 0 ? (
             <div className={styles.empty}>
-              <p>😔 Nenhuma carona encontrada com menos de 3 km de desvio.</p>
+              <p>Nenhuma carona encontrada com menos de 3 km de desvio.</p>
               <p className={styles.emptyHint}>
                 Tente ajustar seu endereço ou o campus de destino.
               </p>
@@ -322,14 +333,14 @@ export const FindRidePage: React.FC = () => {
                 <div className={styles.feedback} role="status">
                   {feedback.sent > 0 && (
                     <p className={styles.feedbackOk}>
-                      💜 {feedback.sent}{" "}
+                      <Icon name="check" size={16} /> {feedback.sent}{" "}
                       {feedback.sent === 1 ? "matching enviado" : "matchings enviados"}! Seu
                       endereço exato só será revelado ao motorista que aceitar.
                     </p>
                   )}
                   {feedback.skipped.map((s) => (
                     <p key={s.ride_id} className={styles.feedbackSkip}>
-                      ⚠️ {rideLabel(s.ride_id)}: {s.reason}
+                      <Icon name="alert" size={16} /> {rideLabel(s.ride_id)}: {s.reason}
                     </p>
                   ))}
                 </div>
@@ -367,7 +378,7 @@ export const FindRidePage: React.FC = () => {
               </span>
             </div>
             <Button id="send-matchings" onClick={handleSendMatches} loading={sending}>
-              💜 Enviar matching ({selected.size})
+              <Icon name="send" size={16} /> Enviar matching ({selected.size})
             </Button>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { getErrorMessage } from "@/lib/errors";
 import styles from "./AuthPages.module.css";
 
@@ -60,7 +61,9 @@ export const VerifyEmailPage: React.FC = () => {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.logo}>📧</div>
+        <div className={styles.logo}>
+          <Icon name="mail" size={36} />
+        </div>
         <h1 className={styles.title}>Verifique seu e-mail</h1>
         <p className={styles.subtitle}>
           Enviamos um código de 6 dígitos para<br />
@@ -77,7 +80,7 @@ export const VerifyEmailPage: React.FC = () => {
             fontSize: "0.85rem",
             textAlign: "center"
           }}>
-            🛠️ <strong>Modo Dev:</strong> Código preenchido automaticamente (<code>{devToken}</code>)
+            <Icon name="info" size={14} /> <strong>Modo Dev:</strong> Código preenchido automaticamente (<code>{devToken}</code>)
           </div>
         )}
 

@@ -5,8 +5,8 @@
   justify-content: center;
   padding: var(--space-6);
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 50%, rgba(44, 90, 160, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(192, 69, 60, 0.1) 0%, transparent 60%),
     var(--color-bg);
 }
 
@@ -30,7 +30,7 @@
 .logo {
   font-size: 48px;
   margin-bottom: var(--space-4);
-  filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 4px 12px rgba(44, 90, 160, 0.4));
 }
 
 .title {
@@ -110,5 +110,5 @@
 
 .otpInput:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 3px rgba(44, 90, 160, 0.25);
 }

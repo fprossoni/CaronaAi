@@ -27,9 +27,9 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  background-color: rgba(99, 102, 241, 0.12);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  background-color: rgba(44, 90, 160, 0.12);
+  color: var(--color-primary);
+  border: 1px solid rgba(44, 90, 160, 0.25);
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -45,7 +45,7 @@
 .tab {
   background: transparent;
   border: none;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
@@ -55,8 +55,8 @@
 }
 
 .tab:hover:not(:disabled) {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  background-color: var(--color-surface-2);
 }
 
 .tabActive {
@@ -76,7 +76,7 @@
 
 .muted {
   font-size: 0.85rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
 }
 
 .emptySaved {
@@ -85,9 +85,9 @@
   align-items: flex-start;
   gap: 8px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-2);
   border-radius: 8px;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
   font-size: 0.85rem;
 }
 
@@ -102,7 +102,7 @@
   flex-direction: column;
   gap: 4px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-surface-2);
   border: 1px solid var(--color-border, #2d2d3f);
   border-radius: 10px;
   padding: 12px;
@@ -112,13 +112,13 @@
 }
 
 .savedCard:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(99, 102, 241, 0.05);
+  border-color: rgba(44, 90, 160, 0.5);
+  background: rgba(44, 90, 160, 0.05);
 }
 
 .savedCardSelected {
   border-color: var(--color-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(44, 90, 160, 0.12);
   box-shadow: 0 0 0 1px var(--color-primary, #6366f1);
 }
 
@@ -131,11 +131,11 @@
 .savedCardLabel {
   font-weight: 600;
   font-size: 0.85rem;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .checkIcon {
-  color: #818cf8;
+  color: var(--color-primary);
   font-weight: bold;
 }
 
@@ -148,7 +148,7 @@
 
 .savedCardSub {
   font-size: 0.75rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
   margin: 0;
 }
 
@@ -189,12 +189,12 @@
 
 .cepNotice {
   font-size: 0.75rem;
-  color: #818cf8;
+  color: var(--color-primary);
 }
 
 .cepErrorText {
   font-size: 0.75rem;
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 .saveCheckbox {
@@ -202,7 +202,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.82rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-text-secondary, var(--color-text-muted));
   cursor: pointer;
   margin-top: 4px;
 }

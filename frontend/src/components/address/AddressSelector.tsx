@@ -3,6 +3,7 @@ import { addressesApi } from "@/api/addresses";
 import type { AddressPublic, AddressCreate } from "@/types/address";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import styles from "./AddressSelector.module.css";
 
 export interface SelectedAddressValue {
@@ -145,7 +146,7 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
     <div className={styles.container}>
       <div className={styles.header}>
         <span className={styles.label}>{label}</span>
-        <span className={styles.privacyBadge}>🔒 Privado até o matching</span>
+        <span className={styles.privacyBadge}><Icon name="lock" size={12} /> Privado até o matching</span>
       </div>
 
       <div className={styles.tabs}>
@@ -191,8 +192,8 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
                     onClick={() => handleSavedSelect(addr.id)}
                   >
                     <div className={styles.savedCardHeader}>
-                      <span className={styles.savedCardLabel}>🏷️ {addr.label}</span>
-                      {isSelected && <span className={styles.checkIcon}>✓</span>}
+                      <span className={styles.savedCardLabel}><Icon name="pin" size={14} /> {addr.label}</span>
+                      {isSelected && <span className={styles.checkIcon}><Icon name="check" size={16} strokeWidth={2.5} /></span>}
                     </div>
                     <p className={styles.savedCardAddress}>
                       {addr.street}, {addr.number}

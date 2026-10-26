@@ -2,25 +2,32 @@
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
-  /* Colors */
-  --color-primary:        #6366f1;   /* Indigo */
-  --color-primary-dark:   #4f46e5;
-  --color-primary-light:  #818cf8;
-  --color-secondary:      #10b981;   /* Emerald */
-  --color-danger:         #ef4444;
-  --color-warning:        #f59e0b;
+  /* Brand — white base with muted blue (primary action) and muted red (accent) */
+  --color-primary:        #2c5aa0;   /* Muted blue */
+  --color-primary-dark:   #224780;
+  --color-primary-light:  #2c5aa0;   /* Kept dark enough for text on white */
+  --color-primary-soft:   #eef3fa;
+  --color-accent:         #b8443b;   /* Muted red */
+  --color-accent-soft:    #fbefee;
+  --color-secondary:      #2f855a;   /* Success (status only) */
+  --color-success:        #2f855a;
+  --color-danger:         #b8443b;
+  --color-warning:        #b7791f;
 
-  /* Neutrals (dark mode) */
-  --color-bg:             #0f0f13;
-  --color-surface:        #18181f;
-  --color-surface-2:      #212130;
-  --color-border:         #2e2e40;
-  --color-text:           #f1f1f8;
-  --color-text-muted:     #8b8ba7;
+  /* Neutrals (light mode) */
+  --color-bg:             #ffffff;
+  --color-bg-alt:         #f4f6f9;
+  --color-surface:        #ffffff;
+  --color-surface-2:      #f4f6f9;
+  --color-border:         #e1e6ed;
+  --color-text:           #17233a;
+  --color-text-primary:   #17233a;
+  --color-text-muted:     #677387;
+  --color-text-secondary: #677387;
 
-  /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  --gradient-card:    linear-gradient(145deg, #1e1e2e 0%, #16162a 100%);
+  /* Gradients (kept flat/subtle for a clean look) */
+  --gradient-primary: linear-gradient(135deg, #2c5aa0 0%, #224780 100%);
+  --gradient-card:    #ffffff;
 
   /* Spacing */
   --space-1: 4px;
@@ -37,13 +44,16 @@
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md: 0 4px 20px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 30px rgba(99,102,241,0.25);
+  --shadow-sm: 0 1px 3px rgba(23, 35, 58, 0.08);
+  --shadow-md: 0 6px 24px rgba(23, 35, 58, 0.10);
+  --shadow-glow: 0 0 0 transparent;
+
+  /* Layout */
+  --header-height: 68px;
 
   /* Transitions */
   --transition-fast: 150ms ease;
@@ -60,7 +70,7 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
@@ -73,7 +83,7 @@ body {
 }
 
 a {
-  color: var(--color-primary-light);
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -137,9 +147,9 @@ img {
 .animate-pulse   { animation: pulse 1.5s ease-in-out infinite; }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--color-surface); }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--color-bg-alt); }
+::-webkit-scrollbar-thumb { background: #c9d1dc; border-radius: 4px; }
 
 /* ─── Leaflet overrides ──────────────────────────────────────────────────── */
 .leaflet-container {
@@ -149,7 +159,7 @@ img {
 }
 
 .leaflet-popup-content-wrapper {
-  background: var(--color-surface-2);
+  background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -157,5 +167,36 @@ img {
 }
 
 .leaflet-popup-tip {
-  background: var(--color-surface-2);
+  background: var(--color-surface);
+}
+
+/* ─── App shell: logged-in area rendered as an app panel over the site ──── */
+.app-stage {
+  min-height: calc(100vh - var(--header-height));
+  background: var(--color-bg-alt);
+  padding: var(--space-8) var(--space-4) var(--space-12);
+}
+
+.app-panel {
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  animation: fadeIn 0.3s ease;
+}
+
+.app-panel__body {
+  padding: var(--space-6) var(--space-5) var(--space-8);
+}
+
+.app-panel__body > div {
+  max-width: none !important;
+}
+
+@media (max-width: 600px) {
+  .app-stage { padding: 0; }
+  .app-panel { border-radius: 0; border: none; box-shadow: none; }
 }

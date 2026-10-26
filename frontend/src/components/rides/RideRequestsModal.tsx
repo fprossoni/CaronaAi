@@ -4,6 +4,7 @@ import type { MatchForDriver } from "@/types/match";
 import { matchesApi } from "@/api/matches";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { PublicProfileInfo } from "@/components/profile/PublicProfileInfo";
 import { getErrorMessage } from "@/lib/errors";
 import { format } from "date-fns";
@@ -81,7 +82,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
             </p>
           </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Fechar">
-            ✕
+            <Icon name="close" />
           </button>
         </div>
 
@@ -117,15 +118,15 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
                           )}
                         </p>
                         <span className={idx === 0 ? styles.bestDetourBadge : styles.detourBadge}>
-                          {idx === 0 ? "✦ Menor desvio: " : "Desvio: "}
+                          {idx === 0 ? "Menor desvio: " : "Desvio: "}
                           {formatDistance(m.detour_meters)}
                         </span>
                       </div>
                       <p className={styles.passengerMeta}>
-                        📍 Região: {m.pickup_region} · Solicitou às {formatTime(m.created_at)}
+                        <Icon name="pin" size={13} /> Região: {m.pickup_region} · Solicitou às {formatTime(m.created_at)}
                       </p>
                       <div className={styles.privacyNotice}>
-                        🔒 Endereço exato protegido · Revelado após você aceitar
+                        <Icon name="lock" size={13} /> Endereço exato protegido · Revelado após você aceitar
                       </div>
                       <div className={styles.profileSection}>
                         <PublicProfileInfo user={m.passenger} variant="compact" />
@@ -177,13 +178,13 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
                         {m.passenger.age != null && (
                           <span className={styles.passengerAge}>, {m.passenger.age} anos</span>
                         )}
-                        <span className={styles.confirmedBadge}>✓ Confirmado</span>
+                        <span className={styles.confirmedBadge}>Confirmado</span>
                       </p>
-                      <p className={styles.passengerMeta}>📍 Região: {m.pickup_region}</p>
+                      <p className={styles.passengerMeta}><Icon name="pin" size={13} /> Região: {m.pickup_region}</p>
 
                       {m.pickup_street && (
                         <div className={styles.revealedAddress}>
-                          <p className={styles.revealedTitle}>📍 Ponto de Embarque Confirmado:</p>
+                          <p className={styles.revealedTitle}><Icon name="flag" size={13} /> Ponto de embarque confirmado:</p>
                           <p className={styles.revealedMain}>
                             {m.pickup_street}, {m.pickup_number}
                             {m.pickup_complement ? ` (${m.pickup_complement})` : ""}

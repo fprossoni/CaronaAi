@@ -16,20 +16,20 @@
 .title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-text);
   margin: 0;
 }
 
 .subtitle {
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin-top: 4px;
   line-height: 1.4;
 }
 
 .addForm {
   background: var(--color-surface, #1e1e2d);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(44, 90, 160, 0.3);
   border-radius: 12px;
   padding: 18px;
   display: flex;
@@ -46,19 +46,19 @@
 .formHeader h4 {
   margin: 0;
   font-size: 1rem;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .closeBtn {
   background: transparent;
   border: none;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 1.1rem;
   cursor: pointer;
 }
 
 .closeBtn:hover {
-  color: #fff;
+  color: var(--color-text);
 }
 
 .gridTwo {
@@ -81,7 +81,7 @@
 
 .cepNotice {
   font-size: 0.75rem;
-  color: #818cf8;
+  color: var(--color-primary);
   display: block;
   margin-top: 4px;
 }
@@ -111,7 +111,7 @@
 }
 
 .card:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: rgba(44, 90, 160, 0.4);
 }
 
 .cardMain {
@@ -130,7 +130,7 @@
 .cardLabel {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .cardStreet {
@@ -141,7 +141,7 @@
 
 .cardMeta {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -163,12 +163,12 @@
 
 .muted {
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
 .error {
-  color: #f87171;
+  color: var(--color-danger);
   font-size: 0.85rem;
   margin: 0;
 }

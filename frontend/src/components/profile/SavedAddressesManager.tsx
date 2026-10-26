@@ -3,6 +3,7 @@ import { addressesApi } from "@/api/addresses";
 import type { AddressPublic, AddressCreate } from "@/types/address";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Icon } from "@/components/ui/Icon";
 import { getErrorMessage } from "@/lib/errors";
 import styles from "./SavedAddressesManager.module.css";
 
@@ -115,12 +116,12 @@ export const SavedAddressesManager: React.FC = () => {
         <div>
           <h3 className={styles.title}>Meus Endereços Pessoais</h3>
           <p className={styles.subtitle}>
-            🔒 Endereços guardados com segurança. Eles permanecem privados e só são revelados após a confirmação do matching.
+            <Icon name="lock" size={13} /> Endereços guardados com segurança. Eles permanecem privados e só são revelados após a confirmação do matching.
           </p>
         </div>
         {!showAddForm && (
           <Button size="sm" onClick={() => setShowAddForm(true)}>
-            + Adicionar Endereço
+            <Icon name="plus" size={16} /> Adicionar endereço
           </Button>
         )}
       </div>
@@ -135,8 +136,9 @@ export const SavedAddressesManager: React.FC = () => {
               type="button"
               className={styles.closeBtn}
               onClick={() => setShowAddForm(false)}
+              aria-label="Fechar"
             >
-              ✕
+              <Icon name="close" />
             </button>
           </div>
 
@@ -253,7 +255,7 @@ export const SavedAddressesManager: React.FC = () => {
             <div key={addr.id} className={styles.card}>
               <div className={styles.cardMain}>
                 <div className={styles.cardTitleRow}>
-                  <span className={styles.cardLabel}>📍 {addr.label}</span>
+                  <span className={styles.cardLabel}><Icon name="pin" size={15} /> {addr.label}</span>
                 </div>
                 <p className={styles.cardStreet}>
                   {addr.street}, {addr.number}
@@ -269,7 +271,7 @@ export const SavedAddressesManager: React.FC = () => {
                 onClick={() => handleDelete(addr.id)}
                 title="Excluir endereço"
               >
-                🗑️
+                <Icon name="trash" />
               </button>
             </div>
           ))}

@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(20, 30, 50, 0.12);
   backdrop-filter: blur(2px);
   z-index: 200;
   display: flex;
@@ -135,7 +135,7 @@
 .bestDetourBadge {
   font-size: 11px;
   font-weight: 700;
-  color: #34d399;
+  color: var(--color-success);
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: var(--radius-full);
@@ -194,9 +194,9 @@
 
 .privacyNotice {
   font-size: 11px;
-  color: #a5b4fc;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: var(--color-primary);
+  background: rgba(44, 90, 160, 0.08);
+  border: 1px solid rgba(44, 90, 160, 0.2);
   padding: 4px 8px;
   border-radius: 6px;
   margin-top: 4px;
@@ -216,19 +216,19 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #34d399;
+  color: var(--color-success);
   margin: 0 0 4px;
 }
 
 .revealedMain {
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-text);
   margin: 0;
 }
 
 .revealedSub {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin: 2px 0 0;
 }
