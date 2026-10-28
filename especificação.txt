@@ -29,8 +29,9 @@ ESCOPO
      1. Campus do Vale
      2. Campus Centro (Centro Histórico)
      3. Campus Saúde
-     4. Campus Agronomia / ESEFID (Olímpico)
+     4. Campus Agronomia
      5. Campus Litoral Norte (Tramandaí)
+     6. Campus Olímpico (ESEFID)
 
 3. Gestão de Caronas (Motorista)
    - O motorista cadastra uma viagem informando:

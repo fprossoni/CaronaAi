@@ -29,7 +29,6 @@ UFRGS_CAMPUS = [
     "campus_vale",
     "campus_agronomia",
     "campus_litoral_norte",
-    "campus_agronomia_esefid",  # backward compatibility
 ]
 
 
