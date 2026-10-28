@@ -277,29 +277,21 @@ export const ProfileCompletePage: React.FC = () => {
           </div>
 
           <Input
-            label="Instagram (recomendado para matching)"
-            placeholder="@seu_instagram"
-            value={form.instagram}
-            onChange={(e) => setField("instagram", e.target.value)}
+            label="Instagram / Twitter / X (opcional)"
+            placeholder="@seu_usuario"
+            value={form.instagram.trim() ? form.instagram : form.social}
+            onChange={(e) => {
+              setField("instagram", e.target.value);
+              setField("social", e.target.value);
+            }}
             onBlur={() => {
-              if (form.instagram.trim()) {
-                setField("instagram", formatSocialHandle(form.instagram));
+              if ((form.instagram.trim() || form.social.trim())) {
+                const handle = formatSocialHandle((form.instagram || form.social).trim());
+                setField("instagram", handle);
+                setField("social", handle);
               }
             }}
-            hint="Será exibido nas informações públicas de matching"
-          />
-
-          <Input
-            label="Outras redes sociais (opcional)"
-            placeholder="LinkedIn, Twitter..."
-            value={form.social}
-            onChange={(e) => setField("social", e.target.value)}
-            onBlur={() => {
-              if (form.social.trim()) {
-                setField("social", formatSocialHandle(form.social));
-              }
-            }}
-            hint="Link direto para seu perfil"
+            hint="Use o formato @seu_usuario"
           />
           <Input
             label="Telefone (WhatsApp) (opcional)"

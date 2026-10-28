@@ -1,18 +1,12 @@
 import type { UserPublic } from "./user";
 import type { AddressCreate } from "./address";
+import { CAMPUS_LIST, DEFAULT_CAMPUS, type CampusId, type CampusInfo } from "@/constants/campuses";
+
+export type { CampusId, CampusInfo };
+export { CAMPUS_LIST, DEFAULT_CAMPUS };
+export const UFRGS_CAMPUS = CAMPUS_LIST;
 
 export type RideStatus = "active" | "full" | "in_progress" | "completed" | "cancelled";
-
-export const UFRGS_CAMPUS = [
-  { id: "campus_centro", name: "Campus Centro", shortName: "Centro", lat: -30.0349, lng: -51.2177 },
-  { id: "campus_saude", name: "Campus Saúde", shortName: "Saúde", lat: -30.0395, lng: -51.2089 },
-  { id: "campus_olimpico", name: "Campus Olímpico (ESEFID)", shortName: "Olímpico (ESEFID)", lat: -30.0538, lng: -51.1789 },
-  { id: "campus_vale", name: "Campus do Vale", shortName: "Vale", lat: -30.0734, lng: -51.1201 },
-  { id: "campus_agronomia", name: "Campus Agronomia", shortName: "Agronomia", lat: -30.0664, lng: -51.1378 },
-  { id: "campus_litoral_norte", name: "Campus Litoral Norte", shortName: "Litoral Norte", lat: -29.9794, lng: -50.133 },
-] as const;
-
-export type CampusId = (typeof UFRGS_CAMPUS)[number]["id"];
 
 export interface RidePublic {
   id: number;

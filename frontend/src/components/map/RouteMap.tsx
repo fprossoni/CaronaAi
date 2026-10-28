@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
 import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMap } from "react-leaflet";
-import L from "leaflet";
+import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { DEFAULT_CAMPUS } from "@/constants/campuses";
 
 // Fix Leaflet default icon paths (Vite issue)
-import iconUrl from "leaflet/dist/images/marker-icon.png";
-import iconShadow from "leaflet/dist/images/marker-shadow.png";
+import markerIconUrl from "leaflet/dist/images/marker-icon.png";
+import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 
-const DefaultIcon = L.icon({ iconUrl, shadowUrl: iconShadow, iconAnchor: [12, 41] });
+const DefaultIcon = L.icon({ iconUrl: markerIconUrl, shadowUrl: markerShadowUrl, iconAnchor: [12, 41] });
 L.Marker.prototype.options.icon = DefaultIcon;
 
 interface RouteMapProps {
@@ -54,7 +55,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     ...(campusPoint ? [campusPoint] : []),
   ];
 
-  const center: [number, number] = campusPoint ?? [-30.0349, -51.2177]; // Porto Alegre default
+  const center: [number, number] = campusPoint ?? [DEFAULT_CAMPUS.lat, DEFAULT_CAMPUS.lng]; // Porto Alegre default
 
   return (
     <MapContainer
