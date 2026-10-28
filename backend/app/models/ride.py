@@ -67,6 +67,10 @@ class Ride(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Relationships
+    driver: Mapped["User"] = relationship("User", back_populates="rides_offered", foreign_keys=[driver_id])
+    matches: Mapped[list["Match"]] = relationship("Match", back_populates="ride", cascade="all, delete-orphan")
+
+
 # CAMPUS_COORDS and DEFAULT_CAMPUS_ID imported from app.core.campuses (single source of truth)
 from app.core.campuses import CAMPUS_COORDS, DEFAULT_CAMPUS_ID
 
