@@ -1,0 +1,446 @@
+.page {
+  min-height: calc(100vh - var(--header-height, 68px));
+  background-color: #ffffff;
+  color: var(--color-text, #17233a);
+}
+
+.heroSection {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px var(--space-6) 32px;
+}
+
+.heroContent {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  align-items: center;
+  gap: 48px;
+  margin-bottom: 36px;
+}
+
+.heroText {
+  max-width: 600px;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background-color: #f0f4fa;
+  color: var(--color-primary, #2c5aa0);
+  border: 1px solid #dce4f0;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.heroTitle {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: #17233a;
+  margin: 0 0 20px;
+}
+
+.heroTitleAccent {
+  color: var(--color-primary, #2c5aa0);
+}
+
+.heroSubtitle {
+  font-size: 18px;
+  line-height: 1.5;
+  color: #556277;
+  margin: 0;
+}
+
+.heroImageWrapper {
+  position: relative;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(23, 35, 58, 0.10);
+  aspect-ratio: 4 / 3;
+  background-color: #f4f6f9;
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ─── BlaBlaCar-Style Search Bar ─────────────────────────────────────────── */
+.searchBarWrapper {
+  max-width: 1100px;
+  margin: 0 auto 56px;
+}
+
+.searchBar {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 0.9fr 130px;
+  background: #ffffff;
+  border: 1px solid #dce2eb;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(23, 35, 58, 0.08);
+  overflow: hidden;
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.searchBar:hover,
+.searchBar:focus-within {
+  border-color: var(--color-primary, #2c5aa0);
+  box-shadow: 0 12px 36px rgba(44, 90, 160, 0.12);
+}
+
+.searchSegment {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-right: 1px solid #e5ebf3;
+  position: relative;
+  background-color: #ffffff;
+}
+
+.searchSegment:last-of-type {
+  border-right: none;
+}
+
+.searchIconWrapper {
+  color: var(--color-primary, #2c5aa0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.searchFieldGroup {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #677387;
+  margin-bottom: 2px;
+}
+
+.searchInput,
+.searchSelect {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #17233a;
+  outline: none;
+  width: 100%;
+}
+
+.searchSelect {
+  cursor: pointer;
+  appearance: none;
+}
+
+.searchBtn {
+  background-color: var(--color-primary, #2c5aa0);
+  color: #ffffff;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 24px;
+  transition: background-color var(--transition-fast);
+}
+
+.searchBtn:hover {
+  background-color: var(--color-primary-dark, #224780);
+}
+
+/* ─── Informative Callout (when unauthenticated notice) ───────────────────── */
+.authNotice {
+  max-width: 800px;
+  margin: -32px auto 48px;
+  padding: 14px 20px;
+  background: #f0f4fa;
+  border: 1px solid #dce4f0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #2c5aa0;
+}
+
+.authNotice p {
+  margin: 0;
+  flex: 1;
+}
+
+.authNoticeLink {
+  font-weight: 700;
+  color: var(--color-primary, #2c5aa0);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ─── Features Section ───────────────────────────────────────────────────── */
+.section {
+  padding: 64px var(--space-6);
+  background-color: #fafbfc;
+  border-top: 1px solid #edf0f5;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.sectionInner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sectionHeader {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 48px;
+}
+
+.sectionTag {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent, #b8443b);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.sectionTitle {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #17233a;
+  margin: 0 0 12px;
+}
+
+.sectionSubtitle {
+  font-size: 16px;
+  color: #677387;
+  margin: 0;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.featureCard {
+  background: #ffffff;
+  border: 1px solid var(--color-border, #e1e6ed);
+  border-radius: 16px;
+  padding: 32px 28px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.featureCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(23, 35, 58, 0.08);
+}
+
+.featureIconBox {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: #f0f4fa;
+  color: var(--color-primary, #2c5aa0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.featureIconBoxAccent {
+  background-color: #fbefee;
+  color: var(--color-accent, #b8443b);
+}
+
+.featureTitle {
+  font-size: 19px;
+  font-weight: 700;
+  color: #17233a;
+  margin: 0 0 10px;
+}
+
+.featureDescription {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #556277;
+  margin: 0;
+}
+
+/* ─── Campuses Grid Section ──────────────────────────────────────────────── */
+.campusesSection {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 64px var(--space-6);
+}
+
+.campusGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.campusCard {
+  background: #ffffff;
+  border: 1px solid var(--color-border, #e1e6ed);
+  border-radius: 14px;
+  padding: 20px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: all var(--transition-fast);
+}
+
+.campusCard:hover {
+  border-color: var(--color-primary, #2c5aa0);
+  background-color: #f9fbfe;
+  transform: translateY(-2px);
+}
+
+.campusIcon {
+  color: var(--color-primary, #2c5aa0);
+  margin-top: 2px;
+}
+
+.campusName {
+  font-size: 16px;
+  font-weight: 700;
+  color: #17233a;
+  margin: 0 0 4px;
+}
+
+.campusDesc {
+  font-size: 13px;
+  color: #677387;
+  margin: 0;
+}
+
+/* ─── Driver CTA Banner ──────────────────────────────────────────────────── */
+.driverBanner {
+  max-width: 1200px;
+  margin: 0 auto 64px;
+  padding: 0 var(--space-6);
+}
+
+.driverBannerCard {
+  background: #f0f4fa;
+  border: 1px solid #dce4f0;
+  border-radius: 24px;
+  padding: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.driverBannerText {
+  max-width: 600px;
+}
+
+.driverBannerTitle {
+  font-size: 28px;
+  font-weight: 800;
+  color: #17233a;
+  margin: 0 0 12px;
+}
+
+.driverBannerSubtitle {
+  font-size: 16px;
+  color: #556277;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--color-border, #e1e6ed);
+  padding: 36px var(--space-6);
+  background-color: #ffffff;
+}
+
+.footerInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #677387;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 20px;
+}
+
+.footerLinks a {
+  color: #677387;
+  text-decoration: none;
+}
+
+.footerLinks a:hover {
+  color: var(--color-primary, #2c5aa0);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .heroContent {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .heroTitle {
+    font-size: 36px;
+  }
+  .heroImageWrapper {
+    aspect-ratio: 16 / 9;
+  }
+  .searchBar {
+    grid-template-columns: 1fr;
+    border-radius: 14px;
+  }
+  .searchSegment {
+    border-right: none;
+    border-bottom: 1px solid #e5ebf3;
+  }
+  .searchBtn {
+    padding: 16px;
+  }
+  .featureGrid,
+  .campusGrid {
+    grid-template-columns: 1fr;
+  }
+  .driverBannerCard {
+    flex-direction: column;
+    text-align: center;
+    padding: 32px 20px;
+  }
+  .footerInner {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+}

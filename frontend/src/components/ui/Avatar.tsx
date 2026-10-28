@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "@/components/ui/Icon";
 import styles from "./Avatar.module.css";
 
 interface AvatarProps {
@@ -19,7 +20,7 @@ function getInitials(name?: string | null): string {
 }
 
 function getColorFromName(name?: string | null): string {
-  const colors = ["#6366f1", "#8b5cf6", "#ec4899", "#10b981", "#f59e0b", "#3b82f6"];
+  const colors = ["#2c5aa0", "#b8443b", "#3d6f8e", "#7a4e6b", "#4a6b4f", "#5a6474"];
   if (!name) return colors[0];
   const index = name.charCodeAt(0) % colors.length;
   return colors[index];
@@ -39,7 +40,9 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photoUrl, size = "md", rat
         </div>
       )}
       {rating !== undefined && (
-        <span className={styles.badge}>⭐ {rating.toFixed(1)}</span>
+        <span className={styles.badge}>
+          <Icon name="star" size={10} fill="#d4a017" stroke="#d4a017" /> {rating.toFixed(1)}
+        </span>
       )}
     </div>
   );

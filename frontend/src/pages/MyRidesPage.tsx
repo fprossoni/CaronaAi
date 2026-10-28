@@ -5,6 +5,7 @@ import { matchesApi } from "@/api/matches";
 import type { RideDetail, RideStatus } from "@/types/ride";
 import type { MatchWithRide } from "@/types/match";
 import { RideRequestsModal } from "@/components/rides/RideRequestsModal";
+import { Icon } from "@/components/ui/Icon";
 import { getErrorMessage } from "@/lib/errors";
 import styles from "./MyRidesPage.module.css";
 import { format } from "date-fns";
@@ -21,6 +22,7 @@ const MATCH_STATUS_INFO: Record<string, { label: string; badge: string }> = {
   accepted: { label: "Confirmada", badge: styles.badgeConfirmed },
   rejected: { label: "Recusada", badge: styles.badgeRejected },
   cancelled: { label: "Cancelada", badge: styles.badgeRejected },
+  superseded: { label: "Cancelada (outra confirmada)", badge: styles.badgeRejected },
 };
 
 function formatDate(iso: string): string {
@@ -168,12 +170,12 @@ export const MyRidesPage: React.FC = () => {
                 </div>
                 <div className={styles.rideRoute}>
                   <div className={styles.routeItem}>
-                    <div className={styles.routeIcon}>🔵</div>
+                    <span className={styles.routeIcon}><Icon name="pin" size={16} /></span>
                     <div className={styles.routeText}>{ride.origin_label}</div>
                   </div>
                   <div className={styles.routeLine} />
                   <div className={styles.routeItem}>
-                    <div className={styles.routeIcon}>📍</div>
+                    <span className={styles.routeIcon}><Icon name="flag" size={16} /></span>
                     <div className={styles.routeText}>{ride.destination_label}</div>
                   </div>
                 </div>
@@ -187,7 +189,7 @@ export const MyRidesPage: React.FC = () => {
                     className={styles.requestsBtn}
                     onClick={() => setModalRide(ride)}
                   >
-                    👥 Solicitações ({pendingCounts[ride.id] ?? 0})
+                    <Icon name="users" size={14} /> Solicitações ({pendingCounts[ride.id] ?? 0})
                   </button>
                   <button
                     type="button"
@@ -218,12 +220,12 @@ export const MyRidesPage: React.FC = () => {
                   </div>
                   <div className={styles.rideRoute}>
                     <div className={styles.routeItem}>
-                      <div className={styles.routeIcon}>🔵</div>
+                      <span className={styles.routeIcon}><Icon name="pin" size={16} /></span>
                       <div className={styles.routeText}>{match.ride.origin_label}</div>
                     </div>
                     <div className={styles.routeLine} />
                     <div className={styles.routeItem}>
-                      <div className={styles.routeIcon}>📍</div>
+                      <span className={styles.routeIcon}><Icon name="flag" size={16} /></span>
                       <div className={styles.routeText}>{match.ride.destination_label}</div>
                     </div>
                   </div>

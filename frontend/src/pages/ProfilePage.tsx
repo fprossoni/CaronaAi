@@ -1,9 +1,13 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+import { SavedAddressesManager } from "@/components/profile/SavedAddressesManager";
 import styles from "./ProfilePage.module.css";
 
 export const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
 
   if (!user) return null;
@@ -28,13 +32,30 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         <div className={styles.infoGroup}>
+          <label>Curso</label>
+          <div className={styles.value}>{user.course || "Não informado"}</div>
+        </div>
+
+        <div className={styles.infoGroup}>
+          <label>Idade</label>
+          <div className={styles.value}>{user.age != null ? `${user.age} anos` : "Não informada"}</div>
+        </div>
+
+        <div className={styles.infoGroup}>
+          <label>Instagram</label>
+          <div className={styles.value}>{user.instagram || "Não informado"}</div>
+        </div>
+
+        <div className={styles.infoGroup}>
           <label>Telefone</label>
           <div className={styles.value}>{user.phone || "Não informado"}</div>
         </div>
 
         <div className={styles.stats}>
           <div className={styles.statBox}>
-            <span className={styles.statValue}>⭐ {user.avg_rating.toFixed(1)}</span>
+            <span className={styles.statValue}>
+              <Icon name="star" size={14} fill="#d4a017" stroke="#d4a017" /> {user.avg_rating.toFixed(1)}
+            </span>
             <span className={styles.statLabel}>Avaliação</span>
           </div>
           <div className={styles.statBox}>
@@ -44,7 +65,7 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         <div className={styles.actions}>
-          <Button variant="secondary" fullWidth onClick={() => alert("Em breve...")}>
+          <Button variant="secondary" fullWidth onClick={() => navigate("/profile/complete?edit=true", { state: { edit: true } })}>
             Editar Perfil
           </Button>
           <Button variant="danger" fullWidth onClick={logout}>
@@ -52,6 +73,8 @@ export const ProfilePage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <SavedAddressesManager />
     </div>
   );
 };

@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     OSRM_MAX_DETOUR_SECONDS: int = 900   # 15 min
     OSRM_PREFILER_BUFFER_METERS: int = 5000  # 5 km buffer for PostGIS pre-filter
 
+    # Matching — when a passenger's request is accepted, their other pending
+    # requests (same batch / same origin+destination) whose ride departs within
+    # ± this window are withdrawn so other drivers stop seeing them.
+    MATCH_CONFLICT_WINDOW_MINUTES: int = 30
+
     # Email (SMTP)
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

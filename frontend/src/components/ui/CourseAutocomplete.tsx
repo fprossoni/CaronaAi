@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { filterCourses, findCanonicalCourseName } from "@/data/ufrgsCourses";
+import { Icon } from "@/components/ui/Icon";
 import styles from "./CourseAutocomplete.module.css";
 
 interface CourseAutocompleteProps {
@@ -147,7 +148,7 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
                 }}
               >
                 <span>{course}</span>
-                {isSelected && <span>✓</span>}
+                {isSelected && <Icon name="check" size={14} />}
               </li>
             );
           })}

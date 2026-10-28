@@ -136,7 +136,7 @@
   font-weight: 700;
   text-transform: uppercase;
   color: var(--color-primary-light);
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(44, 90, 160, 0.15);
   border-radius: var(--radius-full);
   padding: 1px 8px;
 }

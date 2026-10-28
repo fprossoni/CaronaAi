@@ -1,8 +1,19 @@
 import { apiClient } from "./client";
-import type { MatchConfirmed, MatchForDriver, MatchPublic, MatchRequest, MatchWithRide } from "@/types/match";
+import type {
+  MatchBatchRequest,
+  MatchBatchResult,
+  MatchConfirmed,
+  MatchForDriver,
+  MatchPublic,
+  MatchRequest,
+  MatchWithRide,
+} from "@/types/match";
 
 export const matchesApi = {
   request: (data: MatchRequest) => apiClient.post<MatchPublic>("/matches/", data),
+
+  /** Send a "matching" to several rides at once. */
+  requestBatch: (data: MatchBatchRequest) => apiClient.post<MatchBatchResult>("/matches/batch", data),
 
   getMyMatches: () => apiClient.get<MatchWithRide[]>("/matches/my"),
 

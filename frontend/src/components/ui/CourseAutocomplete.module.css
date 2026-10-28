@@ -40,7 +40,7 @@
 
 .input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 3px rgba(44, 90, 160, 0.2);
 }
 
 .hasError .input {
@@ -54,10 +54,10 @@
   right: 0;
   max-height: 220px;
   overflow-y: auto;
-  background: #181926;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(20, 30, 50, 0.12), 0 8px 10px -6px rgba(20, 30, 50, 0.12);
   z-index: 60;
   margin: 0;
   padding: 4px 0;
@@ -77,8 +77,8 @@
 
 .item:hover,
 .itemActive {
-  background: rgba(99, 102, 241, 0.18);
-  color: #fff;
+  background: rgba(44, 90, 160, 0.18);
+  color: var(--color-text);
 }
 
 .itemSelected {
@@ -94,7 +94,7 @@
 }
 
 .otherItem:hover {
-  background: rgba(99, 102, 241, 0.25);
+  background: rgba(44, 90, 160, 0.25);
 }
 
 .empty {

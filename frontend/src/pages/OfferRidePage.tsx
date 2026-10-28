@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Icon } from "@/components/ui/Icon";
+import { AddressSelector, type SelectedAddressValue } from "@/components/address/AddressSelector";
 import { getErrorMessage } from "@/lib/errors";
-import { UFRGS_CAMPUS } from "@/types/ride";
+import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
 import styles from "./OfferRidePage.module.css";
 
 export const OfferRidePage: React.FC = () => {
@@ -12,173 +14,209 @@ export const OfferRidePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [formData, setFormData] = useState({
-    origin_label: "",
-    origin_lat: "",
-    origin_lng: "",
-    destination_label: "",
-    destination_lat: "",
-    destination_lng: "",
-    campus_point: UFRGS_CAMPUS[0].id,
+  const [direction, setDirection] = useState<"to_campus" | "from_campus">("to_campus");
+  const [campusPoint, setCampusPoint] = useState<CampusId>(UFRGS_CAMPUS[0].id);
+
+  const [addressValue, setAddressValue] = useState<SelectedAddressValue>({
+    type: "saved",
+  });
+
+  const [details, setDetails] = useState({
     departure_at: "",
     delay_tolerance_minutes: 15,
-    total_seats: 4,
+    total_seats: 3,
     women_only: false,
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
+  const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setDetails((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
-  };
-
-  const handleSetCampus = (type: "origin" | "destination") => {
-    const campus = UFRGS_CAMPUS.find((c) => c.id === formData.campus_point);
-    if (!campus) return;
-    
-    if (type === "origin") {
-      setFormData((prev) => ({
-        ...prev,
-        origin_label: campus.name,
-        origin_lat: String(campus.lat),
-        origin_lng: String(campus.lng),
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        destination_label: campus.name,
-        destination_lat: String(campus.lat),
-        destination_lng: String(campus.lng),
-      }));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!details.departure_at) {
+      setError("Por favor, selecione a data e o horário de saída.");
+      return;
+    }
+
+    if (addressValue.type === "saved" && !addressValue.addressId) {
+      setError("Por favor, selecione um endereço salvo ou cadastre um novo.");
+      return;
+    }
+
+    if (addressValue.type === "custom") {
+      const c = addressValue.custom;
+      if (!c || !c.street || !c.number || !c.postal_code || !c.city) {
+        setError("Por favor, preencha rua, número, CEP e cidade do seu endereço.");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       const payload = {
-        ...formData,
-        origin_lat: parseFloat(formData.origin_lat),
-        origin_lng: parseFloat(formData.origin_lng),
-        destination_lat: parseFloat(formData.destination_lat),
-        destination_lng: parseFloat(formData.destination_lng),
-        departure_at: new Date(formData.departure_at).toISOString(),
+        campus_point: campusPoint,
+        direction,
+        address_id: addressValue.type === "saved" ? addressValue.addressId : undefined,
+        custom_address: addressValue.type === "custom" ? addressValue.custom : undefined,
+        save_address: addressValue.type === "custom" ? (addressValue.saveAddress ?? true) : undefined,
+        departure_at: new Date(details.departure_at).toISOString(),
+        delay_tolerance_minutes: Number(details.delay_tolerance_minutes),
+        total_seats: Number(details.total_seats),
+        women_only: details.women_only,
       };
 
-      if (isNaN(payload.origin_lat) || isNaN(payload.origin_lng) || isNaN(payload.destination_lat) || isNaN(payload.destination_lng)) {
-        throw new Error("As coordenadas devem ser numéricas válidas.");
-      }
-
       await ridesApi.create(payload);
-      alert("Carona oferecida com sucesso!");
+      alert("Carona publicada com sucesso! Ela já está disponível para matching com estudantes.");
       navigate("/rides");
-} catch (err: unknown) {
-      setError(getErrorMessage(err, "Erro ao oferecer carona. Verifique os dados."));
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erro ao publicar carona. Verifique os dados inseridos."));
     } finally {
       setLoading(false);
     }
   };
 
+  const selectedCampus = UFRGS_CAMPUS.find((c) => c.id === campusPoint);
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <h2 className={styles.title}>Oferecer Carona</h2>
-        <p className={styles.subtitle}>Compartilhe sua rota e economize</p>
+        <p className={styles.subtitle}>
+          Conecte sua rota diária a um dos campi da UFRGS e ajude outros estudantes
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className={styles.form}>
+        {/* Sentido da Viagem */}
         <div className={styles.section}>
-          <label className={styles.sectionLabel}>Campus Relacionado</label>
-          <select
-            name="campus_point"
-            value={formData.campus_point}
-            onChange={handleChange}
-            className={styles.select}
-          >
+          <label className={styles.sectionLabel}>Sentido da Viagem</label>
+          <div className={styles.directionToggle}>
+            <button
+              type="button"
+              className={[
+                styles.directionBtn,
+                direction === "to_campus" ? styles.directionBtnActive : "",
+              ].join(" ")}
+              onClick={() => setDirection("to_campus")}
+            >
+              <span className={styles.directionIcon}><Icon name="school" size={24} /></span>
+              <div>
+                <strong>Indo para a UFRGS</strong>
+                <p>Do seu endereço pessoal para o campus</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className={[
+                styles.directionBtn,
+                direction === "from_campus" ? styles.directionBtnActive : "",
+              ].join(" ")}
+              onClick={() => setDirection("from_campus")}
+            >
+              <span className={styles.directionIcon}><Icon name="home" size={24} /></span>
+              <div>
+                <strong>Saindo da UFRGS</strong>
+                <p>Do campus de volta para seu destino</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Campus da UFRGS */}
+        <div className={styles.section}>
+          <label className={styles.sectionLabel}>Campus da UFRGS</label>
+          <div className={styles.campusGrid}>
             {UFRGS_CAMPUS.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+              <button
+                key={c.id}
+                type="button"
+                className={[
+                  styles.campusCard,
+                  campusPoint === c.id ? styles.campusCardActive : "",
+                ].join(" ")}
+                onClick={() => setCampusPoint(c.id)}
+              >
+                <span className={styles.campusDot} />
+                <span className={styles.campusName}>{c.name}</span>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
+        {/* Endereço Pessoal (Origem se to_campus, Destino se from_campus) */}
         <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <label className={styles.sectionLabel}>Origem</label>
-            <button type="button" onClick={() => handleSetCampus("origin")} className={styles.shortcutBtn}>
-              Usar Campus
-            </button>
-          </div>
-          <Input
-            label="Endereço de Saída"
-            name="origin_label"
-            value={formData.origin_label}
-            onChange={handleChange}
-            placeholder="Ex: Rua João Pessoa, 123"
+          <AddressSelector
+            label={
+              direction === "to_campus"
+                ? "Ponto de Partida (Seu Endereço)"
+                : "Ponto de Chegada (Seu Endereço)"
+            }
+            value={addressValue}
+            onChange={setAddressValue}
             required
           />
-          <div className={styles.coordRow}>
-            <Input label="Lat" name="origin_lat" type="number" step="any" value={formData.origin_lat} onChange={handleChange} required />
-            <Input label="Lng" name="origin_lng" type="number" step="any" value={formData.origin_lng} onChange={handleChange} required />
+        </div>
+
+        {/* Resumo da Rota Selecionada */}
+        <div className={styles.routeSummary}>
+          <div className={styles.summaryStep}>
+            <span className={styles.stepBadge}>Origem</span>
+            <span className={styles.stepText}>
+              {direction === "to_campus"
+                ? "Seu Endereço Pessoal (Privado)"
+                : selectedCampus?.name ?? "Campus UFRGS"}
+            </span>
+          </div>
+          <span className={styles.summaryArrow}><Icon name="arrowRight" /></span>
+          <div className={styles.summaryStep}>
+            <span className={styles.stepBadge}>Destino</span>
+            <span className={styles.stepText}>
+              {direction === "to_campus"
+                ? selectedCampus?.name ?? "Campus UFRGS"
+                : "Seu Endereço Pessoal (Privado)"}
+            </span>
           </div>
         </div>
 
+        {/* Detalhes da Viagem */}
         <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <label className={styles.sectionLabel}>Destino</label>
-            <button type="button" onClick={() => handleSetCampus("destination")} className={styles.shortcutBtn}>
-              Usar Campus
-            </button>
-          </div>
+          <label className={styles.sectionLabel}>Detalhes do Trajeto</label>
           <Input
-            label="Endereço de Chegada"
-            name="destination_label"
-            value={formData.destination_label}
-            onChange={handleChange}
-            placeholder="Ex: UFRGS Campus do Vale"
-            required
-          />
-          <div className={styles.coordRow}>
-            <Input label="Lat" name="destination_lat" type="number" step="any" value={formData.destination_lat} onChange={handleChange} required />
-            <Input label="Lng" name="destination_lng" type="number" step="any" value={formData.destination_lng} onChange={handleChange} required />
-          </div>
-        </div>
-
-        <div className={styles.section}>
-          <label className={styles.sectionLabel}>Detalhes da Viagem</label>
-          <Input
-            label="Horário de Saída"
+            label="Data e Horário de Saída"
             name="departure_at"
             type="datetime-local"
-            value={formData.departure_at}
-            onChange={handleChange}
+            value={details.departure_at}
+            onChange={handleDetailChange}
             required
           />
-          <div className={styles.coordRow}>
+          <div className={styles.rowTwo}>
             <Input
-              label="Assentos Livres"
+              label="Assentos Disponíveis"
               name="total_seats"
               type="number"
               min="1"
               max="6"
-              value={formData.total_seats}
-              onChange={handleChange}
+              value={details.total_seats}
+              onChange={handleDetailChange}
               required
             />
             <Input
-              label="Tolerância (min)"
+              label="Tolerância de Atraso (min)"
               name="delay_tolerance_minutes"
               type="number"
               min="0"
               max="60"
-              value={formData.delay_tolerance_minutes}
-              onChange={handleChange}
+              value={details.delay_tolerance_minutes}
+              onChange={handleDetailChange}
               required
             />
           </div>
@@ -188,16 +226,16 @@ export const OfferRidePage: React.FC = () => {
           <input
             type="checkbox"
             name="women_only"
-            checked={formData.women_only}
-            onChange={handleChange}
+            checked={details.women_only}
+            onChange={handleDetailChange}
           />
-          Carona apenas para mulheres
+          <span>Carona apenas para mulheres</span>
         </label>
 
         {error && <p className={styles.error}>{error}</p>}
 
         <Button type="submit" fullWidth loading={loading}>
-          🚗 Publicar Carona
+          <Icon name="car" /> Publicar carona
         </Button>
       </form>
     </div>
