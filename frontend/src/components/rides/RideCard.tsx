@@ -30,6 +30,10 @@ interface RideCardProps {
   isRequesting?: boolean;
   existingMatchStatus?: MatchStatus | null;
   passengerPickup?: { lat: number; lng: number; label?: string } | null;
+  /** Optional Multi-Matching batch selection support */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (rideId: number) => void;
 }
 
 function formatTime(isoDate: string): string {
@@ -53,12 +57,18 @@ export const RideCard: React.FC<RideCardProps> = ({
   isRequesting = false,
   existingMatchStatus = null,
   passengerPickup = null,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }) => {
   const [showMap, setShowMap] = useState(false);
   const [showDriverProfile, setShowDriverProfile] = useState(false);
 
   const campus = getCampusInfo(ride.campus_point);
   const isLowDetour = (ride.detour_meters ?? 0) <= 1200;
+  const resolvedMatchStatus = existingMatchStatus ?? ride.my_match_status ?? null;
+  const canSelectForBatch =
+    selectable && !resolvedMatchStatus && ride.available_seats > 0 && Boolean(onToggleSelect);
 
   return (
     <>
@@ -66,8 +76,10 @@ export const RideCard: React.FC<RideCardProps> = ({
         className="rounded-3xl border p-5 transition-all hover:shadow-xl animate-fade-in"
         style={{
           background: "var(--gradient-card)",
-          borderColor: "var(--color-border)",
-          boxShadow: "var(--shadow-sm)",
+          borderColor: selected ? "var(--color-primary)" : "var(--color-border)",
+          boxShadow: selected
+            ? "0 0 0 2px rgba(99, 102, 241, 0.35), var(--shadow-sm)"
+            : "var(--shadow-sm)",
         }}
       >
         {/* Top Row: Social Driver Header + Detour / Badges */}
@@ -262,25 +274,55 @@ export const RideCard: React.FC<RideCardProps> = ({
           </div>
         )}
 
-        {/* Action Button / Existing Match Status */}
+        {/* Action Button / Existing Match Status / Multi-Match Selection */}
         {onRequestMatch && (
-          <div className="mt-4 pt-3.5 border-t flex items-center justify-between gap-3" style={{ borderColor: "var(--color-border)" }}>
-            <button
-              type="button"
-              onClick={() => setShowDriverProfile(true)}
-              className="text-xs font-semibold hover:underline"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              Ver perfil do motorista
-            </button>
+          <div className="mt-4 pt-3.5 border-t flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: "var(--color-border)" }}>
+            <div className="flex items-center gap-3">
+              {canSelectForBatch && (
+                <button
+                  type="button"
+                  onClick={() => onToggleSelect?.(ride.id)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                    selected
+                      ? "bg-indigo-500 text-white border-indigo-500"
+                      : "hover:border-indigo-500/50"
+                  }`}
+                  style={
+                    selected
+                      ? undefined
+                      : {
+                          backgroundColor: "var(--color-surface-2)",
+                          borderColor: "var(--color-border)",
+                          color: "var(--color-text-secondary)",
+                        }
+                  }
+                  title="Selecionar carona para enviar pedido em lote (Multi-Matching)"
+                >
+                  <span>{selected ? "✓ No lote" : "+ Lote"}</span>
+                </button>
+              )}
 
-            {existingMatchStatus === "accepted" ? (
+              <button
+                type="button"
+                onClick={() => setShowDriverProfile(true)}
+                className="text-xs font-semibold hover:underline"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Ver perfil
+              </button>
+            </div>
+
+            {resolvedMatchStatus === "accepted" ? (
               <span className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
                 ✓ Carona Confirmada
               </span>
-            ) : existingMatchStatus === "pending" ? (
+            ) : resolvedMatchStatus === "pending" ? (
               <span className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">
                 ⏳ Aguardando aprovação
+              </span>
+            ) : resolvedMatchStatus === "superseded" ? (
+              <span className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/30">
+                Substituída por outra carona
               </span>
             ) : (
               <Button

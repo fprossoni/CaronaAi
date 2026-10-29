@@ -9,6 +9,7 @@ from geoalchemy2 import Geometry
 from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.campuses import CAMPUS_COORDS, DEFAULT_CAMPUS_ID
 from app.core.database import Base
 
 
@@ -28,18 +29,7 @@ UFRGS_CAMPUS = [
     "campus_vale",
     "campus_agronomia",
     "campus_litoral_norte",
-    "campus_agronomia_esefid",  # backward compatibility
 ]
-
-CAMPUS_COORDS: dict[str, tuple[float, float]] = {
-    "campus_centro": (-30.0349, -51.2177),
-    "campus_saude": (-30.0395, -51.2089),
-    "campus_olimpico": (-30.0538, -51.1789),
-    "campus_vale": (-30.0734, -51.1201),
-    "campus_agronomia": (-30.0664, -51.1378),
-    "campus_litoral_norte": (-29.9794, -50.1330),
-    "campus_agronomia_esefid": (-30.0608, -51.1734),  # backward compatibility
-}
 
 
 class Ride(Base):
@@ -78,4 +68,12 @@ class Ride(Base):
 
     # Relationships
     driver: Mapped["User"] = relationship("User", back_populates="rides_offered", foreign_keys=[driver_id])
-    matches: Mapped[list["Match"]] = relationship("Match", back_populates="ride")
+    matches: Mapped[list["Match"]] = relationship("Match", back_populates="ride", cascade="all, delete-orphan")
+
+
+# CAMPUS_COORDS and DEFAULT_CAMPUS_ID imported from app.core.campuses (single source of truth)
+from app.core.campuses import CAMPUS_COORDS, DEFAULT_CAMPUS_ID
+
+# Re-export for compatibility
+__all__ = ["Ride", "RideStatus", "CAMPUS_COORDS", "UFRGS_CAMPUS", "DEFAULT_CAMPUS_ID"]
+

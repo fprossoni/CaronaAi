@@ -13,6 +13,7 @@ import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
 import { buildSocialUrl, getCampusInfo } from "@/lib/formatters";
+import { extractUfrgsAffiliation } from "@/lib/validators";
 import { getErrorMessage } from "@/lib/errors";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -45,6 +46,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [isBlocked, setIsBlocked] = useState(false);
 
   const isSelf = currentUser?.id === profile.id;
+  const affiliation = extractUfrgsAffiliation(profile.email);
+  const socialHandle = profile.instagram || profile.social_link;
 
   useEffect(() => {
     if (initialUser.id >= 9000 || localStorage.getItem("access_token") === "dev_mock_token") {
@@ -143,7 +146,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           <div className="absolute bottom-3 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md text-emerald-300 text-[11px] font-semibold border border-emerald-400/30">
             <ShieldCheckIcon size={13} />
-            <span>Membro Verificado UFRGS</span>
+            <span>{affiliation.fullBadge}</span>
           </div>
         </div>
 
@@ -191,6 +194,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <h3 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
                 {profile.name ?? "Estudante UFRGS"}
               </h3>
+              {profile.age != null && (
+                <span className="text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>
+                  • {profile.age} anos
+                </span>
+              )}
               <span
                 className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                   profile.is_driver
@@ -285,9 +293,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             )}
 
-            {profile.social_link && (
+            {socialHandle && (
               <a
-                href={buildSocialUrl(profile.social_link)}
+                href={buildSocialUrl(socialHandle)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all hover:scale-[1.01]"
@@ -298,7 +306,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 }}
               >
                 <InstagramIcon size={15} className="text-pink-400" />
-                <span>Rede social: {profile.social_link}</span>
+                <span>Instagram: {socialHandle}</span>
               </a>
             )}
           </div>

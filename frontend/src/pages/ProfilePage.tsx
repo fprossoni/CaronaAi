@@ -24,12 +24,13 @@ import {
   getGenderLabel,
   isValidCarPlate,
 } from "@/lib/formatters";
-import { extractUfrgsAffiliation } from "@/lib/validators";
+import { extractUfrgsAffiliation, validateBirthDate } from "@/lib/validators";
 import { getErrorMessage } from "@/lib/errors";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { CourseAutocomplete } from "@/components/ui/CourseAutocomplete";
 import { Input } from "@/components/ui/Input";
+import { SavedAddressesManager } from "@/components/profile/SavedAddressesManager";
 import {
   CarIcon,
   EditIcon,
@@ -57,11 +58,12 @@ export const ProfilePage: React.FC = () => {
 
   // Edit form state initialized from current user
   const [course, setCourse] = useState(user?.course ?? "");
+  const [birthDate, setBirthDate] = useState(user?.birth_date ?? "");
   const [gender, setGender] = useState<Gender>(user?.gender ?? "prefer_not_to_say");
   const [isDriver, setIsDriver] = useState<boolean>(user?.is_driver ?? false);
   const [photoUrl, setPhotoUrl] = useState(user?.photo_url ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
-  const [socialLink, setSocialLink] = useState(user?.social_link ?? "");
+  const [instagram, setInstagram] = useState(user?.instagram ?? user?.social_link ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [campuses, setCampuses] = useState<string[]>(user?.campuses ?? []);
   const [carModel, setCarModel] = useState(user?.car_model ?? "");
@@ -71,14 +73,16 @@ export const ProfilePage: React.FC = () => {
   if (!user) return null;
 
   const affiliation = extractUfrgsAffiliation(user.email);
+  const displaySocial = user.instagram || user.social_link;
 
   const startEditing = () => {
     setCourse(user.course ?? "");
+    setBirthDate(user.birth_date ?? "");
     setGender(user.gender ?? "prefer_not_to_say");
     setIsDriver(user.is_driver);
     setPhotoUrl(user.photo_url ?? "");
     setBio(user.bio ?? "");
-    setSocialLink(user.social_link ?? "");
+    setInstagram(user.instagram ?? user.social_link ?? "");
     setPhone(user.phone ?? "");
     setCampuses(user.campuses ?? []);
     setCarModel(user.car_model ?? "");
@@ -99,6 +103,13 @@ export const ProfilePage: React.FC = () => {
       toast.error("Curso obrigatório", "Informe seu curso de graduação ou pós-graduação na UFRGS.");
       return;
     }
+    if (birthDate.trim()) {
+      const birthDateErr = validateBirthDate(birthDate);
+      if (birthDateErr) {
+        toast.error("Data de nascimento inválida", birthDateErr);
+        return;
+      }
+    }
     if (isDriver && carPlate.trim() && !isValidCarPlate(carPlate)) {
       toast.error(
         "Placa inválida",
@@ -109,13 +120,16 @@ export const ProfilePage: React.FC = () => {
 
     setSaving(true);
     try {
+      const formattedInsta = instagram.trim() ? formatSocialHandle(instagram) : undefined;
       const payload: ProfileUpdate = {
         course: course.trim(),
+        birth_date: birthDate.trim() || undefined,
         gender,
         is_driver: isDriver,
         photo_url: photoUrl.trim() || undefined,
         bio: bio.trim() || undefined,
-        social_link: socialLink.trim() ? formatSocialHandle(socialLink) : undefined,
+        instagram: formattedInsta,
+        social_link: formattedInsta,
         phone: phone.trim() ? formatPhone(phone) : undefined,
         campuses,
         car_model: isDriver ? carModel.trim() || undefined : undefined,
@@ -366,10 +380,11 @@ export const ProfilePage: React.FC = () => {
                 }}
               >
                 <span className="text-[11px] block" style={{ color: "var(--color-text-muted)" }}>
-                  Gênero
+                  Gênero & Idade
                 </span>
                 <span className="text-xs font-bold block mt-0.5" style={{ color: "var(--color-text)" }}>
                   {getGenderLabel(user.gender)}
+                  {user.age != null ? ` • ${user.age} anos` : ""}
                 </span>
               </div>
 
@@ -381,17 +396,17 @@ export const ProfilePage: React.FC = () => {
                 }}
               >
                 <span className="text-[11px] block" style={{ color: "var(--color-text-muted)" }}>
-                  Rede Social
+                  Instagram / Rede Social
                 </span>
-                {user.social_link ? (
+                {displaySocial ? (
                   <a
-                    href={buildSocialUrl(user.social_link)}
+                    href={buildSocialUrl(displaySocial)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-bold text-indigo-400 hover:underline inline-flex items-center gap-1 mt-0.5"
                   >
                     <InstagramIcon size={13} className="text-pink-400" />
-                    <span>{user.social_link}</span>
+                    <span>{displaySocial}</span>
                   </a>
                 ) : (
                   <span className="text-xs font-bold block mt-0.5" style={{ color: "var(--color-text-muted)" }}>
@@ -503,12 +518,37 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CourseAutocomplete
-              value={course}
-              onChange={setCourse}
-              required
-              label="Curso na UFRGS"
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <CourseAutocomplete
+                value={course}
+                onChange={setCourse}
+                required
+                label="Curso na UFRGS"
+              />
+            </div>
+
+            <Input
+              label="Data de Nascimento"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input
+              label="Telefone / WhatsApp"
+              placeholder="(51) 99999-9999"
+              value={phone}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+            />
+
+            <Input
+              label="Instagram"
+              placeholder="@seu_usuario"
+              value={instagram}
+              onChange={(e) => setInstagram(e.target.value)}
             />
 
             <Input
@@ -516,22 +556,6 @@ export const ProfilePage: React.FC = () => {
               placeholder="https://exemplo.com/sua-foto.jpg"
               value={photoUrl}
               onChange={(e) => setPhotoUrl(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Telefone / WhatsApp"
-              placeholder="(51) 999999999"
-              value={phone}
-              onChange={(e) => setPhone(formatPhone(e.target.value))}
-            />
-
-            <Input
-              label="Rede Social (Instagram / LinkedIn)"
-              placeholder="@seu_usuario"
-              value={socialLink}
-              onChange={(e) => setSocialLink(e.target.value)}
             />
           </div>
 
@@ -701,6 +725,9 @@ export const ProfilePage: React.FC = () => {
           </div>
         </form>
       )}
+
+      {/* Personal Saved Addresses Manager (CEP / ViaCEP + Nominatim) */}
+      <SavedAddressesManager />
     </div>
   );
 };

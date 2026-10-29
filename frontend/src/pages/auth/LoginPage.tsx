@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
@@ -7,8 +7,17 @@ import { Input } from "@/components/ui/Input";
 import { CarIcon, ShieldCheckIcon } from "@/components/ui/Icons";
 import { getErrorMessage } from "@/lib/errors";
 
+interface LoginLocationState {
+  returnTo?: string;
+  message?: string;
+  prefill?: unknown;
+}
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = (location.state as LoginLocationState | null) ?? null;
+
   const { setTokens, fetchUser } = useAuthStore();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
@@ -25,7 +34,15 @@ export const LoginPage: React.FC = () => {
       });
       setTokens(data.access_token, data.refresh_token);
       const user = await fetchUser();
-      navigate(user && !user.profile_complete ? "/profile/complete" : "/find");
+      if (user && !user.profile_complete) {
+        navigate("/profile/complete", {
+          state: { returnTo: navState?.returnTo, prefill: navState?.prefill },
+        });
+      } else {
+        navigate(navState?.returnTo || "/find", {
+          state: navState?.prefill,
+        });
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Erro ao fazer login. Verifique suas credenciais."));
     } finally {
@@ -44,12 +61,14 @@ export const LoginPage: React.FC = () => {
         }}
       >
         <div className="flex flex-col items-center text-center mb-6">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg mb-3"
-            style={{ background: "var(--gradient-primary)" }}
-          >
-            <CarIcon size={28} />
-          </div>
+          <Link to="/" className="no-underline flex flex-col items-center group">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg mb-3 transition-transform group-hover:scale-105"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              <CarIcon size={28} />
+            </div>
+          </Link>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 mb-2">
             <ShieldCheckIcon size={14} /> Rede Universitária Verificada
           </span>
@@ -60,6 +79,12 @@ export const LoginPage: React.FC = () => {
             Compartilhe rotas com colegas dos campi da UFRGS
           </p>
         </div>
+
+        {navState?.message && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-indigo-300 font-medium leading-relaxed">
+            {navState.message}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
@@ -90,12 +115,19 @@ export const LoginPage: React.FC = () => {
           </Button>
         </form>
 
-        <p className="text-center text-xs mt-6" style={{ color: "var(--color-text-muted)" }}>
-          Ainda não tem conta?{" "}
-          <Link to="/register" className="font-bold text-indigo-400 hover:underline">
-            Cadastre-se com seu e-mail UFRGS
-          </Link>
-        </p>
+        <div className="mt-6 space-y-2 text-center text-xs" style={{ color: "var(--color-text-muted)" }}>
+          <p>
+            Ainda não tem conta?{" "}
+            <Link to="/register" className="font-bold text-indigo-400 hover:underline">
+              Cadastre-se com seu e-mail UFRGS
+            </Link>
+          </p>
+          <p>
+            <Link to="/" className="font-semibold hover:underline" style={{ color: "var(--color-text-secondary)" }}>
+              ← Voltar para a página inicial
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

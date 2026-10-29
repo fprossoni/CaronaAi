@@ -33,6 +33,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p));
   const isDevRoute = location.pathname.startsWith("/dev");
+  const isPublicWithHeader = location.pathname === "/" || isDevRoute;
   const affiliation = extractUfrgsAffiliation(user?.email);
 
   const navItems = [
@@ -43,14 +44,21 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     { path: "/profile", label: "Meu Perfil", shortLabel: "Perfil", icon: UserIcon },
   ];
 
+  const publicMobileItems = [
+    { path: "/", label: "Início", shortLabel: "Início", icon: CompassIcon },
+    { path: "/find", label: "Pedir Carona", shortLabel: "Pedir", icon: SearchIcon },
+    { path: "/offer", label: "Oferecer", shortLabel: "Oferecer", icon: CarIcon },
+    { path: "/login", label: "Entrar", shortLabel: "Entrar", icon: UserIcon },
+  ];
+
   const isPathActive = (itemPath: string) => {
-    if (itemPath === "/rides") {
-      return location.pathname === "/rides";
+    if (itemPath === "/" || itemPath === "/rides") {
+      return location.pathname === itemPath;
     }
     return location.pathname.startsWith(itemPath);
   };
 
-  if (isAuthPage || (!isAuthenticated && !isDevRoute)) {
+  if (isAuthPage || (!isAuthenticated && !isPublicWithHeader)) {
     return (
       <div className="min-h-screen relative flex flex-col">
         {/* Floating Controls on Auth Pages */}
@@ -94,6 +102,8 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     );
   }
 
+  const mobileNavList = isAuthenticated ? navItems : publicMobileItems;
+
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-8">
       {/* Top Sticky Header */}
@@ -106,7 +116,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       >
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           {/* Brand Logo */}
-          <Link to="/find" className="flex items-center gap-2.5 no-underline group">
+          <Link to="/" className="flex items-center gap-2.5 no-underline group">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105"
               style={{ background: "var(--gradient-primary)" }}
@@ -185,7 +195,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
               )}
             </button>
 
-            {user && (
+            {isAuthenticated && user ? (
               <Link
                 to="/profile"
                 className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border no-underline transition-colors hover:border-indigo-500/50"
@@ -207,6 +217,27 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                   </span>
                 </div>
               </Link>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold border no-underline transition-colors hover:border-indigo-500/50"
+                  style={{
+                    backgroundColor: "var(--color-surface-2)",
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-text)",
+                  }}
+                >
+                  Entrar
+                </Link>
+                <Link
+                  to="/register"
+                  className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-xs font-bold text-white no-underline shadow-md transition-transform hover:scale-[1.02]"
+                  style={{ background: "var(--gradient-primary)" }}
+                >
+                  Criar conta
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -223,7 +254,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           borderColor: "var(--color-border)",
         }}
       >
-        {navItems.map((item) => {
+        {mobileNavList.map((item) => {
           const Icon = item.icon;
           const active = isPathActive(item.path);
           return (

@@ -48,6 +48,7 @@ import { ReportUserModal } from "@/components/rides/ReportUserModal";
 import { UserProfileModal } from "@/components/users/UserProfileModal";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { LocationField } from "@/components/map/LocationField";
+import { SavedAddressesManager } from "@/components/profile/SavedAddressesManager";
 
 // ─── Reusable Section Container with Source File Badge ───────────────────────
 
@@ -295,6 +296,7 @@ export const DevPlaygroundPage: React.FC = () => {
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[
+                { to: "/", label: "Landing Page (Início)", file: "HomePage.tsx" },
                 { to: "/find", label: "Pedir Carona", file: "FindRidePage.tsx" },
                 { to: "/offer", label: "Oferecer Carona", file: "OfferRidePage.tsx" },
                 { to: "/rides", label: "Minhas Caronas", file: "MyRidesPage.tsx" },
@@ -775,6 +777,16 @@ export const DevPlaygroundPage: React.FC = () => {
             </div>
           </div>
         </div>
+      </SectionCard>
+
+      {/* 7. Gestor de Endereços Pessoais (CEP / ViaCEP) */}
+      <SectionCard
+        title="7. Gestor de Endereços Salvos (Busca Automática por CEP)"
+        subtitle="Componente integrado ao Meu Perfil e aos atalhos rápidos do LocationField. Experimente digitar um CEP real (ex.: 90035-191)!"
+        filePath="src/components/profile/SavedAddressesManager.tsx"
+        icon={<MapPinIcon size={20} />}
+      >
+        <SavedAddressesManager />
       </SectionCard>
 
       {/* ─── Active Modals Rendered on Demand ──────────────────────────────── */}

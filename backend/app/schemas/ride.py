@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, field_validator
 
 from app.models.ride import UFRGS_CAMPUS, RideStatus
+from app.schemas.address import AddressCreate
 from app.schemas.user import UserPublic
 
 
@@ -14,13 +15,22 @@ class Coordinates(BaseModel):
 
 
 class RideCreate(BaseModel):
-    origin_label: str
-    origin_lat: float
-    origin_lng: float
-    destination_label: str
-    destination_lat: float
-    destination_lng: float
-    campus_point: str           # Which of the 5 campi is part of this trip
+    campus_point: str                     # Which UFRGS campus is part of this trip
+    direction: str = "to_campus"          # "to_campus" (Address -> Campus) | "from_campus" (Campus -> Address)
+
+    # Address selection: either an existing saved address or a new address definition
+    address_id: int | None = None
+    custom_address: AddressCreate | None = None
+    save_address: bool = True
+
+    # Legacy / Direct coordinates (optional - backend computes from address + campus)
+    origin_label: str | None = None
+    origin_lat: float | None = None
+    origin_lng: float | None = None
+    destination_label: str | None = None
+    destination_lat: float | None = None
+    destination_lng: float | None = None
+
     departure_at: datetime
     delay_tolerance_minutes: int = 10
     total_seats: int = 1
@@ -65,6 +75,10 @@ class RidePublic(BaseModel):
     # Detour calculated for a specific passenger search
     detour_meters: float | None = None
     detour_seconds: float | None = None
+
+    # The searching passenger's own active request for this ride, if any
+    my_match_id: int | None = None
+    my_match_status: str | None = None
 
     model_config = {"from_attributes": True}
 

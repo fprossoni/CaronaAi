@@ -248,9 +248,13 @@ export const HistoryPage: React.FC = () => {
                               setProfileUser({
                                 id: p.id,
                                 name: p.name,
+                                email: "",
                                 course: p.course,
+                                age: null,
+                                phone: null,
                                 photo_url: p.photo_url,
                                 social_link: null,
+                                instagram: null,
                                 bio: null,
                                 campuses: null,
                                 avg_rating: p.avg_rating,

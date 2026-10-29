@@ -13,6 +13,7 @@ import { MyRidesPage } from "@/pages/MyRidesPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { ProfileCompletePage } from "@/pages/ProfileCompletePage";
+import { HomePage } from "@/pages/HomePage";
 import { DevPlaygroundPage } from "@/pages/DevPlaygroundPage";
 import "./index.css";
 
@@ -21,7 +22,18 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const location = useLocation();
   const { isAuthenticated, user } = useAuthStore();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          returnTo: location.pathname,
+          message: "Faça login com seu e-mail institucional UFRGS para acessar esta funcionalidade.",
+        }}
+      />
+    );
+  }
 
   if (user && !user.profile_complete && location.pathname !== "/profile/complete") {
     return <Navigate to="/profile/complete" replace />;
@@ -48,6 +60,9 @@ export default function App() {
       <ToastContainer />
       <AppLayout>
         <Routes>
+          {/* Public Landing Page */}
+          <Route path="/" element={<HomePage />} />
+
           {/* Developer Playground (Active in Development Mode) */}
           {import.meta.env.DEV && <Route path="/dev" element={<DevPlaygroundPage />} />}
 
@@ -57,7 +72,6 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
 
           {/* Protected Application Routes */}
-          <Route path="/" element={<ProtectedRoute><Navigate to="/find" replace /></ProtectedRoute>} />
           <Route path="/find" element={<ProtectedRoute><FindRidePage /></ProtectedRoute>} />
           <Route path="/offer" element={<ProtectedRoute><OfferRidePage /></ProtectedRoute>} />
           <Route path="/rides" element={<ProtectedRoute><MyRidesPage /></ProtectedRoute>} />

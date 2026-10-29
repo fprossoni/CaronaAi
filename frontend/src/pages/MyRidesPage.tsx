@@ -219,6 +219,7 @@ export const MyRidesPage: React.FC = () => {
         new Date(a.ride.departure_at).getTime() - new Date(b.ride.departure_at).getTime()
     );
 
+  const supersededCount = matches.filter((m) => m.status === "superseded").length;
   const hasAnyActive = upcomingRides.length > 0 || activeMatches.length > 0;
 
   return (
@@ -466,10 +467,25 @@ export const MyRidesPage: React.FC = () => {
       {/* Section 2: Active Rides as Passenger */}
       {activeMatches.length > 0 && (
         <section className="space-y-3.5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">
               Como Passageiro ({activeMatches.length})
             </span>
+            {supersededCount > 0 && (
+              <span
+                className="px-3 py-1 rounded-full text-[11px] font-medium border"
+                style={{
+                  backgroundColor: "var(--color-surface-2)",
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text-muted)",
+                }}
+              >
+                {supersededCount}{" "}
+                {supersededCount === 1
+                  ? "solicitação em lote encerrada automaticamente após confirmação"
+                  : "solicitações em lote encerradas automaticamente após confirmação"}
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

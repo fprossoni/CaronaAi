@@ -101,3 +101,36 @@ export function findMatchingCampus(lat: number, lng: number) {
     ) ?? null
   );
 }
+
+export const MIN_USER_AGE = 16;
+export const MAX_USER_AGE = 100;
+
+/**
+ * Validates a YYYY-MM-DD birth date string against backend age limits (16–100 years).
+ * Returns an error message in Portuguese if invalid, or `null` if valid.
+ */
+export function validateBirthDate(birthDateStr: string): string | null {
+  const clean = birthDateStr.trim();
+  if (!clean) {
+    return "Informe sua data de nascimento.";
+  }
+
+  const parts = clean.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    return "Formato de data inválido.";
+  }
+
+  const [year, month, day] = parts;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const monthDiff = today.getMonth() + 1 - month;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) {
+    age -= 1;
+  }
+
+  if (age < MIN_USER_AGE || age > MAX_USER_AGE) {
+    return `Data de nascimento inválida (a idade deve estar entre ${MIN_USER_AGE} e ${MAX_USER_AGE} anos).`;
+  }
+
+  return null;
+}

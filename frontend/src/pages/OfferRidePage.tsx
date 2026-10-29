@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
@@ -50,6 +50,9 @@ function getDefaultDepartureTime(): string {
 
 export const OfferRidePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefillCampus = (location.state as { campus?: CampusId } | null)?.campus;
+
   const { user, setUser } = useAuthStore();
   const toast = useToastStore();
 
@@ -61,7 +64,7 @@ export const OfferRidePage: React.FC = () => {
 
   // Ride Creation State
   const [direction, setDirection] = useState<TripDirection>("to_campus");
-  const [campusId, setCampusId] = useState<CampusId>("campus_vale");
+  const [campusId, setCampusId] = useState<CampusId>(prefillCampus ?? "campus_vale");
   const [customPoint, setCustomPoint] = useState<LocationValue | null>(() => ({
     label: "Av. Osvaldo Aranha — Bom Fim",
     region: "Bom Fim, Porto Alegre",
@@ -162,13 +165,15 @@ export const OfferRidePage: React.FC = () => {
     setLoading(true);
     try {
       await ridesApi.create({
+        campus_point: campusId,
+        direction,
+        address_id: customPoint?.addressId ?? undefined,
         origin_label: originLocation.label,
         origin_lat: originLocation.lat,
         origin_lng: originLocation.lng,
         destination_label: destinationLocation.label,
         destination_lat: destinationLocation.lat,
         destination_lng: destinationLocation.lng,
-        campus_point: campusId,
         departure_at: new Date(departureAt).toISOString(),
         delay_tolerance_minutes: Number(delayTolerance),
         total_seats: Number(totalSeats),

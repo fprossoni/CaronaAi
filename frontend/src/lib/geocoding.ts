@@ -20,6 +20,7 @@ export interface LocationValue {
   lat: number;
   lng: number;
   campusId?: string;
+  addressId?: number;
 }
 
 export interface GeocodingSuggestion extends LocationValue {

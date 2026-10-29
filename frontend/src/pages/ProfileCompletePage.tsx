@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Avatar } from "@/components/ui/Avatar";
@@ -13,6 +13,7 @@ import {
   formatSocialHandle,
   isValidCarPlate,
 } from "@/lib/formatters";
+import { validateBirthDate } from "@/lib/validators";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
 
@@ -20,9 +21,10 @@ type Preference = "passenger" | "driver" | "both";
 
 interface FormState {
   course: string;
+  birthDate: string;
   gender: Gender | "";
   preference: Preference | "";
-  social: string;
+  instagram: string;
   phone: string;
   photoUrl: string;
   bio: string;
@@ -47,13 +49,19 @@ const PREFERENCE_OPTIONS: { value: Preference; label: string; description: strin
 
 export const ProfileCompletePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const isEditMode = searchParams.has("edit");
+  const navState = (location.state as { returnTo?: string; prefill?: unknown } | null) ?? null;
+
   const { user, setUser } = useAuthStore();
 
   const [form, setForm] = useState<FormState>(() => ({
     course: user?.course ?? "",
+    birthDate: user?.birth_date ?? "",
     gender: user?.gender ?? "",
     preference: user ? (user.is_driver ? "both" : "passenger") : "",
-    social: user?.social_link ?? "",
+    instagram: user?.instagram ?? user?.social_link ?? "",
     phone: user?.phone ?? "",
     photoUrl: user?.photo_url ?? "",
     bio: user?.bio ?? "",
@@ -62,15 +70,20 @@ export const ProfileCompletePage: React.FC = () => {
     carPlate: user?.car_plate ?? "",
     carColor: user?.car_color ?? "",
   }));
-  const [errors, setErrors] = useState<Partial<Record<"course" | "gender" | "preference" | "carPlate", string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<"course" | "birthDate" | "gender" | "preference" | "carPlate", string>>
+  >({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user && user.profile_complete) {
-      navigate("/", { replace: true });
+    if (user && user.profile_complete && !isEditMode) {
+      navigate(navState?.returnTo || "/find", {
+        replace: true,
+        state: navState?.prefill,
+      });
     }
-  }, [user, navigate]);
+  }, [user, isEditMode, navigate, navState]);
 
   const isDriver = useMemo(() => form.preference !== "passenger", [form.preference]);
 
@@ -95,6 +108,8 @@ export const ProfileCompletePage: React.FC = () => {
     e.preventDefault();
     const nextErrors: typeof errors = {};
     if (!form.course.trim()) nextErrors.course = "Informe seu curso.";
+    const birthDateErr = validateBirthDate(form.birthDate);
+    if (birthDateErr) nextErrors.birthDate = birthDateErr;
     if (!form.gender) nextErrors.gender = "Selecione seu gênero.";
     if (!form.preference) nextErrors.preference = "Selecione uma preferência.";
     if (isDriver && form.carPlate.trim()) {
@@ -108,12 +123,14 @@ export const ProfileCompletePage: React.FC = () => {
     setError("");
     setLoading(true);
     try {
-      const formattedSocial = form.social.trim() ? formatSocialHandle(form.social) : undefined;
+      const formattedInsta = form.instagram.trim() ? formatSocialHandle(form.instagram) : undefined;
       const formattedPhone = form.phone.trim() ? formatPhone(form.phone) : undefined;
       const payload: ProfileUpdate = {
         course: form.course.trim(),
+        birth_date: form.birthDate.trim(),
         gender: form.gender as Gender,
-        social_link: formattedSocial,
+        instagram: formattedInsta,
+        social_link: formattedInsta,
         phone: formattedPhone,
         photo_url: form.photoUrl.trim() || undefined,
         bio: form.bio.trim() || undefined,
@@ -127,7 +144,10 @@ export const ProfileCompletePage: React.FC = () => {
       }
       const { data } = await usersApi.updateMe(payload);
       setUser(data);
-      navigate("/", { replace: true });
+      navigate(isEditMode ? "/profile" : navState?.returnTo || "/find", {
+        replace: true,
+        state: navState?.prefill,
+      });
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Erro ao salvar o perfil."));
     } finally {
@@ -183,6 +203,16 @@ export const ProfileCompletePage: React.FC = () => {
             value={form.course}
             onChange={(val) => setField("course", val)}
             error={errors.course}
+            required
+          />
+
+          <Input
+            label="Data de nascimento"
+            type="date"
+            value={form.birthDate}
+            onChange={(e) => setField("birthDate", e.target.value)}
+            error={errors.birthDate}
+            hint="Apenas sua idade aproximada é exibida nos perfis; a data exata permanece privada."
             required
           />
 
@@ -305,19 +335,19 @@ export const ProfileCompletePage: React.FC = () => {
           </div>
 
           <Input
-            label="Redes sociais (opcional)"
+            label="Instagram (opcional)"
             placeholder="@seu_usuario"
-            value={form.social}
-            onChange={(e) => setField("social", e.target.value)}
+            value={form.instagram}
+            onChange={(e) => setField("instagram", e.target.value)}
             onBlur={() => {
-              if (form.social.trim()) {
-                setField("social", formatSocialHandle(form.social));
+              if (form.instagram.trim()) {
+                setField("instagram", formatSocialHandle(form.instagram));
               }
             }}
-            hint="Digite seu nome de usuário ou o link do seu perfil"
+            hint="Digite seu @usuario ou link do Instagram"
           />
           <Input
-            label="Telefone (opcional)"
+            label="Telefone / WhatsApp (opcional)"
             placeholder="(51) 99999-9999"
             type="tel"
             value={form.phone}

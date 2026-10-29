@@ -11,6 +11,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { UFRGS_CAMPUS } from "@/types/ride";
+import type { AddressPublic } from "@/types/address";
+import { addressesApi } from "@/api/addresses";
+import { DEV_MOCK_TOKEN, useAuthStore } from "@/store/authStore";
 import {
   campusToLocation,
   geocodingService,
@@ -30,6 +33,7 @@ interface LocationFieldProps {
   onTogglePickOnMap?: () => void;
   allowGps?: boolean;
   showCampusShortcuts?: boolean;
+  showSavedAddresses?: boolean;
   helperText?: string;
 }
 
@@ -43,10 +47,13 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   onTogglePickOnMap,
   allowGps = true,
   showCampusShortcuts = true,
+  showSavedAddresses = true,
   helperText,
 }) => {
+  const { isAuthenticated } = useAuthStore();
   const [draftText, setDraftText] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<GeocodingSuggestion[]>([]);
+  const [savedAddresses, setSavedAddresses] = useState<AddressPublic[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -54,6 +61,25 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const displayedQuery = draftText !== null ? draftText : (value?.label ?? "");
+
+  // Load user's saved personal addresses for 1-click selection
+  useEffect(() => {
+    if (!showSavedAddresses || !isAuthenticated) return;
+    if (localStorage.getItem("access_token") === DEV_MOCK_TOKEN) return;
+
+    let active = true;
+    addressesApi
+      .list()
+      .then((res) => {
+        if (active) setSavedAddresses(res.data);
+      })
+      .catch(() => {
+        // Ignore if backend is offline
+      });
+    return () => {
+      active = false;
+    };
+  }, [showSavedAddresses, isAuthenticated]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -265,6 +291,44 @@ export const LocationField: React.FC<LocationFieldProps> = ({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Saved Personal Addresses Quick Pills */}
+      {showSavedAddresses && savedAddresses.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-medium mr-0.5" style={{ color: "var(--color-text-muted)" }}>
+            Salvos:
+          </span>
+          {savedAddresses.map((addr) => {
+            const active = value?.addressId === addr.id;
+            return (
+              <button
+                key={addr.id}
+                type="button"
+                onClick={() => {
+                  setDraftText(null);
+                  setIsOpen(false);
+                  onChange({
+                    label: `${addr.label} (${addr.street}, ${addr.number})`,
+                    region: addr.neighborhood ? `${addr.neighborhood}, ${addr.city}` : addr.city,
+                    lat: addr.lat,
+                    lng: addr.lng,
+                    addressId: addr.id,
+                  });
+                }}
+                className="px-2.5 py-1 rounded-full text-xs font-semibold border transition-all inline-flex items-center gap-1"
+                style={{
+                  backgroundColor: active ? "#10b981" : "var(--color-surface-2)",
+                  borderColor: active ? "#10b981" : "var(--color-border)",
+                  color: active ? "#ffffff" : "var(--color-text-secondary)",
+                }}
+                title={`${addr.street}, ${addr.number} — CEP ${addr.postal_code}`}
+              >
+                <span>📍 {addr.label}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* UFRGS Campus Quick Pills */}

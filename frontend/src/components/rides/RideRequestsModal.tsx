@@ -319,8 +319,18 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                 const detail = confirmedDetails[m.id];
                 const exactLat = detail?.pickup_lat;
                 const exactLng = detail?.pickup_lng;
-                const exactLabel = detail?.pickup_label ?? m.pickup_region;
-                const passengerPhone = detail?.passenger_phone;
+                const exactStreet = detail?.pickup_street ?? m.pickup_street;
+                const exactNumber = detail?.pickup_number ?? m.pickup_number;
+                const exactComplement = detail?.pickup_complement ?? m.pickup_complement;
+                const exactNeighborhood = detail?.pickup_neighborhood ?? m.pickup_neighborhood;
+                const structuredAddress = exactStreet
+                  ? `${exactStreet}${exactNumber ? `, ${exactNumber}` : ""}${
+                      exactComplement ? ` (${exactComplement})` : ""
+                    }${exactNeighborhood ? ` — ${exactNeighborhood}` : ""}`
+                  : null;
+                const exactLabel = structuredAddress ?? detail?.pickup_label ?? m.pickup_region;
+                const passengerPhone =
+                  detail?.passenger_phone ?? m.passenger_phone ?? m.passenger.phone;
 
                 return (
                   <div
@@ -389,7 +399,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                       <div className="flex items-center justify-between text-emerald-400 font-semibold">
                         <span className="flex items-center gap-1.5">
                           <NavigationIcon size={13} />
-                          Ponto de encontro liberado:
+                          Endereço exato de embarque liberado:
                         </span>
                         <span>+{formatDistance(m.detour_meters)}</span>
                       </div>

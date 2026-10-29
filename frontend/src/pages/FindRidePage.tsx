@@ -10,10 +10,11 @@
  *   street address remains confidential until the driver accepts the match.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
-import type { RidePublic } from "@/types/ride";
+import type { CampusId, RidePublic } from "@/types/ride";
 import type { MatchStatus } from "@/types/match";
 import {
   campusToLocation,
@@ -22,6 +23,7 @@ import {
   type LocationValue,
 } from "@/lib/geocoding";
 import { getErrorMessage } from "@/lib/errors";
+import { DEV_MOCK_TOKEN } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
 import { RideCard } from "@/components/rides/RideCard";
 import { Button } from "@/components/ui/Button";
@@ -29,22 +31,37 @@ import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { LocationField } from "@/components/map/LocationField";
 import {
   ArrowRightLeftIcon,
+  CheckCircleIcon,
   FilterIcon,
   NavigationIcon,
   SearchIcon,
   ShieldCheckIcon,
 } from "@/components/ui/Icons";
 
+interface FindPrefillState {
+  campus?: CampusId;
+  direction?: "to_campus" | "from_campus";
+  addressQuery?: string;
+}
+
 export const FindRidePage: React.FC = () => {
+  const location = useLocation();
+  const prefill = (location.state as FindPrefillState | null) ?? null;
   const toast = useToastStore();
 
-  // Default pickup: Campus Centro; Default destination: Campus do Vale (easy 1-click start)
-  const [pickup, setPickup] = useState<LocationValue | null>(() =>
-    campusToLocation("campus_centro")
-  );
-  const [dropoff, setDropoff] = useState<LocationValue | null>(() =>
-    campusToLocation("campus_vale")
-  );
+  // Default pickup & dropoff (or prefilled from HomePage search bar)
+  const [pickup, setPickup] = useState<LocationValue | null>(() => {
+    if (prefill?.campus && prefill.direction === "from_campus") {
+      return campusToLocation(prefill.campus);
+    }
+    return campusToLocation("campus_centro");
+  });
+  const [dropoff, setDropoff] = useState<LocationValue | null>(() => {
+    if (prefill?.campus && prefill.direction !== "from_campus") {
+      return campusToLocation(prefill.campus);
+    }
+    return campusToLocation("campus_vale");
+  });
   const [includeDropoff, setIncludeDropoff] = useState<boolean>(true);
   const [womenOnly, setWomenOnly] = useState<boolean>(false);
   const [departureAfter, setDepartureAfter] = useState<string>("");
@@ -54,21 +71,42 @@ export const FindRidePage: React.FC = () => {
   const [pickMode, setPickMode] = useState<"pickup" | "destination" | null>(null);
   const [previewGeoJson, setPreviewGeoJson] = useState<GeoJSON.LineString | null>(null);
 
-  // Search results & existing match statuses
+  // Search results, existing match statuses & Multi-Matching selection
   const [rides, setRides] = useState<RidePublic[]>([]);
   const [myMatchesByRide, setMyMatchesByRide] = useState<Record<number, MatchStatus>>({});
+  const [selectedRideIds, setSelectedRideIds] = useState<number[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [searched, setSearched] = useState<boolean>(false);
   const [requestingId, setRequestingId] = useState<number | null>(null);
+  const [batchRequesting, setBatchRequesting] = useState<boolean>(false);
+
+  // Geocode text query passed from HomePage search bar (if any)
+  useEffect(() => {
+    const query = prefill?.addressQuery?.trim();
+    if (!query) return;
+    let active = true;
+    geocodingService.searchAddress(query).then((results) => {
+      if (!active || results.length === 0) return;
+      if (prefill?.direction === "from_campus") {
+        setDropoff(results[0]);
+      } else {
+        setPickup(results[0]);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [prefill?.addressQuery, prefill?.direction]);
 
   // Load passenger's existing match requests so cards show real-time status
   useEffect(() => {
+    if (localStorage.getItem("access_token") === DEV_MOCK_TOKEN) return;
     matchesApi
       .getMyMatches()
       .then(({ data }) => {
         const map: Record<number, MatchStatus> = {};
         for (const m of data) {
-          if (m.status === "pending" || m.status === "accepted") {
+          if (m.status === "pending" || m.status === "accepted" || m.status === "superseded") {
             map[m.ride_id] = m.status;
           }
         }
@@ -97,6 +135,28 @@ export const FindRidePage: React.FC = () => {
   }, [pickup, dropoff, includeDropoff]);
 
   const activeRouteGeoJson = pickup && includeDropoff && dropoff ? previewGeoJson : null;
+
+  const eligibleBatchRides = useMemo(
+    () =>
+      rides.filter((r) => {
+        const st = myMatchesByRide[r.id] ?? r.my_match_status ?? null;
+        return r.available_seats > 0 && !st;
+      }),
+    [rides, myMatchesByRide]
+  );
+
+  const handleToggleSelectRide = (rideId: number) => {
+    setSelectedRideIds((prev) =>
+      prev.includes(rideId) ? prev.filter((id) => id !== rideId) : [...prev, rideId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    const eligibleIds = eligibleBatchRides.map((r) => r.id);
+    const allSelected =
+      eligibleIds.length > 0 && eligibleIds.every((id) => selectedRideIds.includes(id));
+    setSelectedRideIds(allSelected ? [] : eligibleIds);
+  };
 
   const handleMapClick = async (lat: number, lng: number) => {
     const target = pickMode ?? "pickup";
@@ -129,8 +189,10 @@ export const FindRidePage: React.FC = () => {
 
     setLoading(true);
     setSearched(true);
+    setSelectedRideIds([]);
     try {
       const { data } = await ridesApi.search({
+        address_id: pickup.addressId,
         pickup_lat: pickup.lat,
         pickup_lng: pickup.lng,
         pickup_label: pickup.label,
@@ -140,6 +202,17 @@ export const FindRidePage: React.FC = () => {
         departure_after: departureAfter ? new Date(departureAfter).toISOString() : undefined,
       });
       setRides(data);
+
+      // Sync any `my_match_status` returned inline by `/rides/search`
+      setMyMatchesByRide((prev) => {
+        const next = { ...prev };
+        for (const r of data) {
+          if (r.my_match_status) {
+            next[r.id] = r.my_match_status;
+          }
+        }
+        return next;
+      });
     } catch (err: unknown) {
       toast.error("Erro ao buscar caronas", getErrorMessage(err));
     } finally {
@@ -153,6 +226,7 @@ export const FindRidePage: React.FC = () => {
     try {
       await matchesApi.request({
         ride_id: ride.id,
+        pickup_address_id: pickup.addressId ?? undefined,
         pickup_lat: pickup.lat,
         pickup_lng: pickup.lng,
         pickup_label: pickup.label,
@@ -162,6 +236,7 @@ export const FindRidePage: React.FC = () => {
         dropoff_label: includeDropoff && dropoff ? dropoff.label : undefined,
       });
       setMyMatchesByRide((prev) => ({ ...prev, [ride.id]: "pending" }));
+      setSelectedRideIds((prev) => prev.filter((id) => id !== ride.id));
       toast.success(
         "Solicitação enviada ao motorista!",
         `Apenas a região "${pickup.region}" foi compartilhada. Seu endereço exato só será revelado quando o motorista aceitar.`
@@ -170,6 +245,53 @@ export const FindRidePage: React.FC = () => {
       toast.error("Não foi possível solicitar a carona", getErrorMessage(err));
     } finally {
       setRequestingId(null);
+    }
+  };
+
+  const handleRequestBatch = async () => {
+    if (!pickup || selectedRideIds.length === 0) return;
+    setBatchRequesting(true);
+    try {
+      const { data } = await matchesApi.requestBatch({
+        ride_ids: selectedRideIds,
+        pickup_address_id: pickup.addressId ?? undefined,
+        pickup_lat: pickup.lat,
+        pickup_lng: pickup.lng,
+        pickup_label: pickup.label,
+        pickup_region: pickup.region || pickup.label,
+        dropoff_lat: includeDropoff && dropoff ? dropoff.lat : undefined,
+        dropoff_lng: includeDropoff && dropoff ? dropoff.lng : undefined,
+        dropoff_label: includeDropoff && dropoff ? dropoff.label : undefined,
+      });
+
+      setMyMatchesByRide((prev) => {
+        const next = { ...prev };
+        for (const created of data.created) {
+          next[created.ride_id] = "pending";
+        }
+        return next;
+      });
+      setSelectedRideIds([]);
+
+      const createdCount = data.created.length;
+      const skippedCount = data.skipped.length;
+      if (createdCount > 0) {
+        toast.success(
+          `Multi-Matching enviado (${createdCount} ${createdCount === 1 ? "carona" : "caronas"})!`,
+          skippedCount > 0
+            ? `Assim que 1 motorista aceitar, as demais são encerradas automaticamente. (${skippedCount} ignorada(s)).`
+            : "Assim que o primeiro motorista aceitar sua vaga, as demais solicitações do lote são encerradas automaticamente."
+        );
+      } else {
+        toast.info(
+          "Nenhuma nova solicitação criada",
+          data.skipped[0]?.reason ?? "As caronas selecionadas não puderam receber o pedido."
+        );
+      }
+    } catch (err: unknown) {
+      toast.error("Erro ao enviar Multi-Matching", getErrorMessage(err));
+    } finally {
+      setBatchRequesting(false);
     }
   };
 
@@ -397,6 +519,55 @@ export const FindRidePage: React.FC = () => {
             )}
           </div>
 
+          {/* Multi-Matching Batch Bar (shown when 2+ eligible rides exist) */}
+          {(eligibleBatchRides.length >= 2 || selectedRideIds.length > 0) && (
+            <div
+              className="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              style={{
+                backgroundColor: "var(--color-surface)",
+                borderColor:
+                  selectedRideIds.length > 0 ? "var(--color-primary)" : "var(--color-border)",
+              }}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 text-xs font-extrabold" style={{ color: "var(--color-text)" }}>
+                  <CheckCircleIcon size={15} className="text-indigo-400 shrink-0" />
+                  <span>Multi-Matching em Lote</span>
+                </div>
+                <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                  Selecione várias opções compatíveis de uma vez. Assim que o primeiro motorista
+                  aceitar, as demais solicitações do lote são encerradas automaticamente.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleToggleSelectAll}
+                >
+                  {eligibleBatchRides.length > 0 &&
+                  eligibleBatchRides.every((r) => selectedRideIds.includes(r.id))
+                    ? "Limpar seleção"
+                    : `Selecionar todas (${eligibleBatchRides.length})`}
+                </Button>
+
+                {selectedRideIds.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="primary"
+                    loading={batchRequesting}
+                    onClick={handleRequestBatch}
+                  >
+                    Solicitar em Lote ({selectedRideIds.length})
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {rides.length === 0 ? (
             <div
               className="rounded-3xl p-10 border text-center space-y-2"
@@ -422,6 +593,9 @@ export const FindRidePage: React.FC = () => {
                   onRequestMatch={handleRequestMatch}
                   isRequesting={requestingId === ride.id}
                   existingMatchStatus={myMatchesByRide[ride.id] ?? null}
+                  selectable={eligibleBatchRides.length >= 2}
+                  selected={selectedRideIds.includes(ride.id)}
+                  onToggleSelect={handleToggleSelectRide}
                   passengerPickup={
                     pickup ? { lat: pickup.lat, lng: pickup.lng, label: pickup.label } : null
                   }
