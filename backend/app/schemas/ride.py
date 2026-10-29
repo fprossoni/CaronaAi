@@ -48,6 +48,10 @@ class RidePublic(BaseModel):
     origin_label: str
     destination_label: str
     campus_point: str
+    origin_lat: float | None = None
+    origin_lng: float | None = None
+    destination_lat: float | None = None
+    destination_lng: float | None = None
     departure_at: datetime
     delay_tolerance_minutes: int
     total_seats: int
@@ -56,6 +60,7 @@ class RidePublic(BaseModel):
     status: RideStatus
     route_distance_meters: float
     route_duration_seconds: float
+    route_geojson: dict | None = None
 
     # Detour calculated for a specific passenger search
     detour_meters: float | None = None
@@ -66,8 +71,6 @@ class RidePublic(BaseModel):
 
 class RideDetail(RidePublic):
     """Full ride info including geometry — returned to the driver."""
-    # Route GeoJSON for map display
-    route_geojson: dict | None = None
 
     model_config = {"from_attributes": True}
 
@@ -81,6 +84,8 @@ class TripParticipant(BaseModel):
     avg_rating: float
     rating_count: int
     role: str  # "driver" | "passenger"
+    match_id: int | None = None
+    already_rated: bool = False
 
 
 class TripHistory(BaseModel):

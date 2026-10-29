@@ -4,9 +4,12 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
 from geoalchemy2 import WKTElement
+from geoalchemy2.shape import to_shape
+from shapely.geometry import mapping
 from sqlalchemy import select
 
 from app.api.deps import DbSession, DriverUser, VerifiedUser
+from app.models.rating import Rating
 from app.models.ride import Ride, RideStatus
 from app.schemas.ride import RideCreate, RideDetail, RidePublic, TripHistory, TripParticipant
 from app.services.matching import find_matching_rides
@@ -17,6 +20,25 @@ router = APIRouter(prefix="/rides", tags=["rides"])
 
 def _point_wkt(lat: float, lng: float) -> WKTElement:
     return WKTElement(f"POINT({lng} {lat})", srid=4326)
+
+
+def _serialize_ride(ride: Ride, schema_cls: type[RidePublic] | type[RideDetail] = RideDetail) -> RidePublic | RideDetail:
+    """Convert ORM Ride to Pydantic schema including PostGIS coordinates & route GeoJSON."""
+    result = schema_cls.model_validate(ride)
+    try:
+        if ride.origin_point is not None:
+            pt = to_shape(ride.origin_point)
+            result.origin_lat = pt.y
+            result.origin_lng = pt.x
+        if ride.destination_point is not None:
+            pt = to_shape(ride.destination_point)
+            result.destination_lat = pt.y
+            result.destination_lng = pt.x
+        if ride.route_line is not None:
+            result.route_geojson = dict(mapping(to_shape(ride.route_line)))
+    except Exception:
+        pass
+    return result
 
 
 @router.post("/", response_model=RideDetail, status_code=status.HTTP_201_CREATED)
@@ -57,10 +79,10 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
     db.commit()
     db.refresh(ride)
 
-    # Attach geojson for the response
-    result = RideDetail.model_validate(ride)
-    result.route_geojson = route_geojson
-    return result
+    result = _serialize_ride(ride, RideDetail)
+    if route_geojson and not result.route_geojson:
+        result.route_geojson = route_geojson
+    return result  # type: ignore[return-value]
 
 
 @router.get("/search", response_model=list[RidePublic])
@@ -89,7 +111,7 @@ async def search_rides(
 
     results = []
     for c in candidates:
-        ride_schema = RidePublic.model_validate(c.ride)
+        ride_schema = _serialize_ride(c.ride, RidePublic)
         ride_schema.detour_meters = c.detour_meters
         ride_schema.detour_seconds = c.detour_seconds
         results.append(ride_schema)
@@ -98,14 +120,14 @@ async def search_rides(
 
 
 @router.get("/my", response_model=list[RideDetail])
-def get_my_rides(current_user: VerifiedUser, db: DbSession) -> list[Ride]:
+def get_my_rides(current_user: VerifiedUser, db: DbSession) -> list[RideDetail]:
     """Get all rides created by the current driver."""
     rides = db.execute(
         select(Ride)
         .where(Ride.driver_id == current_user.id)
         .order_by(Ride.departure_at.desc())
     ).scalars().all()
-    return list(rides)
+    return [_serialize_ride(r, RideDetail) for r in rides]  # type: ignore[misc]
 
 
 @router.get("/history", response_model=list[TripHistory])
@@ -122,7 +144,13 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
 
     now = datetime.now(UTC)
 
-    def build_participants(ride: Ride, exclude_id: int) -> list[TripParticipant]:
+    # Fetch ratings already submitted by current_user
+    user_ratings = db.execute(
+        select(Rating.match_id, Rating.rated_id).where(Rating.rater_id == current_user.id)
+    ).all()
+    rated_pairs = {(r.match_id, r.rated_id) for r in user_ratings}
+
+    def build_participants(ride: Ride, exclude_id: int, viewer_match_id: int | None = None) -> list[TripParticipant]:
         participants: list[TripParticipant] = []
         driver = ride.driver
         if driver.id != exclude_id:
@@ -134,10 +162,13 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
                 avg_rating=driver.avg_rating,
                 rating_count=driver.rating_count,
                 role="driver",
+                match_id=viewer_match_id,
+                already_rated=bool(viewer_match_id and (viewer_match_id, driver.id) in rated_pairs),
             ))
         for m in ride.matches:
             if m.status == MatchStatus.ACCEPTED and m.passenger_id != exclude_id:
                 p = m.passenger
+                target_match_id = m.id if ride.driver_id == exclude_id else viewer_match_id
                 participants.append(TripParticipant(
                     id=p.id,
                     name=p.name,
@@ -146,6 +177,8 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
                     avg_rating=p.avg_rating,
                     rating_count=p.rating_count,
                     role="passenger",
+                    match_id=target_match_id,
+                    already_rated=bool(target_match_id and (target_match_id, p.id) in rated_pairs),
                 ))
         return participants
 
@@ -169,7 +202,7 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
             departure_at=ride.departure_at,
             origin_label=ride.origin_label,
             destination_label=ride.destination_label,
-            participants=build_participants(ride, current_user.id),
+            participants=build_participants(ride, current_user.id, None),
         ))
 
     # 2) As passenger — accepted (then completed/cancelled) or cancelled matches
@@ -196,7 +229,11 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
             departure_at=ride.departure_at,
             origin_label=ride.origin_label,
             destination_label=ride.destination_label,
-            participants=build_participants(ride, current_user.id),
+            participants=build_participants(
+                ride,
+                current_user.id,
+                match.id if match.status == MatchStatus.ACCEPTED else None,
+            ),
         ))
 
     results.sort(key=lambda t: t.departure_at, reverse=True)
@@ -204,12 +241,12 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
 
 
 @router.get("/{ride_id}", response_model=RideDetail)
-def get_ride(ride_id: int, db: DbSession, current_user: VerifiedUser) -> Ride:
+def get_ride(ride_id: int, db: DbSession, current_user: VerifiedUser) -> RideDetail:
     """Get a specific ride by ID."""
     ride = db.get(Ride, ride_id)
     if not ride:
         raise HTTPException(status_code=404, detail="Ride not found")
-    return ride
+    return _serialize_ride(ride, RideDetail)  # type: ignore[return-value]
 
 
 @router.patch("/{ride_id}/cancel")

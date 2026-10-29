@@ -13,6 +13,8 @@ export interface UserPublic {
   avg_rating: number;
   rating_count: number;
   is_driver: boolean;
+  car_model?: string | null;
+  car_color?: string | null;
 }
 
 export interface UserPrivate extends UserPublic {

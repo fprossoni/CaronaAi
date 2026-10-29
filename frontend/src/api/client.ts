@@ -23,6 +23,9 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (localStorage.getItem("access_token") === "dev_mock_token") {
+        return Promise.reject(error);
+      }
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem("refresh_token");
 

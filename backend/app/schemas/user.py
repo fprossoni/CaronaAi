@@ -40,6 +40,8 @@ class UserPublic(BaseModel):
     avg_rating: float
     rating_count: int
     is_driver: bool
+    car_model: str | None = None
+    car_color: str | None = None
 
     model_config = {"from_attributes": True}
 

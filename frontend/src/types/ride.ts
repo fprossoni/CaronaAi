@@ -19,6 +19,10 @@ export interface RidePublic {
   origin_label: string;
   destination_label: string;
   campus_point: CampusId;
+  origin_lat?: number | null;
+  origin_lng?: number | null;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
   departure_at: string; // ISO datetime
   delay_tolerance_minutes: number;
   total_seats: number;
@@ -27,6 +31,7 @@ export interface RidePublic {
   status: RideStatus;
   route_distance_meters: number;
   route_duration_seconds: number;
+  route_geojson?: GeoJSON.LineString | null;
   // Set when returned from search
   detour_meters?: number;
   detour_seconds?: number;
@@ -57,6 +62,7 @@ export interface SearchRidesParams {
   dropoff_lat?: number;
   dropoff_lng?: number;
   women_only?: boolean;
+  departure_after?: string;
 }
 
 export interface TripParticipant {
@@ -67,6 +73,8 @@ export interface TripParticipant {
   avg_rating: number;
   rating_count: number;
   role: "driver" | "passenger";
+  match_id?: number | null;
+  already_rated?: boolean;
 }
 
 export interface TripHistory {

@@ -15,7 +15,6 @@ import {
 } from "@/lib/formatters";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
-import styles from "./ProfileCompletePage.module.css";
 
 type Preference = "passenger" | "driver" | "both";
 
@@ -137,17 +136,36 @@ export const ProfileCompletePage: React.FC = () => {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Complete seu perfil</h1>
-        <p className={styles.subtitle}>Só mais algumas informações para terminar seu cadastro.</p>
+    <div className="min-h-screen flex items-start justify-center p-4 sm:p-6 pt-8 pb-16">
+      <div
+        className="w-full max-w-lg rounded-3xl p-6 sm:p-8 border shadow-2xl animate-fade-in"
+        style={{
+          background: "var(--gradient-card)",
+          borderColor: "var(--color-border)",
+          boxShadow: "var(--shadow-lg)",
+        }}
+      >
+        <div className="text-center mb-6">
+          <h1
+            className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent"
+            style={{ backgroundImage: "var(--gradient-primary)" }}
+          >
+            Complete seu perfil
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>
+            Só mais algumas informações para terminar seu cadastro.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.avatarSection}>
-            <div className={styles.avatarWrap}>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div
+            className="flex items-center gap-4 p-4 rounded-2xl border"
+            style={{ borderColor: "var(--color-border)", background: "var(--color-surface-2)" }}
+          >
+            <div className="shrink-0">
               <Avatar name={user.name} photoUrl={form.photoUrl.trim() || null} size="lg" />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1 min-w-0">
               <Input
                 label="Foto de perfil (opcional)"
                 placeholder="https://exemplo.com/sua-foto.jpg"
@@ -168,31 +186,54 @@ export const ProfileCompletePage: React.FC = () => {
             required
           />
 
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Campi que você frequenta (opcional)</legend>
-            <div className={styles.checkboxGrid}>
+          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
+              Campi que você frequenta (opcional)
+            </legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {UFRGS_CAMPUS.map((c) => (
-                <label key={c.id} className={styles.checkboxLabel}>
+                <label
+                  key={c.id}
+                  className="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer select-none transition"
+                  style={{
+                    background: "var(--color-surface-2)",
+                    borderColor: form.campuses.includes(c.id) ? "var(--color-primary)" : "var(--color-border)",
+                    boxShadow: form.campuses.includes(c.id) ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
+                  }}
+                >
                   <input
                     type="checkbox"
+                    className="accent-indigo-500 w-4 h-4 rounded"
                     checked={form.campuses.includes(c.id)}
                     onChange={() => handleToggleCampus(c.id)}
                   />
-                  <span>{c.shortName}</span>
+                  <span className="text-sm font-medium" style={{ color: "var(--color-text)" }}>{c.shortName}</span>
                 </label>
               ))}
             </div>
-            <p className={styles.helperText}>Você pode selecionar mais de um campus.</p>
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Você pode selecionar mais de um campus.</p>
           </fieldset>
 
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Gênero <span className={styles.req}>*</span></legend>
-            <div className={styles.radioGroup}>
+          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
+              Gênero <span className="text-red-500">*</span>
+            </legend>
+            <div className="grid grid-cols-2 gap-2">
               {GENDER_OPTIONS.map((opt) => (
-                <label key={opt.value} className={styles.radioLabel}>
+                <label
+                  key={opt.value}
+                  className="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition text-sm"
+                  style={{
+                    background: "var(--color-surface-2)",
+                    borderColor: form.gender === opt.value ? "var(--color-primary)" : "var(--color-border)",
+                    boxShadow: form.gender === opt.value ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
+                    color: "var(--color-text)",
+                  }}
+                >
                   <input
                     type="radio"
                     name="gender"
+                    className="accent-indigo-500 w-4 h-4"
                     value={opt.value}
                     checked={form.gender === opt.value}
                     onChange={() => setField("gender", opt.value)}
@@ -201,48 +242,66 @@ export const ProfileCompletePage: React.FC = () => {
                 </label>
               ))}
             </div>
-            {errors.gender && <p className={styles.fieldError}>{errors.gender}</p>}
+            {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
           </fieldset>
 
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Preferência <span className={styles.req}>*</span></legend>
-            <div className={styles.radioGroup}>
+          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
+              Preferência inicial <span className="text-red-500">*</span>
+            </legend>
+            <div className="flex flex-col gap-2">
               {PREFERENCE_OPTIONS.map((opt) => (
-                <label key={opt.value} className={styles.radioRow}>
+                <label
+                  key={opt.value}
+                  className="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition"
+                  style={{
+                    background: "var(--color-surface-2)",
+                    borderColor: form.preference === opt.value ? "var(--color-primary)" : "var(--color-border)",
+                    boxShadow: form.preference === opt.value ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
+                  }}
+                >
                   <input
                     type="radio"
                     name="preference"
+                    className="accent-indigo-500 w-4 h-4 mt-1"
                     value={opt.value}
                     checked={form.preference === opt.value}
                     onChange={() => setField("preference", opt.value)}
                   />
-                  <span className={styles.radioText}>
-                    <span className={styles.radioTitle}>{opt.label}</span>
-                    <span className={styles.radioDesc}>{opt.description}</span>
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{opt.label}</span>
+                    <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{opt.description}</span>
                   </span>
                 </label>
               ))}
             </div>
-            {errors.preference && <p className={styles.fieldError}>{errors.preference}</p>}
-            <p className={styles.infoNote}>
+            {errors.preference && <p className="text-xs text-red-500">{errors.preference}</p>}
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
               Você poderá alterar sua preferência (motorista / passageiro) a qualquer momento no seu perfil.
             </p>
           </fieldset>
 
-          <div className={styles.textareaWrap}>
-            <label className={styles.legend} htmlFor="bio">
-              Bio / Apresentação curta (opcional)
-            </label>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="bio" className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                Bio / Apresentação curta (opcional)
+              </label>
+              <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{form.bio.length}/250</span>
+            </div>
             <textarea
               id="bio"
-              className={styles.textarea}
               rows={3}
               maxLength={250}
-              placeholder="Conte um pouco sobre você (ex.: horários frequentes, estilo de viagem...)"
+              placeholder="Conte um pouco sobre você (ex.: horários frequentes no campus do Vale, estilo de viagem, música favorita...)"
               value={form.bio}
               onChange={(e) => setField("bio", e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition resize-none focus:ring-2 focus:ring-indigo-500/30"
+              style={{
+                background: "var(--color-surface-2)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text)",
+              }}
             />
-            <span className={styles.charCount}>{form.bio.length}/250</span>
           </div>
 
           <Input
@@ -259,15 +318,23 @@ export const ProfileCompletePage: React.FC = () => {
           />
           <Input
             label="Telefone (opcional)"
-            placeholder="(51) 999999999"
+            placeholder="(51) 99999-9999"
             type="tel"
             value={form.phone}
             onChange={(e) => setField("phone", formatPhone(e.target.value))}
           />
 
           {isDriver && (
-            <div className={styles.carSection}>
-              <p className={styles.carTitle}>Dados do seu carro (opcional)</p>
+            <div
+              className="rounded-2xl border border-dashed p-4 flex flex-col gap-3"
+              style={{
+                borderColor: "var(--color-border)",
+                background: "rgba(99, 102, 241, 0.05)",
+              }}
+            >
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--color-text)" }}>
+                Dados do seu veículo (opcional)
+              </p>
               <Input
                 label="Modelo"
                 placeholder="Ex.: Volkswagen Gol 2022"
@@ -292,9 +359,16 @@ export const ProfileCompletePage: React.FC = () => {
             </div>
           )}
 
-          {error && <p className={styles.error}>{error}</p>}
+          {error && (
+            <div
+              className="p-3 rounded-xl text-xs text-center border"
+              style={{ background: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.25)", color: "var(--color-danger)" }}
+            >
+              {error}
+            </div>
+          )}
 
-          <Button type="submit" fullWidth loading={loading}>
+          <Button type="submit" fullWidth loading={loading} size="lg">
             Concluir cadastro
           </Button>
         </form>
