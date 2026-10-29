@@ -286,6 +286,8 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
             driver_view.pickup_neighborhood = None
             driver_view.pickup_city = None
             driver_view.passenger_phone = None
+            if driver_view.passenger:
+                driver_view.passenger.phone = None
         results.append(driver_view)
 
     return results

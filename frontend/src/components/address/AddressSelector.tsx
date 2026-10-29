@@ -219,8 +219,14 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
                 name="postal_code"
                 placeholder="Ex: 90040-060"
                 value={customForm.postal_code}
-                onChange={handleCustomChange}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+                  const value = digits.length === 8 ? `${digits.slice(0,5)}-${digits.slice(5)}` : digits;
+                  handleCustomChange({ target: { name: "postal_code", value } } as React.ChangeEvent<HTMLInputElement>);
+                }}
                 onBlur={handleCepBlur}
+                inputMode="numeric"
+                maxLength={9}
                 required
               />
               {cepLoading && <span className={styles.cepNotice}>Buscando endereço...</span>}

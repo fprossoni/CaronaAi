@@ -7,6 +7,7 @@ export interface UserPublic {
   name: string | null;
   email: string;
   course: string | null;
+  gender: Gender | null;
   photo_url: string | null;
   social_link: string | null;
   instagram: string | null;
@@ -20,7 +21,6 @@ export interface UserPublic {
 }
 
 export interface UserPrivate extends UserPublic {
-  gender: Gender | null;
   birth_date: string | null; // YYYY-MM-DD
   car_model: string | null;
   car_plate: string | null;

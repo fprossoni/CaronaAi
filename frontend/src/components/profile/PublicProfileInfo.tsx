@@ -13,34 +13,38 @@ function instagramUrl(handle: string): string {
   return `https://instagram.com/${handle.replace(/^@/, "")}`;
 }
 
-function whatsappUrl(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  return `https://wa.me/${digits.length <= 11 ? `55${digits}` : digits}`;
-}
+const GENDER_LABELS: Record<string, string> = {
+  male: "Masculino",
+  female: "Feminino",
+  other: "Outro",
+  prefer_not_to_say: "Prefiro não dizer",
+};
 
 /** Public info shown to the other side of a potential match:
- *  email, course, age, instagram and phone. */
+ *  course, gender, age, and optional instagram.
+ *  Email and phone are private and shown only after acceptance. */
 export const PublicProfileInfo: React.FC<PublicProfileInfoProps> = ({ user, variant = "compact" }) => {
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   const items: { key: string; icon: IconName; label: string; value: React.ReactNode }[] = [];
 
-  if (user.age != null) {
-    items.push({ key: "age", icon: "cake", label: "Idade", value: `${user.age} anos` });
-  }
   if (user.course) {
     items.push({ key: "course", icon: "book", label: "Curso", value: user.course });
   }
-  items.push({
-    key: "email",
-    icon: "mail",
-    label: "E-mail",
-    value: (
-      <a href={`mailto:${user.email}`} onClick={stop} className={styles.link}>
-        {user.email}
-      </a>
-    ),
-  });
+
+  if (user.gender) {
+    items.push({
+      key: "gender",
+      icon: "user",
+      label: "Gênero",
+      value: GENDER_LABELS[user.gender] || user.gender,
+    });
+  }
+
+  if (user.age != null) {
+    items.push({ key: "age", icon: "cake", label: "Idade", value: `${user.age} anos` });
+  }
+
   if (user.instagram) {
     items.push({
       key: "instagram",
@@ -49,18 +53,6 @@ export const PublicProfileInfo: React.FC<PublicProfileInfoProps> = ({ user, vari
       value: (
         <a href={instagramUrl(user.instagram)} target="_blank" rel="noreferrer" onClick={stop} className={styles.link}>
           {user.instagram}
-        </a>
-      ),
-    });
-  }
-  if (user.phone) {
-    items.push({
-      key: "phone",
-      icon: "phone",
-      label: "Telefone",
-      value: (
-        <a href={whatsappUrl(user.phone)} target="_blank" rel="noreferrer" onClick={stop} className={styles.link}>
-          {user.phone}
         </a>
       ),
     });
@@ -83,14 +75,12 @@ export const PublicProfileInfo: React.FC<PublicProfileInfoProps> = ({ user, vari
 
   return (
     <ul className={styles.chips}>
-      {items
-        .filter((it) => it.key !== "course")
-        .map((it) => (
-          <li key={it.key} className={styles.chip} title={it.label}>
-            <Icon name={it.icon} size={13} />
-            <span className={styles.chipValue}>{it.value}</span>
-          </li>
-        ))}
+      {items.map((it) => (
+        <li key={it.key} className={styles.chip} title={it.label}>
+          <Icon name={it.icon} size={13} />
+          <span className={styles.chipValue}>{it.value}</span>
+        </li>
+      ))}
     </ul>
   );
 };

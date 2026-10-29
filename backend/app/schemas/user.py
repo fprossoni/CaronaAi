@@ -65,12 +65,13 @@ class UserPublic(BaseModel):
     """Public-facing user info (shown in ride listings and matching lists).
 
     Shown to the other side of a potential match: email, photo, name, course,
-    age, instagram and phone. The exact birth date is never exposed.
+    gender, age, instagram and phone. The exact birth date is never exposed.
     """
     id: int
     name: str | None
     email: str
     course: str | None
+    gender: Gender | None = None
     photo_url: str | None
     social_link: str | None
     instagram: str | None = None
@@ -87,7 +88,6 @@ class UserPublic(BaseModel):
 
 class UserPrivate(UserPublic):
     """Full profile — only returned to the user themselves."""
-    gender: Gender | None
     birth_date: date | None = None
     car_model: str | None
     car_plate: str | None

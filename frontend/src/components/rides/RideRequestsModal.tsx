@@ -113,9 +113,6 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
                       <div className={styles.passengerHeader}>
                         <p className={styles.passengerName}>
                           {m.passenger.name ?? "Passageiro"}
-                          {m.passenger.age != null && (
-                            <span className={styles.passengerAge}>, {m.passenger.age} anos</span>
-                          )}
                         </p>
                         <span className={idx === 0 ? styles.bestDetourBadge : styles.detourBadge}>
                           {idx === 0 ? "Menor desvio: " : "Desvio: "}
@@ -175,25 +172,31 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({ ride, onCl
                     <div className={styles.requestInfo}>
                       <p className={styles.passengerName}>
                         {m.passenger.name ?? "Passageiro"}
-                        {m.passenger.age != null && (
-                          <span className={styles.passengerAge}>, {m.passenger.age} anos</span>
-                        )}
                         <span className={styles.confirmedBadge}>Confirmado</span>
                       </p>
                       <p className={styles.passengerMeta}><Icon name="pin" size={13} /> Região: {m.pickup_region}</p>
 
-                      {m.pickup_street && (
+                      {(m.pickup_street || m.passenger_phone) && (
                         <div className={styles.revealedAddress}>
                           <p className={styles.revealedTitle}><Icon name="flag" size={13} /> Ponto de embarque confirmado:</p>
-                          <p className={styles.revealedMain}>
-                            {m.pickup_street}, {m.pickup_number}
-                            {m.pickup_complement ? ` (${m.pickup_complement})` : ""}
-                          </p>
-                          <p className={styles.revealedSub}>
-                            {m.pickup_neighborhood ? `${m.pickup_neighborhood} · ` : ""}
-                            {m.pickup_city ? `${m.pickup_city}` : ""}
-                            {m.pickup_postal_code ? ` (CEP: ${m.pickup_postal_code})` : ""}
-                          </p>
+                          {m.pickup_street && (
+                            <>
+                              <p className={styles.revealedMain}>
+                                {m.pickup_street}, {m.pickup_number}
+                                {m.pickup_complement ? ` (${m.pickup_complement})` : ""}
+                              </p>
+                              <p className={styles.revealedSub}>
+                                {m.pickup_neighborhood ? `${m.pickup_neighborhood} · ` : ""}
+                                {m.pickup_city ? `${m.pickup_city}` : ""}
+                                {m.pickup_postal_code ? ` (CEP: ${m.pickup_postal_code})` : ""}
+                              </p>
+                            </>
+                          )}
+                          {m.passenger_phone && (
+                            <p className={styles.revealedSub} style={{ marginTop: 4 }}>
+                              <Icon name="phone" size={12} /> Contato: {m.passenger_phone}
+                            </p>
+                          )}
                         </div>
                       )}
 

@@ -149,8 +149,17 @@ export const SavedAddressesManager: React.FC = () => {
                 name="postal_code"
                 placeholder="Ex: 90040-060"
                 value={form.postal_code}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+                  if (digits.length === 8) {
+                    setForm((prev) => ({ ...prev, postal_code: `${digits.slice(0,5)}-${digits.slice(5)}` }));
+                  } else {
+                    setForm((prev) => ({ ...prev, postal_code: digits }));
+                  }
+                }}
                 onBlur={handleCepBlur}
+                inputMode="numeric"
+                maxLength={9}
                 required
               />
               {cepLoading && <span className={styles.cepNotice}>Buscando CEP...</span>}
