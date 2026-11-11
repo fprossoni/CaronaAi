@@ -41,6 +41,8 @@ export interface MatchConfirmed extends MatchPublic {
   driver_phone?: string | null;
   pickup_lat?: number | null;
   pickup_lng?: number | null;
+  dropoff_lat?: number | null;
+  dropoff_lng?: number | null;
   passenger_phone?: string | null;
   pickup_street?: string | null;
   pickup_number?: string | null;
@@ -55,9 +57,11 @@ export interface MatchWithRide extends MatchPublic {
   ride: RidePublic;
 }
 
-export interface MatchRequest {
-  ride_id: number;
+interface MatchTrip {
+  pickup_after: string;
+  pickup_before: string;
   pickup_address_id?: number | null;
+  dropoff_address_id?: number | null;
   custom_address?: AddressCreate | null;
   pickup_lat?: number;
   pickup_lng?: number;
@@ -68,17 +72,12 @@ export interface MatchRequest {
   pickup_region?: string;
 }
 
-export interface MatchBatchRequest {
+export interface MatchRequest extends MatchTrip {
+  ride_id: number;
+}
+
+export interface MatchBatchRequest extends MatchTrip {
   ride_ids: number[];
-  pickup_address_id?: number | null;
-  custom_address?: AddressCreate | null;
-  pickup_lat?: number;
-  pickup_lng?: number;
-  pickup_label?: string;
-  dropoff_lat?: number;
-  dropoff_lng?: number;
-  dropoff_label?: string;
-  pickup_region?: string;
 }
 
 export interface MatchBatchResult {

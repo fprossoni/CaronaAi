@@ -9,6 +9,25 @@
 import type { UserPrivate, UserPublic } from "@/types/user";
 import type { RideDetail, RidePublic } from "@/types/ride";
 import type { MatchConfirmed, MatchForDriver } from "@/types/match";
+import type { AddressPublic } from "@/types/address";
+
+export const MOCK_HOME_ADDRESS: AddressPublic = {
+  id: 8001,
+  user_id: 9001,
+  label: "Casa (Bom Fim)",
+  street: "Av. Osvaldo Aranha",
+  number: "1020",
+  complement: "Apto 402",
+  neighborhood: "Bom Fim",
+  postal_code: "90035-191",
+  city: "Porto Alegre",
+  state: "RS",
+  country: "Brasil",
+  lat: -30.0365,
+  lng: -51.2135,
+  created_at: new Date().toISOString(),
+  full_address: "Av. Osvaldo Aranha, 1020 — Bom Fim, Porto Alegre",
+};
 
 // ─── Mock Users ──────────────────────────────────────────────────────────────
 
@@ -103,6 +122,17 @@ export const MOCK_FEMALE_DRIVER_PUBLIC: UserPublic = {
   car_color: "Branco",
 };
 
+export const MOCK_FEMALE_DRIVER_USER: UserPrivate = {
+  ...MOCK_FEMALE_DRIVER_PUBLIC,
+  gender: "female",
+  birth_date: "2002-03-09",
+  car_model: "Hyundai HB20 Platinum",
+  car_plate: "BRA2E20",
+  car_color: "Branco",
+  is_verified: true,
+  profile_complete: true,
+};
+
 // ─── Mock Route Geometry (Campus Centro -> Av. Ipiranga -> Campus do Vale) ──
 
 export const MOCK_ROUTE_GEOJSON: GeoJSON.LineString = {
@@ -134,7 +164,6 @@ export const MOCK_RIDE_STANDARD: RideDetail = {
   destination_lat: -30.0734,
   destination_lng: -51.1201,
   departure_at: tomorrowMorning,
-  delay_tolerance_minutes: 10,
   total_seats: 3,
   available_seats: 2,
   women_only: false,
@@ -157,7 +186,6 @@ export const MOCK_RIDE_WOMEN_ONLY: RidePublic = {
   destination_lat: -30.0734,
   destination_lng: -51.1201,
   departure_at: tomorrowAfternoon,
-  delay_tolerance_minutes: 5,
   total_seats: 3,
   available_seats: 1,
   women_only: true,
@@ -167,6 +195,18 @@ export const MOCK_RIDE_WOMEN_ONLY: RidePublic = {
   route_geojson: MOCK_ROUTE_GEOJSON,
   detour_meters: 1850,
   detour_seconds: 340,
+};
+
+export const MOCK_RIDE_FROM_CAMPUS: RidePublic = {
+  ...MOCK_RIDE_STANDARD,
+  id: 504,
+  origin_label: MOCK_RIDE_STANDARD.destination_label,
+  origin_lat: MOCK_RIDE_STANDARD.destination_lat,
+  origin_lng: MOCK_RIDE_STANDARD.destination_lng,
+  destination_label: MOCK_RIDE_STANDARD.origin_label,
+  destination_lat: MOCK_RIDE_STANDARD.origin_lat,
+  destination_lng: MOCK_RIDE_STANDARD.origin_lng,
+  route_geojson: { type: "LineString", coordinates: [...MOCK_ROUTE_GEOJSON.coordinates].reverse() },
 };
 
 export const MOCK_RIDE_FULL: RidePublic = {

@@ -27,6 +27,13 @@ const BaseSvg: React.FC<IconProps> = ({ size = 20, children, ...props }) => (
   </svg>
 );
 
+export const MessageIcon: React.FC<IconProps> = (props) => (
+  <BaseSvg {...props}>
+    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" />
+    <path d="M8 10h8M8 14h5" />
+  </BaseSvg>
+);
+
 export const CarIcon: React.FC<IconProps> = (props) => (
   <BaseSvg {...props}>
     <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />

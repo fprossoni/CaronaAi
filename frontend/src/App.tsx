@@ -10,6 +10,7 @@ import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage";
 import { FindRidePage } from "@/pages/FindRidePage";
 import { OfferRidePage } from "@/pages/OfferRidePage";
 import { MyRidesPage } from "@/pages/MyRidesPage";
+import { MessagesPage } from "@/pages/MessagesPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { ProfileCompletePage } from "@/pages/ProfileCompletePage";
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="/find" element={<ProtectedRoute><FindRidePage /></ProtectedRoute>} />
           <Route path="/offer" element={<ProtectedRoute><OfferRidePage /></ProtectedRoute>} />
           <Route path="/rides" element={<ProtectedRoute><MyRidesPage /></ProtectedRoute>} />
+          <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
           <Route path="/rides/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/profile/complete" element={<ProtectedRoute><ProfileCompletePage /></ProtectedRoute>} />

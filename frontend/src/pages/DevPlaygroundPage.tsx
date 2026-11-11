@@ -9,7 +9,8 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuthStore, DEV_MOCK_TOKEN } from "@/store/authStore";
+import { useAuthStore } from "@/store/authStore";
+import { isDevSession } from "@/lib/devSession";
 import { useThemeStore } from "@/store/themeStore";
 import { useToastStore } from "@/store/toastStore";
 import {
@@ -17,6 +18,7 @@ import {
   MOCK_DRIVER_REQUESTS,
   MOCK_DRIVER_USER,
   MOCK_FEMALE_DRIVER_PUBLIC,
+  MOCK_FEMALE_DRIVER_USER,
   MOCK_INCOMPLETE_USER,
   MOCK_PASSENGER_USER,
   MOCK_RIDE_FULL,
@@ -140,7 +142,7 @@ export const DevPlaygroundPage: React.FC = () => {
   const [pickingOnMap, setPickingOnMap] = useState(false);
   const [approximatePrivacyCircle, setApproximatePrivacyCircle] = useState(false);
 
-  const isMockToken = localStorage.getItem("access_token") === DEV_MOCK_TOKEN;
+  const isMockToken = isDevSession();
 
   const handleSandboxMapClick = async (lat: number, lng: number) => {
     const resolved = await geocodingService.reverseGeocode(lat, lng);
@@ -253,6 +255,16 @@ export const DevPlaygroundPage: React.FC = () => {
                 }}
               >
                 Simular Motorista
+              </Button>
+              <Button
+                size="sm"
+                variant={user?.id === MOCK_FEMALE_DRIVER_USER.id ? "primary" : "secondary"}
+                onClick={() => {
+                  setDevSession(MOCK_FEMALE_DRIVER_USER);
+                  toast.success("Sessão alterada: Motorista", "Logada como Beatriz (Engenharia Química).");
+                }}
+              >
+                Simular Motorista Mulher
               </Button>
               <Button
                 size="sm"
@@ -538,7 +550,7 @@ export const DevPlaygroundPage: React.FC = () => {
             onClick={() =>
               toast.info(
                 "Dica de Privacidade",
-                "Seu ponto exato de embarque só é revelado após o motorista aceitar a carona."
+                "Seu ponto exato de origem só é revelado após o motorista aceitar a carona."
               )
             }
           >
@@ -643,14 +655,14 @@ export const DevPlaygroundPage: React.FC = () => {
       {/* 5. Sandbox de Mapa & Seletor de Endereço */}
       <SectionCard
         title="5. Sandbox de Mapa Interativo & Autocomplete de Endereço"
-        subtitle="Teste a busca de endereço (OpenStreetMap Nominatim), atalhos de Campi da UFRGS, clique no mapa e o círculo de privacidade de embarque."
+        subtitle="Teste a busca de endereço (OpenStreetMap Nominatim), atalhos de Campi da UFRGS, clique no mapa e o círculo de privacidade de origem."
         filePath="src/components/map/InteractiveMap.tsx • LocationField.tsx"
         icon={<MapPinIcon size={20} />}
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-5 space-y-4">
             <LocationField
-              label="Ponto de Embarque (Teste de Autocomplete)"
+              label="Origem (teste de preenchimento automático)"
               value={sandboxLocation}
               onChange={(loc) => {
                 setSandboxLocation(loc);
@@ -658,6 +670,7 @@ export const DevPlaygroundPage: React.FC = () => {
               }}
               isPickingOnMap={pickingOnMap}
               onTogglePickOnMap={() => setPickingOnMap((prev) => !prev)}
+              showSavedAddresses={false}
               helperText="Experimente digitar uma rua de Porto Alegre, clicar em um Campus ou usar 'Mapa'."
             />
 
@@ -670,7 +683,7 @@ export const DevPlaygroundPage: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold" style={{ color: "var(--color-text)" }}>
-                  Modo de Privacidade do Embarque
+                  Privacidade da origem
                 </span>
                 <button
                   type="button"
@@ -786,7 +799,7 @@ export const DevPlaygroundPage: React.FC = () => {
         filePath="src/components/profile/SavedAddressesManager.tsx"
         icon={<MapPinIcon size={20} />}
       >
-        <SavedAddressesManager />
+        <SavedAddressesManager playground />
       </SectionCard>
 
       {/* ─── Active Modals Rendered on Demand ──────────────────────────────── */}

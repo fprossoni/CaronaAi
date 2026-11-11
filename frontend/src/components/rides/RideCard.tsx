@@ -21,7 +21,7 @@ import {
   StarIcon,
   UsersIcon,
 } from "@/components/ui/Icons";
-import { InteractiveMap } from "@/components/map/InteractiveMap";
+import { InteractiveMap, type MapPoint } from "@/components/map/InteractiveMap";
 import { UserProfileModal } from "@/components/users/UserProfileModal";
 
 interface RideCardProps {
@@ -29,7 +29,9 @@ interface RideCardProps {
   onRequestMatch?: (ride: RidePublic) => void;
   isRequesting?: boolean;
   existingMatchStatus?: MatchStatus | null;
-  passengerPickup?: { lat: number; lng: number; label?: string } | null;
+  passengerPickup?: MapPoint | null;
+  passengerDropoff?: MapPoint | null;
+  initiallyShowMap?: boolean;
   /** Optional Multi-Matching batch selection support */
   selectable?: boolean;
   selected?: boolean;
@@ -57,14 +59,17 @@ export const RideCard: React.FC<RideCardProps> = ({
   isRequesting = false,
   existingMatchStatus = null,
   passengerPickup = null,
+  passengerDropoff = null,
+  initiallyShowMap = false,
   selectable = false,
   selected = false,
   onToggleSelect,
 }) => {
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(initiallyShowMap);
   const [showDriverProfile, setShowDriverProfile] = useState(false);
 
-  const campus = getCampusInfo(ride.campus_point);
+  const campus = ride.campus_point ? getCampusInfo(ride.campus_point) : null;
+  const showDetour = !!(passengerPickup && passengerDropoff);
   const isLowDetour = (ride.detour_meters ?? 0) <= 1200;
   const resolvedMatchStatus = existingMatchStatus ?? ride.my_match_status ?? null;
   const canSelectForBatch =
@@ -146,16 +151,18 @@ export const RideCard: React.FC<RideCardProps> = ({
                   ♀ Só Mulheres
                 </span>
               )}
-              <span
-                className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-text-secondary)",
-                }}
-              >
-                {campus.shortName}
-              </span>
+              {campus && (
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
+                  style={{
+                    backgroundColor: "var(--color-surface-2)",
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-text-secondary)",
+                  }}
+                >
+                  {campus.shortName}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -175,7 +182,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 {formatTime(ride.departure_at)}
               </span>
               <span className="text-[11px] capitalize block" style={{ color: "var(--color-text-muted)" }}>
-                {formatDateShort(ride.departure_at)}
+                Saída · {formatDateShort(ride.departure_at)}
               </span>
             </div>
             <div className="text-right">
@@ -194,7 +201,7 @@ export const RideCard: React.FC<RideCardProps> = ({
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1.5 shrink-0 ring-4 ring-emerald-500/20" />
               <div className="min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: "var(--color-text-muted)" }}>
-                  Partida
+                  Origem do motorista
                 </span>
                 <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text)" }}>
                   {ride.origin_label}
@@ -206,7 +213,7 @@ export const RideCard: React.FC<RideCardProps> = ({
               <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 mt-1.5 shrink-0 ring-4 ring-indigo-500/20" />
               <div className="min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: "var(--color-text-muted)" }}>
-                  Destino
+                  Destino do motorista
                 </span>
                 <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text)" }}>
                   {ride.destination_label}
@@ -216,17 +223,25 @@ export const RideCard: React.FC<RideCardProps> = ({
           </div>
         </div>
 
-        {/* Metadata Pills: Vehicle, Tolerance, Available Seats */}
+        {ride.estimated_pickup_at && (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text)]">
+            <ClockIcon size={14} className="text-indigo-400" />
+            Chegada prevista à sua origem às {formatTime(ride.estimated_pickup_at)} · {formatDateShort(ride.estimated_pickup_at)}
+          </p>
+        )}
+
+        {ride.estimated_dropoff_at && (
+          <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text)]">
+            <ClockIcon size={14} className="text-indigo-400" />
+            Chegada prevista ao seu destino às {formatTime(ride.estimated_dropoff_at)} · {formatDateShort(ride.estimated_dropoff_at)}
+          </p>
+        )}
+
         <div className="mt-3.5 flex items-center justify-between gap-2 flex-wrap text-xs" style={{ color: "var(--color-text-secondary)" }}>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-1.5">
               <UsersIcon size={14} className="text-emerald-400" />
               <strong>{ride.available_seats}</strong> de {ride.total_seats} vagas livres
-            </span>
-
-            <span className="inline-flex items-center gap-1.5" style={{ color: "var(--color-text-muted)" }}>
-              <ClockIcon size={14} />
-              Tolerância ±{ride.delay_tolerance_minutes} min
             </span>
 
             {ride.driver.car_model && (
@@ -243,11 +258,12 @@ export const RideCard: React.FC<RideCardProps> = ({
           {(ride.origin_lat != null || ride.route_geojson) && (
             <button
               type="button"
+              aria-expanded={showMap}
               onClick={() => setShowMap((prev) => !prev)}
               className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
             >
               <MapPinIcon size={13} />
-              <span>{showMap ? "Ocultar mapa" : "Ver rota no mapa"}</span>
+              <span>{showMap ? "Ocultar mapa" : showDetour ? "Ver mapa do desvio" : "Ver rota no mapa"}</span>
             </button>
           )}
         </div>
@@ -257,6 +273,7 @@ export const RideCard: React.FC<RideCardProps> = ({
           <div className="mt-3">
             <InteractiveMap
               height="210px"
+              scrollWheelZoom={!showDetour}
               origin={
                 ride.origin_lat != null && ride.origin_lng != null
                   ? { lat: ride.origin_lat, lng: ride.origin_lng, label: ride.origin_label }
@@ -268,9 +285,20 @@ export const RideCard: React.FC<RideCardProps> = ({
                   : null
               }
               pickup={passengerPickup}
-              pickupIsApproximate={true}
-              routeGeoJson={ride.route_geojson}
+              dropoff={passengerDropoff}
+              pickupIsApproximate={!showDetour}
+              routeGeoJson={showDetour ? ride.detour_geojson : ride.route_geojson}
+              comparisonRoute={showDetour ? ride.route_geojson : null}
+              approximateRoute={showDetour && !ride.detour_geojson}
             />
+            {showDetour && (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)]">
+                <span className="inline-flex items-center gap-1.5"><span className={ride.detour_geojson ? "w-4 border-t-2 border-indigo-500" : "w-4 border-t-2 border-dashed border-indigo-500"} />{ride.detour_geojson ? "Rota via sua origem e seu destino" : "Trajeto aproximado entre os pontos"}</span>
+                {ride.route_geojson && <span className="inline-flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-slate-500" />Rota original</span>}
+                <span>P · Sua origem</span>
+                <span>D · Seu destino</span>
+              </div>
+            )}
           </div>
         )}
 

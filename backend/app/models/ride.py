@@ -41,7 +41,7 @@ class Ride(Base):
     # Route description
     origin_label: Mapped[str] = mapped_column(String(300))         # Human-readable
     destination_label: Mapped[str] = mapped_column(String(300))
-    campus_point: Mapped[str] = mapped_column(String(50))           # Which campus is origin/destination
+    campus_point: Mapped[str | None] = mapped_column(String(50))
 
     # Coordinates stored as PostGIS geometry (WGS84)
     origin_point = mapped_column(Geometry("POINT", srid=4326))
@@ -54,7 +54,8 @@ class Ride(Base):
 
     # Schedule
     departure_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    delay_tolerance_minutes: Mapped[int] = mapped_column(Integer, default=10)
+    # Retained for compatibility with databases created before fixed departure times.
+    delay_tolerance_minutes: Mapped[int] = mapped_column(Integer, default=0)
 
     # Seats
     total_seats: Mapped[int] = mapped_column(Integer, default=1)

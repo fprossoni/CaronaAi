@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
+import { messagesApi } from "@/api/messages";
 import type { RideDetail, RideStatus } from "@/types/ride";
 import type { MatchConfirmed, MatchWithRide } from "@/types/match";
 import type { UserPublic } from "@/types/user";
@@ -23,9 +24,9 @@ import { Button } from "@/components/ui/Button";
 import {
   CarIcon,
   CheckCircleIcon,
-  ClockIcon,
   HistoryIcon,
   MapPinIcon,
+  MessageIcon,
   NavigationIcon,
   UsersIcon,
   WhatsAppIcon,
@@ -68,6 +69,39 @@ export const MyRidesPage: React.FC = () => {
   const [modalRide, setModalRide] = useState<RideDetail | null>(null);
   const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserPublic | null>(null);
+  const [openingChat, setOpeningChat] = useState<number | null>(null);
+  const [changingRide, setChangingRide] = useState<number | null>(null);
+
+  const openChat = async (rideId: number) => {
+    setOpeningChat(rideId);
+    try {
+      const { data } = await messagesApi.open(rideId);
+      navigate(`/messages?conversation=${data.id}`);
+    } catch (err) {
+      toast.error("Não foi possível abrir as mensagens", getErrorMessage(err));
+    } finally {
+      setOpeningChat(null);
+    }
+  };
+
+  const changeRideStatus = async (ride: RideDetail) => {
+    const completing = ride.status === "in_progress";
+    if (completing && !await toast.confirm({
+      title: "Concluir esta carona?",
+      description: "A viagem irá para o histórico e as conversas serão encerradas para todos os participantes.",
+      confirmLabel: "Concluir carona",
+    })) return;
+    setChangingRide(ride.id);
+    try {
+      await (completing ? ridesApi.complete(ride.id) : ridesApi.start(ride.id));
+      refresh();
+      toast.info(completing ? "Carona concluída. Conversas encerradas." : "Carona iniciada.");
+    } catch (err) {
+      toast.error("Não foi possível atualizar a carona", getErrorMessage(err));
+    } finally {
+      setChangingRide(null);
+    }
+  };
 
   const loadData = useCallback(async () => {
     const [ridesRes, matchesRes] = await Promise.all([
@@ -213,7 +247,7 @@ export const MyRidesPage: React.FC = () => {
     .sort((a, b) => new Date(a.departure_at).getTime() - new Date(b.departure_at).getTime());
 
   const activeMatches = matches
-    .filter((m) => m.status === "pending" || m.status === "accepted")
+    .filter((m) => (m.status === "pending" || m.status === "accepted") && isActiveRide(m.ride.status))
     .sort(
       (a, b) =>
         new Date(a.ride.departure_at).getTime() - new Date(b.ride.departure_at).getTime()
@@ -304,7 +338,7 @@ export const MyRidesPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {upcomingRides.map((ride) => {
               const counts = rideMatchCounts[ride.id] ?? { pending: 0, accepted: 0 };
-              const campus = getCampusInfo(ride.campus_point);
+              const campus = ride.campus_point ? getCampusInfo(ride.campus_point) : null;
               const mapKey = `driver-${ride.id}`;
               const isMapOpen = expandedMapId === mapKey;
 
@@ -334,16 +368,18 @@ export const MyRidesPage: React.FC = () => {
                             ? "Em andamento"
                             : "Ativa"}
                         </span>
-                        <span
-                          className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                          style={{
-                            backgroundColor: "var(--color-surface-2)",
-                            borderColor: "var(--color-border)",
-                            color: "var(--color-text-secondary)",
-                          }}
-                        >
-                          {campus.shortName}
-                        </span>
+                        {campus && (
+                          <span
+                            className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
+                            style={{
+                              backgroundColor: "var(--color-surface-2)",
+                              borderColor: "var(--color-border)",
+                              color: "var(--color-text-secondary)",
+                            }}
+                          >
+                            {campus.shortName}
+                          </span>
+                        )}
                       </div>
 
                       <span className="text-xs font-bold" style={{ color: "var(--color-text)" }}>
@@ -390,9 +426,6 @@ export const MyRidesPage: React.FC = () => {
                         <strong>{ride.available_seats}</strong>/{ride.total_seats} livres
                       </span>
                       <span className="inline-flex items-center gap-1.5">
-                        <ClockIcon size={14} /> ±{ride.delay_tolerance_minutes} min
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
                         <NavigationIcon size={13} className="text-indigo-400" />
                         {formatDistance(ride.route_distance_meters)} ·{" "}
                         {formatDuration(ride.route_duration_seconds)}
@@ -429,6 +462,16 @@ export const MyRidesPage: React.FC = () => {
                   </div>
 
                   {/* Driver Actions */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" disabled={counts.accepted === 0}
+                      title={counts.accepted === 0 ? "Confirme um passageiro para liberar as mensagens" : "Criar ou abrir o grupo da carona"}
+                      loading={openingChat === ride.id} onClick={() => openChat(ride.id)}>
+                      <MessageIcon size={16} /> Mensagens
+                    </Button>
+                    <Button variant="secondary" size="sm" loading={changingRide === ride.id} onClick={() => changeRideStatus(ride)}>
+                      {ride.status === "in_progress" ? "Concluir carona" : "Iniciar carona"}
+                    </Button>
+                  </div>
                   <div className="pt-3 border-t flex items-center justify-between gap-2" style={{ borderColor: "var(--color-border)" }}>
                     <button
                       type="button"
@@ -452,6 +495,7 @@ export const MyRidesPage: React.FC = () => {
                       variant="danger"
                       size="sm"
                       loading={cancellingId === ride.id}
+                      disabled={ride.status === "in_progress"}
                       onClick={() => handleCancelRide(ride)}
                     >
                       Cancelar
@@ -599,6 +643,9 @@ export const MyRidesPage: React.FC = () => {
                           <strong>Seu ponto de encontro:</strong> {match.pickup_label}
                         </span>
                       </div>
+                      {match.dropoff_label && (
+                        <p className="text-[var(--color-text)]"><strong>Seu destino:</strong> {match.dropoff_label}</p>
+                      )}
                       <div className="flex items-center justify-between pt-1" style={{ color: "var(--color-text-muted)" }}>
                         <span>
                           Desvio calculado: <strong>+{formatDistance(match.detour_meters)}</strong>
@@ -638,6 +685,9 @@ export const MyRidesPage: React.FC = () => {
                           lng: confirmed.pickup_lng,
                           label: match.pickup_label,
                         }}
+                        dropoff={confirmed.dropoff_lat != null && confirmed.dropoff_lng != null
+                          ? { lat: confirmed.dropoff_lat, lng: confirmed.dropoff_lng, label: match.dropoff_label ?? undefined }
+                          : null}
                         pickupIsApproximate={false}
                         routeGeoJson={match.ride.route_geojson}
                       />
@@ -645,6 +695,8 @@ export const MyRidesPage: React.FC = () => {
                   </div>
 
                   {/* Passenger Actions */}
+                  {isAccepted && <Button variant="secondary" size="sm" loading={openingChat === match.ride.id}
+                    onClick={() => openChat(match.ride.id)}><MessageIcon size={16} /> Mensagens</Button>}
                   <div className="pt-3 border-t flex items-center justify-between gap-2" style={{ borderColor: "var(--color-border)" }}>
                     <button
                       type="button"

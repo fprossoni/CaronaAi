@@ -18,6 +18,7 @@ import {
   CompassIcon,
   HistoryIcon,
   MoonIcon,
+  MessageIcon,
   SearchIcon,
   ShieldCheckIcon,
   SunIcon,
@@ -245,6 +246,14 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6">{children}</main>
+
+      {isAuthenticated && location.pathname !== "/messages" && (
+        <Link to="/messages" aria-label="Abrir mensagens ativas"
+          className="fixed right-4 bottom-20 md:bottom-6 z-40 inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold text-white shadow-lg no-underline"
+          style={{ background: "var(--gradient-primary)", marginBottom: "env(safe-area-inset-bottom)" }}>
+          <MessageIcon size={22} /> Mensagens
+        </Link>
+      )}
 
       {/* Mobile Bottom Navigation */}
       <nav

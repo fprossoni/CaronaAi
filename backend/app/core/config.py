@@ -1,6 +1,6 @@
 import json
 
-from pydantic import field_validator
+from pydantic import NonNegativeInt, PositiveInt, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     OSRM_MAX_DETOUR_METERS: int = 3000   # 3 km
     OSRM_MAX_DETOUR_SECONDS: int = 900   # 15 min
     OSRM_PREFILER_BUFFER_METERS: int = 5000  # 5 km buffer for PostGIS pre-filter
+    OSRM_TABLE_MARGIN_SECONDS: NonNegativeInt = 300
+    MATCH_MAX_PICKUP_DELAY_SECONDS: PositiveInt = 7200
 
     # Matching — when a passenger's request is accepted, their other pending
     # requests (same batch / same origin+destination) whose ride departs within

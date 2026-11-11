@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from "axios";
+import { isDevSession } from "@/lib/devSession";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -9,6 +10,13 @@ export const apiClient: AxiosInstance = axios.create({
 
 // ─── Request interceptor — attach JWT ────────────────────────────────────────
 apiClient.interceptors.request.use((config) => {
+  if (import.meta.env.DEV && isDevSession()) {
+    config.adapter = async (request) => {
+      const { handleDevRequest } = await import("./devApi");
+      return handleDevRequest(request);
+    };
+    return config;
+  }
   const token = localStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -23,7 +31,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (localStorage.getItem("access_token") === "dev_mock_token") {
+      if (isDevSession()) {
         return Promise.reject(error);
       }
       originalRequest._retry = true;

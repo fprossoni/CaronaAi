@@ -9,11 +9,11 @@
  * 4. Interactive map click ("Marcar no mapa")
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { AddressPublic } from "@/types/address";
 import { addressesApi } from "@/api/addresses";
-import { DEV_MOCK_TOKEN, useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/store/authStore";
 import {
   campusToLocation,
   geocodingService,
@@ -28,6 +28,8 @@ interface LocationFieldProps {
   placeholder?: string;
   value: LocationValue | null;
   onChange: (location: LocationValue) => void;
+  onClear?: () => void;
+  initialQuery?: string;
   dotColor?: string;
   isPickingOnMap?: boolean;
   onTogglePickOnMap?: () => void;
@@ -42,6 +44,8 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   placeholder = "Digite rua, número, bairro ou campus...",
   value,
   onChange,
+  onClear,
+  initialQuery,
   dotColor = "#10b981",
   isPickingOnMap = false,
   onTogglePickOnMap,
@@ -50,9 +54,10 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   showSavedAddresses = true,
   helperText,
 }) => {
-  const { isAuthenticated } = useAuthStore();
-  const [draftText, setDraftText] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<GeocodingSuggestion[]>([]);
+  const { isAuthenticated, user } = useAuthStore();
+  const inputId = useId();
+  const [draftText, setDraftText] = useState<string | null>(initialQuery ?? null);
+  const [suggestions, setSuggestions] = useState<{ query: string; items: GeocodingSuggestion[] } | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<AddressPublic[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -65,7 +70,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   // Load user's saved personal addresses for 1-click selection
   useEffect(() => {
     if (!showSavedAddresses || !isAuthenticated) return;
-    if (localStorage.getItem("access_token") === DEV_MOCK_TOKEN) return;
 
     let active = true;
     addressesApi
@@ -79,19 +83,19 @@ export const LocationField: React.FC<LocationFieldProps> = ({
     return () => {
       active = false;
     };
-  }, [showSavedAddresses, isAuthenticated]);
+  }, [showSavedAddresses, isAuthenticated, user?.id]);
 
   // Close dropdown on outside click
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (isOpen && containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
         setDraftText(null);
       }
     };
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
-  }, []);
+  }, [isOpen]);
 
   // Debounced address search
   useEffect(() => {
@@ -105,7 +109,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       setSearching(true);
       try {
         const res = await geocodingService.searchAddress(trimmed);
-        if (active) setSuggestions(res);
+        if (active) setSuggestions({ query: trimmed, items: res });
       } finally {
         if (active) setSearching(false);
       }
@@ -151,12 +155,15 @@ export const LocationField: React.FC<LocationFieldProps> = ({
     }
   };
 
-  const visibleSuggestions = displayedQuery.trim().length >= 2 ? suggestions : [];
+  const visibleSuggestions = suggestions?.query === displayedQuery.trim()
+    ? suggestions.items.filter((item) => showCampusShortcuts || !item.isCampus)
+    : [];
 
   return (
     <div ref={containerRef} className="relative flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <label
+          htmlFor={inputId}
           className="text-xs font-bold uppercase tracking-wider flex items-center gap-2"
           style={{ color: "var(--color-text-secondary)" }}
         >
@@ -220,15 +227,24 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           <SearchIcon size={16} />
         </span>
         <input
+          id={inputId}
           type="text"
           value={displayedQuery}
           placeholder={placeholder}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && isOpen) {
+              setIsOpen(false);
+              setDraftText(null);
+            }
+          }}
           onChange={(e) => {
             const nextVal = e.target.value;
             setDraftText(nextVal);
             setIsOpen(true);
-            if (value) {
+            if (onClear) {
+              onClear();
+            } else if (value) {
               onChange({ ...value, label: nextVal });
             }
           }}
@@ -239,7 +255,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
             color: "var(--color-text)",
           }}
         />
-        {searching && (
+        {isOpen && displayedQuery.trim().length >= 2 && searching && (
           <span
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs animate-pulse"
             style={{ color: "var(--color-text-muted)" }}
@@ -247,51 +263,45 @@ export const LocationField: React.FC<LocationFieldProps> = ({
             Buscando...
           </span>
         )}
+        {/* Autocomplete Suggestions Dropdown */}
+        {isOpen && visibleSuggestions.length > 0 && (
+          <ul
+            className="absolute top-full left-0 right-0 z-50 rounded-xl border shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
+            style={{
+              backgroundColor: "var(--color-surface)",
+              borderColor: "var(--color-border-strong)",
+            }}
+          >
+            {visibleSuggestions.map((item) => (
+              <li key={item.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                <button type="button" onClick={() => handleSelectSuggestion(item)}
+                  className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-indigo-500/10">
+                  <span
+                    className={`mt-0.5 shrink-0 ${
+                      item.isCampus ? "text-indigo-400" : "text-emerald-400"
+                    }`}
+                  >
+                    <NavigationIcon size={15} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate" style={{ color: "var(--color-text)" }}>
+                      {item.label}
+                    </p>
+                    <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>
+                      {item.subtitle}
+                    </p>
+                  </div>
+                  {item.isCampus && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-400 shrink-0">
+                      Campus UFRGS
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-
-      {/* Autocomplete Suggestions Dropdown */}
-      {isOpen && visibleSuggestions.length > 0 && (
-        <ul
-          className="absolute top-[74px] left-0 right-0 z-50 rounded-xl border shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor: "var(--color-border-strong)",
-          }}
-        >
-          {visibleSuggestions.map((item) => (
-            <li
-              key={item.id}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleSelectSuggestion(item);
-              }}
-              className="px-3.5 py-2.5 flex items-start gap-2.5 cursor-pointer border-b last:border-b-0 transition-colors hover:bg-indigo-500/10"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <span
-                className={`mt-0.5 shrink-0 ${
-                  item.isCampus ? "text-indigo-400" : "text-emerald-400"
-                }`}
-              >
-                <NavigationIcon size={15} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate" style={{ color: "var(--color-text)" }}>
-                  {item.label}
-                </p>
-                <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>
-                  {item.subtitle}
-                </p>
-              </div>
-              {item.isCampus && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-400 shrink-0">
-                  Campus UFRGS
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
 
       {/* Saved Personal Addresses Quick Pills */}
       {showSavedAddresses && savedAddresses.length > 0 && (

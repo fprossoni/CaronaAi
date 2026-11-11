@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from "react";
+import { isDevSession } from "@/lib/devSession";
 import { usersApi } from "@/api/auth";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
@@ -42,7 +43,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (targetUser.id >= 9000 || localStorage.getItem("access_token") === "dev_mock_token") {
+    if (import.meta.env.DEV && (targetUser.id >= 9000 || isDevSession())) {
       toast.success(
         "Relato registrado com sucesso",
         alsoBlock

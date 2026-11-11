@@ -33,10 +33,14 @@ export interface InteractiveMapProps {
   origin?: MapPoint | null;
   destination?: MapPoint | null;
   pickup?: MapPoint | null;
+  dropoff?: MapPoint | null;
+  comparisonRoute?: GeoJSON.LineString | null;
+  approximateRoute?: boolean;
   /** When true, renders an approximate 650m privacy circle instead of an exact pin for pickup */
   pickupIsApproximate?: boolean;
   routeGeoJson?: GeoJSON.LineString | null;
   height?: string;
+  scrollWheelZoom?: boolean;
   interactivePickMode?: "origin" | "destination" | "pickup" | null;
   onMapClick?: (lat: number, lng: number) => void;
   className?: string;
@@ -73,6 +77,7 @@ function createCustomPin(color: string, badgeText: string): L.DivIcon {
 
 const ORIGIN_ICON = createCustomPin("#10b981", "A");
 const DEST_ICON = createCustomPin("#6366f1", "B");
+const DROPOFF_ICON = createCustomPin("#0e7490", "D");
 const PICKUP_ICON = createCustomPin("#f59e0b", "P");
 
 const MapClickHandler: React.FC<{ onMapClick?: (lat: number, lng: number) => void }> = ({
@@ -108,9 +113,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   origin,
   destination,
   pickup,
+  dropoff,
+  comparisonRoute,
+  approximateRoute = false,
   pickupIsApproximate = false,
   routeGeoJson,
   height = "280px",
+  scrollWheelZoom = true,
   interactivePickMode = null,
   onMapClick,
   className = "",
@@ -125,18 +134,22 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const fallback: [number, number][] = [];
     if (origin) fallback.push([origin.lat, origin.lng]);
     if (pickup && !pickupIsApproximate) fallback.push([pickup.lat, pickup.lng]);
+    if (dropoff) fallback.push([dropoff.lat, dropoff.lng]);
     if (destination) fallback.push([destination.lat, destination.lng]);
     return fallback;
-  }, [routeGeoJson, origin, destination, pickup, pickupIsApproximate]);
+  }, [routeGeoJson, origin, destination, pickup, dropoff, pickupIsApproximate]);
+
+  const comparisonPositions = useMemo<[number, number][]>(() =>
+    comparisonRoute?.coordinates.map(([lng, lat]) => [lat, lng]) ?? [], [comparisonRoute]);
 
   const boundPoints = useMemo<[number, number][]>(() => {
-    if (polylinePositions.length >= 2) return polylinePositions;
-    const pts: [number, number][] = [];
+    const pts: [number, number][] = [...polylinePositions, ...comparisonPositions];
     if (origin) pts.push([origin.lat, origin.lng]);
     if (pickup) pts.push([pickup.lat, pickup.lng]);
+    if (dropoff) pts.push([dropoff.lat, dropoff.lng]);
     if (destination) pts.push([destination.lat, destination.lng]);
     return pts;
-  }, [polylinePositions, origin, destination, pickup]);
+  }, [polylinePositions, comparisonPositions, origin, destination, pickup, dropoff]);
 
   const cartoApiKey = (import.meta.env.VITE_CARTO_API_KEY || "").trim();
 
@@ -167,11 +180,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         >
           <span>
             📍 Toque em qualquer ponto do mapa para definir{" "}
-            {interactivePickMode === "origin"
-              ? "a Origem"
-              : interactivePickMode === "destination"
-              ? "o Destino"
-              : "o Embarque"}
+            {interactivePickMode === "destination" ? "o destino" : "a origem"}
           </span>
         </div>
       )}
@@ -179,7 +188,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       <MapContainer
         center={PORTO_ALEGRE_CENTER}
         zoom={13}
-        scrollWheelZoom={true}
+        scrollWheelZoom={scrollWheelZoom}
         style={{ width: "100%", height: "100%" }}
       >
         <TileLayer
@@ -199,10 +208,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               color: "#6366f1",
               weight: 5,
               opacity: 0.9,
+              dashArray: approximateRoute ? "6 6" : undefined,
               lineCap: "round",
               lineJoin: "round",
             }}
           />
+        )}
+
+        {comparisonPositions.length >= 2 && (
+          <Polyline positions={comparisonPositions} pathOptions={{ color: "#64748b", weight: 4, dashArray: "6 8" }} />
         )}
 
         {origin && (
@@ -231,10 +245,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <Marker position={[pickup.lat, pickup.lng]} icon={PICKUP_ICON}>
             <Popup>
               <div className="text-xs">
-                <strong className="block text-amber-400">Ponto de Encontro (P)</strong>
-                <span>{pickup.label || "Embarque confirmado"}</span>
+                <strong className="block text-amber-400">Origem do passageiro (P)</strong>
+                <span>{pickup.label || "Origem confirmada"}</span>
               </div>
             </Popup>
+          </Marker>
+        )}
+
+        {dropoff && (
+          <Marker position={[dropoff.lat, dropoff.lng]} icon={DROPOFF_ICON}>
+            <Popup><strong>Destino do passageiro (D)</strong><br />{dropoff.label}</Popup>
           </Marker>
         )}
 

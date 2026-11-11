@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useState } from "react";
+import { isDevSession } from "@/lib/devSession";
 import type { UserPublic } from "@/types/user";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
@@ -50,7 +51,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const socialHandle = profile.instagram || profile.social_link;
 
   useEffect(() => {
-    if (initialUser.id >= 9000 || localStorage.getItem("access_token") === "dev_mock_token") {
+    if (import.meta.env.DEV && (initialUser.id >= 9000 || isDevSession())) {
       return;
     }
     let active = true;
@@ -81,7 +82,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       if (!ok) return;
     }
 
-    if (profile.id >= 9000 || localStorage.getItem("access_token") === "dev_mock_token") {
+    if (import.meta.env.DEV && (profile.id >= 9000 || isDevSession())) {
       setIsBlocked((prev) => !prev);
       if (isBlocked) {
         toast.info("Usuário desbloqueado.");

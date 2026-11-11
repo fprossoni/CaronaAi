@@ -1,8 +1,9 @@
 """Rides router — /rides/*"""
 
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from geoalchemy2 import WKTElement
 from geoalchemy2.shape import to_shape
 from shapely.geometry import mapping
@@ -12,10 +13,12 @@ from app.api.deps import DbSession, DriverUser, VerifiedUser
 from app.models.address import UserAddress
 from app.models.rating import Rating
 from app.models.ride import CAMPUS_COORDS, Ride, RideStatus
-from app.schemas.ride import RideCreate, RideDetail, RidePublic, TripHistory, TripParticipant
+from app.models.user import Gender
+from app.schemas.ride import RideCreate, RideDetail, RidePublic, SearchRidesRequest, TripHistory, TripParticipant
+from app.services.addresses import get_owned_address
 from app.services.geocoding import geocode_address
 from app.services.matching import find_matching_rides
-from app.services.osrm import get_route
+from app.services.osrm import InvalidRouteError, get_route
 
 router = APIRouter(prefix="/rides", tags=["rides"])
 
@@ -54,11 +57,13 @@ def _serialize_ride(ride: Ride, schema_cls: type[RidePublic] | type[RideDetail] 
 
 @router.post("/", response_model=RideDetail, status_code=status.HTTP_201_CREATED)
 async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession) -> RideDetail:
-    """Create a new ride offer (driver only).
+    """Create a ride between the two supplied locations."""
+    if body.women_only and current_user.gender != Gender.FEMALE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas motoristas mulheres podem oferecer caronas exclusivas para mulheres.",
+        )
 
-    Computes coordinates automatically from the chosen UFRGS campus and either a
-    saved personal address or a physical address geocoded via Nominatim.
-    """
     origin_lat = body.origin_lat
     origin_lng = body.origin_lng
     origin_label = body.origin_label
@@ -66,8 +71,15 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
     destination_lng = body.destination_lng
     destination_label = body.destination_label
 
-    # Auto-resolve coordinates if not explicitly provided
-    if origin_lat is None or destination_lat is None:
+    if body.origin_address_id is not None:
+        address = get_owned_address(db, body.origin_address_id, current_user.id)
+        origin_lat, origin_lng, origin_label = address.lat, address.lng, address.full_address
+    if body.destination_address_id is not None:
+        address = get_owned_address(db, body.destination_address_id, current_user.id)
+        destination_lat, destination_lng, destination_label = address.lat, address.lng, address.full_address
+
+    # Support the original campus and address payload.
+    if body.campus_point and None in (origin_lat, origin_lng, destination_lat, destination_lng):
         campus_coords = CAMPUS_COORDS.get(body.campus_point)
         if not campus_coords:
             raise HTTPException(status_code=400, detail="Campus selecionado inválido")
@@ -80,9 +92,7 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
         addr_label: str = ""
 
         if body.address_id is not None:
-            saved_addr = db.get(UserAddress, body.address_id)
-            if not saved_addr or saved_addr.user_id != current_user.id:
-                raise HTTPException(status_code=404, detail="Endereço pessoal salvo não encontrado")
+            saved_addr = get_owned_address(db, body.address_id, current_user.id)
             addr_lat = saved_addr.lat
             addr_lng = saved_addr.lng
             addr_label = saved_addr.full_address
@@ -133,11 +143,19 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
             destination_lat, destination_lng = addr_lat, addr_lng
             destination_label = destination_label or addr_label
 
+    if None in (origin_lat, origin_lng, destination_lat, destination_lng):
+        raise HTTPException(status_code=400, detail="Informe os pontos de origem e destino.")
+    if not origin_label or not destination_label:
+        raise HTTPException(status_code=400, detail="Identifique os pontos de origem e destino.")
+
     # Calculate route via OSRM
-    route = await get_route(
-        [(origin_lat, origin_lng), (destination_lat, destination_lng)],
-        with_geometry=True,
-    )
+    try:
+        route = await get_route(
+            [(origin_lat, origin_lng), (destination_lat, destination_lng)],
+            with_geometry=True,
+        )
+    except InvalidRouteError as exc:
+        raise HTTPException(status_code=400, detail="Não foi possível calcular uma rota entre os pontos informados.") from exc
 
     # Encode route geometry as WKT LineString for PostGIS
     route_line = None
@@ -159,7 +177,6 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
         route_distance_meters=route.distance_meters,
         route_duration_seconds=route.duration_seconds,
         departure_at=body.departure_at,
-        delay_tolerance_minutes=body.delay_tolerance_minutes,
         total_seats=body.total_seats,
         available_seats=body.total_seats,
         women_only=body.women_only,
@@ -178,44 +195,52 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
 async def search_rides(
     current_user: VerifiedUser,
     db: DbSession,
-    pickup_lat: float | None = None,
-    pickup_lng: float | None = None,
-    pickup_label: str | None = None,
-    address_id: int | None = None,
-    dropoff_lat: float | None = None,
-    dropoff_lng: float | None = None,
-    women_only: bool = False,
-    departure_after: datetime | None = None,
+    search: Annotated[SearchRidesRequest, Query()],
 ) -> list[RidePublic]:
-    """Search for rides matching the passenger's pickup location.
+    """Search by pickup, dropoff and estimated pickup window, ordered by detour."""
+    if search.pickup_before <= datetime.now(UTC):
+        raise HTTPException(status_code=400, detail="Informe um fim posterior ao horário atual.")
 
-    Accepts an address_id (from passenger's saved addresses) or explicit coordinates.
-    Results are ordered by smallest detour for the driver.
-    """
-    if address_id is not None:
-        saved_addr = db.get(UserAddress, address_id)
-        if not saved_addr or saved_addr.user_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Endereço não encontrado")
-        pickup_lat = saved_addr.lat
-        pickup_lng = saved_addr.lng
-        pickup_label = pickup_label or saved_addr.full_address
+    pickup = (search.pickup_lat, search.pickup_lng)
+    dropoff = (search.dropoff_lat, search.dropoff_lng)
+    if search.campus_point is not None:
+        campus = CAMPUS_COORDS.get(search.campus_point)
+        if campus is None or search.direction is None:
+            raise HTTPException(status_code=400, detail="Informe um campus e um sentido válidos.")
+        if search.direction == "from_campus":
+            pickup = campus
+        else:
+            dropoff = campus
 
-    if pickup_lat is None or pickup_lng is None:
-        raise HTTPException(status_code=400, detail="Informe um endereço salvo ou coordenadas de embarque")
-    if not pickup_label:
-        pickup_label = "Local de embarque"
+    pickup_address_id = search.pickup_address_id
+    dropoff_address_id = search.dropoff_address_id
+    if search.campus_point is not None and search.address_id is not None:
+        if search.direction == "from_campus":
+            dropoff_address_id = search.address_id
+        else:
+            pickup_address_id = search.address_id
+    if pickup_address_id is not None:
+        address = get_owned_address(db, pickup_address_id, current_user.id)
+        pickup = (address.lat, address.lng)
+    if dropoff_address_id is not None:
+        address = get_owned_address(db, dropoff_address_id, current_user.id)
+        dropoff = (address.lat, address.lng)
+    if None in (*pickup, *dropoff):
+        raise HTTPException(status_code=400, detail="Informe os pontos de origem e destino.")
 
     from app.models.match import Match, MatchStatus
 
     candidates = await find_matching_rides(
         db=db,
         passenger_id=current_user.id,
-        pickup_lat=pickup_lat,
-        pickup_lng=pickup_lng,
-        dropoff_lat=dropoff_lat,
-        dropoff_lng=dropoff_lng,
-        women_only=women_only,
-        departure_after=departure_after,
+        pickup_lat=pickup[0],
+        pickup_lng=pickup[1],
+        dropoff_lat=dropoff[0],
+        dropoff_lng=dropoff[1],
+        passenger_gender=current_user.gender,
+        women_only=search.women_only,
+        pickup_after=search.pickup_after,
+        pickup_before=search.pickup_before,
     )
 
     my_matches: dict[int, Match] = {}
@@ -233,6 +258,9 @@ async def search_rides(
         ride_schema = _serialize_ride(c.ride, RidePublic)
         ride_schema.detour_meters = c.detour_meters
         ride_schema.detour_seconds = c.detour_seconds
+        ride_schema.estimated_pickup_at = c.estimated_pickup_at
+        ride_schema.estimated_dropoff_at = c.estimated_dropoff_at
+        ride_schema.detour_geojson = c.detour_geojson
         mine = my_matches.get(c.ride.id)
         if mine:
             ride_schema.my_match_id = mine.id
@@ -257,15 +285,10 @@ def get_my_rides(current_user: VerifiedUser, db: DbSession) -> list[RideDetail]:
 def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
     """Trips the user took part in — as driver or as passenger.
 
-    A trip is history when the ride was cancelled/completed or its departure
-    time has already passed. Each item lists the participants (driver +
+    A trip is history when the ride was cancelled/completed. Each item lists the participants (driver +
     accepted passengers), excluding the current user.
     """
-    from datetime import UTC, datetime
-
     from app.models.match import Match, MatchStatus
-
-    now = datetime.now(UTC)
 
     # Fetch ratings already submitted by current_user
     user_ratings = db.execute(
@@ -310,12 +333,12 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
 
     results: list[TripHistory] = []
 
-    # 1) As driver — rides completed/cancelled or already departed
+    # 1) As driver — rides explicitly completed/cancelled
     driver_rides = db.execute(
         select(Ride).where(Ride.driver_id == current_user.id)
     ).scalars().all()
     for ride in driver_rides:
-        is_history = ride.status in (RideStatus.COMPLETED, RideStatus.CANCELLED) or ride.departure_at <= now
+        is_history = ride.status in (RideStatus.COMPLETED, RideStatus.CANCELLED)
         if not is_history:
             continue
         results.append(TripHistory(
@@ -340,7 +363,7 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
         if ride.id in seen_rides:
             continue
         seen_rides.add(ride.id)
-        is_ride_history = ride.status in (RideStatus.COMPLETED, RideStatus.CANCELLED) or ride.departure_at <= now
+        is_ride_history = ride.status in (RideStatus.COMPLETED, RideStatus.CANCELLED)
         if match.status == MatchStatus.ACCEPTED and not is_ride_history:
             continue
         # A cancelled participation is "cancelled" regardless of the ride status
@@ -375,7 +398,7 @@ def get_ride(ride_id: int, db: DbSession, current_user: VerifiedUser) -> RideDet
 @router.patch("/{ride_id}/cancel")
 def cancel_ride(ride_id: int, current_user: VerifiedUser, db: DbSession) -> dict:
     """Cancel a ride (driver only, only if ACTIVE or FULL)."""
-    ride = db.get(Ride, ride_id)
+    ride = db.get(Ride, ride_id, with_for_update=True)
     if not ride:
         raise HTTPException(status_code=404, detail="Ride not found")
     if ride.driver_id != current_user.id:
@@ -386,3 +409,27 @@ def cancel_ride(ride_id: int, current_user: VerifiedUser, db: DbSession) -> dict
     ride.status = RideStatus.CANCELLED
     db.commit()
     return {"message": "Ride cancelled"}
+
+
+@router.patch("/{ride_id}/start")
+def start_ride(ride_id: int, current_user: VerifiedUser, db: DbSession) -> dict:
+    ride = db.get(Ride, ride_id, with_for_update=True)
+    if not ride or ride.driver_id != current_user.id:
+        raise HTTPException(403, "Apenas o motorista pode iniciar a carona")
+    if ride.status not in (RideStatus.ACTIVE, RideStatus.FULL):
+        raise HTTPException(409, "Esta carona não pode ser iniciada")
+    ride.status = RideStatus.IN_PROGRESS
+    db.commit()
+    return {"message": "Carona iniciada"}
+
+
+@router.patch("/{ride_id}/complete")
+def complete_ride(ride_id: int, current_user: VerifiedUser, db: DbSession) -> dict:
+    ride = db.get(Ride, ride_id, with_for_update=True)
+    if not ride or ride.driver_id != current_user.id:
+        raise HTTPException(403, "Apenas o motorista pode concluir a carona")
+    if ride.status != RideStatus.IN_PROGRESS:
+        raise HTTPException(409, "Inicie a carona antes de concluí-la")
+    ride.status = RideStatus.COMPLETED
+    db.commit()
+    return {"message": "Carona concluída. Conversas encerradas."}

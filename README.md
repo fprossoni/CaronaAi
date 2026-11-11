@@ -10,7 +10,7 @@ Além disso, visando aumentar a segurança, existe uma validação exclusiva via
 
 - [Docker](https://www.docker.com/) e Docker Compose
 - [Python 3.13+](https://www.python.org/) e [uv](https://docs.astral.sh/uv/) (para dev local)
-- [Node.js 20+](https://nodejs.org/) (para o frontend)
+- [Node.js](https://nodejs.org/) 20.19+ na série 20 ou 22.12+ (para o frontend)
 
 ---
 
@@ -44,11 +44,13 @@ Para o frontend (em outro terminal):
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
 - Frontend disponível em: http://localhost:5173
+
+Para experimentar o playground, execute os comandos do frontend e abra [http://localhost:5173/dev](http://localhost:5173/dev). Você pode entrar como visitante e simular motorista, passageira ou perfil incompleto sem iniciar o backend. As alterações simuladas em caronas, solicitações e endereços ficam em memória até recarregar a página. O mapa e as buscas de endereço podem consultar serviços públicos.
 
 ---
 
@@ -56,20 +58,45 @@ npm run dev
 
 ```bash
 # 1. Sobe apenas o banco
-docker compose up db -d
+docker compose up -d --wait db
 
 # 2. Instala dependências e roda as migrações
 cd backend
-uv pip install --system -r pyproject.toml
-alembic upgrade head
+uv sync --locked
+uv run --locked alembic upgrade head
 
 # 3. Inicia o servidor de desenvolvimento
-fastapi dev app/main.py
+uv run --locked fastapi dev app/main.py
 ```
 
 ---
 
 ## Solução de problemas comuns
+
+### Mensagens nas caronas
+
+- Após confirmar ao menos um passageiro, motorista ou passageiro podem usar **Mensagens** em **Minhas caronas** para criar/abrir o grupo. Há apenas um grupo por carona; novos passageiros confirmados entram automaticamente.
+- O botão **Mensagens** no canto inferior direito abre as conversas ativas. No celular, fica acima da navegação inferior.
+- No grupo, abra **Participantes · Conversas privadas** para conversar somente com o motorista ou, para motoristas, com um passageiro. Cada conversa privada pertence àquela carona.
+- O motorista usa **Iniciar carona** e **Concluir carona**. Concluir ou cancelar encerra o acesso às conversas, que deixam de aparecer na lista ativa. Cancelar uma participação remove o acesso daquele passageiro imediatamente. Apenas chegar ao horário de partida não conclui a viagem.
+- As mensagens são armazenadas no banco. A tela busca atualizações a cada cinco segundos enquanto está visível, com paginação para mensagens anteriores. Não há notificações push nesta versão.
+- No `/dev`, as mesmas ações são simuladas em memória. Para experimentar os dois lados, confirme Marina como motorista, abra o grupo e depois troque para a sessão de passageira sem recarregar a página.
+
+Em um backend já em execução, aplique a migração antes de usar mensagens:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+Validação (os testes do backend usam um esquema temporário e fazem rollback):
+
+```bash
+docker compose exec backend python -m unittest discover -s tests -p test_messages.py -v
+cd frontend
+npm run test:messages
+```
+
+### Ambiente
 
 | Problema | Causa | Solução |
 |---|---|---|

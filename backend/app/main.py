@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import addresses, auth, matches, ratings, rides, users
+from app.api import addresses, auth, matches, messages, ratings, rides, users
 from app.core.config import settings
 
 app = FastAPI(
@@ -29,6 +29,7 @@ app.include_router(users.router)
 app.include_router(addresses.router)
 app.include_router(rides.router)
 app.include_router(matches.router)
+app.include_router(messages.router)
 app.include_router(ratings.router)
 
 

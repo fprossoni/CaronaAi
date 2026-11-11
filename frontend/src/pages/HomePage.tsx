@@ -12,7 +12,6 @@ import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
 import { Button } from "@/components/ui/Button";
 import {
   CarIcon,
-  CompassIcon,
   GraduationCapIcon,
   MapPinIcon,
   NavigationIcon,
@@ -25,26 +24,22 @@ export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
 
-  const [campusPoint, setCampusPoint] = useState<CampusId>(UFRGS_CAMPUS[0].id);
-  const [direction, setDirection] = useState<"to_campus" | "from_campus">("to_campus");
-  const [addressInput, setAddressInput] = useState("");
+  const [originQuery, setOriginQuery] = useState("");
+  const [destinationQuery, setDestinationQuery] = useState("");
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const prefill = { originQuery: originQuery.trim(), destinationQuery: destinationQuery.trim() };
 
     if (isAuthenticated) {
       navigate("/find", {
-        state: {
-          campus: campusPoint,
-          direction,
-          addressQuery: addressInput.trim() || undefined,
-        },
+        state: prefill,
       });
     } else {
       navigate("/login", {
         state: {
           returnTo: "/find",
-          prefill: { campus: campusPoint, direction, addressQuery: addressInput.trim() || undefined },
+          prefill,
           message:
             "Faça login com seu e-mail institucional UFRGS (@ufrgs.br ou @*.ufrgs.br) para pesquisar e solicitar caronas.",
         },
@@ -122,112 +117,24 @@ export const HomePage: React.FC = () => {
             borderColor: "var(--color-border-strong)",
           }}
         >
-          {/* Origem */}
-          <div
-            className="md:col-span-4 flex items-center gap-3 px-3.5 py-2.5 rounded-xl border"
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              borderColor: "var(--color-border)",
-            }}
-          >
-            <MapPinIcon size={18} className="text-emerald-400 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: "var(--color-text-muted)" }}>
-                {direction === "to_campus" ? "Sua Partida" : "Campus Origem"}
-              </label>
-              {direction === "to_campus" ? (
+          {[
+            { label: "Origem", value: originQuery, onChange: setOriginQuery, Icon: MapPinIcon, color: "text-emerald-400" },
+            { label: "Destino", value: destinationQuery, onChange: setDestinationQuery, Icon: NavigationIcon, color: "text-indigo-400" },
+          ].map(({ label, value, onChange, Icon, color }) => (
+            <label key={label} className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3.5 py-2.5 md:col-span-5">
+              <Icon size={18} className={color + " shrink-0"} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-bold text-[var(--color-text-muted)]">{label}</span>
                 <input
                   type="text"
-                  placeholder="Seu bairro ou rua..."
-                  value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
-                  className="w-full bg-transparent text-sm font-medium outline-none"
-                  style={{ color: "var(--color-text)" }}
+                  placeholder="Rua, número ou bairro"
+                  value={value}
+                  onChange={(event) => onChange(event.target.value)}
+                  className="w-full bg-transparent text-sm text-[var(--color-text)]"
                 />
-              ) : (
-                <select
-                  value={campusPoint}
-                  onChange={(e) => setCampusPoint(e.target.value as CampusId)}
-                  className="w-full bg-transparent text-sm font-semibold outline-none"
-                  style={{ color: "var(--color-text)" }}
-                >
-                  {UFRGS_CAMPUS.map((c) => (
-                    <option key={c.id} value={c.id} style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-
-          {/* Destino */}
-          <div
-            className="md:col-span-4 flex items-center gap-3 px-3.5 py-2.5 rounded-xl border"
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              borderColor: "var(--color-border)",
-            }}
-          >
-            <NavigationIcon size={18} className="text-indigo-400 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: "var(--color-text-muted)" }}>
-                {direction === "to_campus" ? "Campus Destino" : "Seu Destino"}
-              </label>
-              {direction === "to_campus" ? (
-                <select
-                  value={campusPoint}
-                  onChange={(e) => setCampusPoint(e.target.value as CampusId)}
-                  className="w-full bg-transparent text-sm font-semibold outline-none"
-                  style={{ color: "var(--color-text)" }}
-                >
-                  {UFRGS_CAMPUS.map((c) => (
-                    <option key={c.id} value={c.id} style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  placeholder="Seu bairro ou rua..."
-                  value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
-                  className="w-full bg-transparent text-sm font-medium outline-none"
-                  style={{ color: "var(--color-text)" }}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Sentido */}
-          <div
-            className="md:col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              borderColor: "var(--color-border)",
-            }}
-          >
-            <CompassIcon size={17} className="text-amber-400 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: "var(--color-text-muted)" }}>
-                Sentido
-              </label>
-              <select
-                value={direction}
-                onChange={(e) => setDirection(e.target.value as "to_campus" | "from_campus")}
-                className="w-full bg-transparent text-xs font-bold outline-none"
-                style={{ color: "var(--color-text)" }}
-              >
-                <option value="to_campus" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
-                  Indo p/ UFRGS
-                </option>
-                <option value="from_campus" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
-                  Saindo da UFRGS
-                </option>
-              </select>
-            </div>
-          </div>
+              </span>
+            </label>
+          ))}
 
           {/* Submit */}
           <div className="md:col-span-2">

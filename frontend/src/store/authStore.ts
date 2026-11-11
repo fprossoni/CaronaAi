@@ -2,8 +2,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { UserPrivate } from "@/types/user";
 import { usersApi } from "@/api/auth";
+import { DEV_MOCK_TOKEN, isDevSession } from "@/lib/devSession";
 
-export const DEV_MOCK_TOKEN = "dev_mock_token";
+// Clean up simulated credentials left by a previous run on this origin.
+if (!import.meta.env.DEV && localStorage.getItem("access_token") === DEV_MOCK_TOKEN) {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("auth-storage");
+}
 
 interface AuthState {
   user: UserPrivate | null;
@@ -31,21 +37,24 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user) => set({ user }),
 
       setDevSession: (mockUser) => {
+        if (!import.meta.env.DEV) return;
         localStorage.setItem("access_token", DEV_MOCK_TOKEN);
-        localStorage.setItem("refresh_token", DEV_MOCK_TOKEN);
+        localStorage.removeItem("refresh_token");
         set({ user: mockUser, isAuthenticated: true });
       },
 
       fetchUser: async (): Promise<UserPrivate | null> => {
         // Preserve mock user when testing in the /dev playground
-        if (localStorage.getItem("access_token") === DEV_MOCK_TOKEN) {
+        if (isDevSession()) {
           return get().user;
         }
         try {
           const { data } = await usersApi.getMe();
+          if (isDevSession()) return get().user;
           set({ user: data, isAuthenticated: true });
           return data;
         } catch {
+          if (isDevSession()) return get().user;
           set({ user: null, isAuthenticated: false });
           return null;
         }

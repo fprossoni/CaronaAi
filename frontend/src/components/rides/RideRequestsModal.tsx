@@ -118,7 +118,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
       if (action === "accept") {
         toast.success(
           "Passageiro confirmado!",
-          "O ponto exato de embarque e o contato de WhatsApp foram liberados."
+          "O ponto exato de origem e o contato de WhatsApp foram liberados."
         );
       } else {
         toast.info("Solicitação recusada.");
@@ -133,7 +133,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
       if (action === "accept") {
         toast.success(
           "Passageiro confirmado!",
-          "O ponto exato de embarque e o contato de WhatsApp foram liberados."
+          "O ponto exato de origem e o contato de WhatsApp foram liberados."
         );
         setConfirmedDetails((prev) => ({ ...prev, [matchId]: confirmed }));
       } else {
@@ -274,7 +274,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                   >
                     <MapPinIcon size={14} className="text-amber-400 shrink-0" />
                     <span>
-                      Região aproximada de embarque: <strong>{m.pickup_region}</strong>
+                      Região aproximada de origem: <strong>{m.pickup_region}</strong>
                     </span>
                   </div>
 
@@ -399,13 +399,16 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                       <div className="flex items-center justify-between text-emerald-400 font-semibold">
                         <span className="flex items-center gap-1.5">
                           <NavigationIcon size={13} />
-                          Endereço exato de embarque liberado:
+                          Endereço de origem confirmado
                         </span>
                         <span>+{formatDistance(m.detour_meters)}</span>
                       </div>
                       <p className="font-medium text-sm" style={{ color: "var(--color-text)" }}>
                         {exactLabel}
                       </p>
+                      {detail?.dropoff_label && (
+                        <p style={{ color: "var(--color-text)" }}><strong>Destino:</strong> {detail.dropoff_label}</p>
+                      )}
                       {passengerPhone && (
                         <p style={{ color: "var(--color-text-muted)" }}>
                           Telefone: <strong>{passengerPhone}</strong>
@@ -427,6 +430,9 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                             : null
                         }
                         pickup={{ lat: exactLat, lng: exactLng, label: exactLabel }}
+                        dropoff={detail?.dropoff_lat != null && detail.dropoff_lng != null
+                          ? { lat: detail.dropoff_lat, lng: detail.dropoff_lng, label: detail.dropoff_label ?? undefined }
+                          : null}
                         pickupIsApproximate={false}
                         routeGeoJson={ride.route_geojson}
                       />

@@ -17,7 +17,6 @@ from geoalchemy2.shape import to_shape
 from sqlalchemy import select
 
 from app.api.deps import DbSession, VerifiedUser
-from app.models.address import UserAddress
 from app.models.match import Match, MatchStatus
 from app.models.ride import Ride, RideStatus
 from app.models.user import User
@@ -33,19 +32,28 @@ from app.schemas.match import (
     MatchWithRide,
 )
 from app.schemas.ride import RidePublic
+from app.services.addresses import get_owned_address
 from app.services.geocoding import geocode_address
 from app.services.match_rules import (
-    compute_detour,
     find_confirmed_conflict,
     request_rejection_reason,
     supersede_related_requests,
 )
+from app.services.matching import calculate_ride_candidate
+from app.services.osrm import InvalidRouteError
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 
 def _point_wkt(lat: float, lng: float) -> WKTElement:
     return WKTElement(f"POINT({lng} {lat})", srid=4326)
+
+
+def _unconfirmed_for_driver(match: Match) -> MatchConfirmed:
+    result = MatchPublic.model_validate(match)
+    result.pickup_label = match.pickup_region
+    result.dropoff_label = None
+    return MatchConfirmed(**result.model_dump())
 
 
 async def _resolve_pickup_address(
@@ -59,9 +67,7 @@ async def _resolve_pickup_address(
         (lat, lng, pickup_label, pickup_region, street, number, complement, postal_code, neighborhood, city)
     """
     if body.pickup_address_id is not None:
-        addr = db.get(UserAddress, body.pickup_address_id)
-        if not addr or addr.user_id != passenger_id:
-            raise HTTPException(status_code=404, detail="Endereço pessoal salvo não encontrado")
+        addr = get_owned_address(db, body.pickup_address_id, passenger_id)
         return (
             addr.lat,
             addr.lng,
@@ -105,7 +111,7 @@ async def _resolve_pickup_address(
         return (
             body.pickup_lat,
             body.pickup_lng,
-            body.pickup_label or "Ponto de embarque",
+            body.pickup_label or "Ponto de origem",
             body.pickup_region or "Região próxima",
             None,
             None,
@@ -115,7 +121,7 @@ async def _resolve_pickup_address(
             None,
         )
     else:
-        raise HTTPException(status_code=400, detail="Informe um endereço salvo ou endereço físico para o embarque")
+        raise HTTPException(status_code=400, detail="Informe um endereço salvo ou endereço físico para a origem")
 
 
 async def _build_match(
@@ -138,18 +144,28 @@ async def _build_match(
         city,
     ) = await _resolve_pickup_address(db, passenger_id, body)
 
-    detour_meters, detour_seconds = await compute_detour(
-        ride, pickup_lat, pickup_lng, body.dropoff_lat, body.dropoff_lng
-    )
-    has_dropoff = body.dropoff_lat is not None and body.dropoff_lng is not None
+    dropoff_lat, dropoff_lng, dropoff_label = body.dropoff_lat, body.dropoff_lng, body.dropoff_label
+    if body.dropoff_address_id is not None:
+        address = get_owned_address(db, body.dropoff_address_id, passenger_id)
+        dropoff_lat, dropoff_lng, dropoff_label = address.lat, address.lng, body.dropoff_label or address.full_address
+    if (dropoff_lat is None) != (dropoff_lng is None):
+        raise HTTPException(status_code=400, detail="Informe as coordenadas completas do destino.")
+    try:
+        candidate = await calculate_ride_candidate(ride, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
+    except InvalidRouteError as exc:
+        raise HTTPException(status_code=400, detail="Não foi possível calcular a rota até o ponto de origem.") from exc
+    reason = candidate.rejection_reason(body.pickup_after, body.pickup_before)
+    if reason:
+        raise HTTPException(status_code=400, detail=reason)
+    has_dropoff = dropoff_lat is not None and dropoff_lng is not None
     return Match(
         ride_id=ride.id,
         passenger_id=passenger_id,
         batch_id=batch_id,
         pickup_point=_point_wkt(pickup_lat, pickup_lng),
-        dropoff_point=_point_wkt(body.dropoff_lat, body.dropoff_lng) if has_dropoff else None,
+        dropoff_point=_point_wkt(dropoff_lat, dropoff_lng) if has_dropoff else None,
         pickup_label=pickup_label,
-        dropoff_label=body.dropoff_label,
+        dropoff_label=dropoff_label,
         pickup_region=pickup_region,
         pickup_street=street,
         pickup_number=number,
@@ -157,8 +173,8 @@ async def _build_match(
         pickup_postal_code=postal_code,
         pickup_neighborhood=neighborhood,
         pickup_city=city,
-        detour_meters=detour_meters,
-        detour_seconds=detour_seconds,
+        detour_meters=candidate.detour_meters,
+        detour_seconds=candidate.detour_seconds,
     )
 
 
@@ -205,6 +221,9 @@ async def request_match_batch(
             continue
         try:
             match = await _build_match(db, ride, current_user.id, body, batch_id=batch_id)
+        except HTTPException as exc:
+            skipped.append(MatchBatchSkipped(ride_id=ride_id, reason=str(exc.detail)))
+            continue
         except Exception:
             skipped.append(MatchBatchSkipped(ride_id=ride_id, reason="Erro ao calcular a rota"))
             continue
@@ -322,6 +341,8 @@ def respond_to_match(
     match.responded_at = datetime.now(UTC)
 
     if body.action == "accept":
+        if ride.status not in (RideStatus.ACTIVE, RideStatus.FULL):
+            raise HTTPException(409, "Esta carona não aceita mais confirmações")
         if ride.available_seats <= 0:
             raise HTTPException(status_code=400, detail="No seats available")
 
@@ -355,6 +376,7 @@ def respond_to_match(
 
         # Build MatchConfirmed with full info revealed
         pickup_shape = to_shape(match.pickup_point)
+        dropoff_shape = to_shape(match.dropoff_point) if match.dropoff_point is not None else None
         passenger = match.passenger
 
         return MatchConfirmed(
@@ -372,6 +394,8 @@ def respond_to_match(
             driver_phone=current_user.phone,
             pickup_lat=pickup_shape.y,
             pickup_lng=pickup_shape.x,
+            dropoff_lat=dropoff_shape.y if dropoff_shape is not None else None,
+            dropoff_lng=dropoff_shape.x if dropoff_shape is not None else None,
             passenger_phone=passenger.phone,
             pickup_street=match.pickup_street,
             pickup_number=match.pickup_number,
@@ -385,7 +409,7 @@ def respond_to_match(
         match.status = MatchStatus.REJECTED
         db.commit()
         db.refresh(match)
-        return MatchConfirmed.model_validate(match)
+        return _unconfirmed_for_driver(match)
 
 
 @router.patch("/{match_id}/cancel")
@@ -396,12 +420,15 @@ def cancel_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> di
         raise HTTPException(status_code=404, detail="Match not found")
     if match.passenger_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your match")
+    ride = db.get(Ride, match.ride_id, with_for_update=True)
+    db.refresh(match)
+    if not ride or ride.status not in (RideStatus.ACTIVE, RideStatus.FULL, RideStatus.IN_PROGRESS):
+        raise HTTPException(409, "Esta carona já foi encerrada")
     if match.status not in (MatchStatus.PENDING, MatchStatus.ACCEPTED):
         raise HTTPException(status_code=400, detail="Cannot cancel this match")
 
     if match.status == MatchStatus.ACCEPTED:
         # Restore the seat
-        ride = db.get(Ride, match.ride_id)
         if ride:
             ride.available_seats += 1
             if ride.status == RideStatus.FULL:
@@ -429,6 +456,9 @@ def get_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> Match
     if not (is_driver or is_passenger):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    if is_driver and match.status != MatchStatus.ACCEPTED:
+        return _unconfirmed_for_driver(match)
+
     result = MatchConfirmed.model_validate(match)
 
     # Only reveal exact location if match is accepted
@@ -436,6 +466,10 @@ def get_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> Match
         pickup_shape = to_shape(match.pickup_point)
         result.pickup_lat = pickup_shape.y
         result.pickup_lng = pickup_shape.x
+        if match.dropoff_point is not None:
+            dropoff_shape = to_shape(match.dropoff_point)
+            result.dropoff_lat = dropoff_shape.y
+            result.dropoff_lng = dropoff_shape.x
         result.passenger_phone = match.passenger.phone
         result.driver_phone = ride.driver.phone
         result.pickup_street = match.pickup_street

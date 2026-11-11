@@ -12,14 +12,14 @@
  * 3. Public OSRM / Haversine fallback for client-side route previews
  */
 
-import { UFRGS_CAMPUS } from "@/types/ride";
+import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
 
 export interface LocationValue {
   label: string;
   region: string;
   lat: number;
   lng: number;
-  campusId?: string;
+  campusId?: CampusId;
   addressId?: number;
 }
 
@@ -256,11 +256,15 @@ export async function getBrowserCurrentLocation(): Promise<LocationValue> {
   return geocodingService.reverseGeocode(latitude, longitude);
 }
 
-/**
- * Computes a route preview between two points for map visualization.
- * Attempts OSRM public demo routing first and falls back to Haversine straight-line
- * calculation (matching the backend fallback logic in `backend/app/services/osrm.py`).
- */
+export function straightLineDistanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const sinLat = Math.sin(toRad(b.lat - a.lat) / 2);
+  const sinLng = Math.sin(toRad(b.lng - a.lng) / 2);
+  const c = sinLat ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * sinLng ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(Math.min(1, c)));
+}
+
+/** Uses OSRM for the map preview, with a straight-line fallback. */
 export async function fetchRoutePreview(
   origin: { lat: number; lng: number },
   destination: { lat: number; lng: number },
@@ -289,20 +293,9 @@ export async function fetchRoutePreview(
   }
 
   // Fallback: Haversine distance with 1.3x urban road factor and 30 km/h average speed
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
   let totalMeters = 0;
   for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    const dLat = toRad(b.lat - a.lat);
-    const dLng = toRad(b.lng - a.lng);
-    const sinLat = Math.sin(dLat / 2);
-    const sinLng = Math.sin(dLng / 2);
-    const c =
-      sinLat * sinLat +
-      Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * sinLng * sinLng;
-    const straight = 2 * 6371000 * Math.asin(Math.sqrt(c));
-    totalMeters += straight * 1.3;
+    totalMeters += straightLineDistanceMeters(points[i], points[i + 1]) * 1.3;
   }
 
   return {
