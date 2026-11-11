@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User
@@ -33,7 +34,7 @@ def get_current_user(
         raise credentials_exception
 
     user = db.get(User, int(user_id))
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or (user.dev_owner_hash is not None and not settings.DEV_ACCOUNTS_ENABLED):
         raise credentials_exception
     return user
 

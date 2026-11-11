@@ -2,22 +2,21 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { UserPrivate } from "@/types/user";
 import { usersApi } from "@/api/auth";
-import { DEV_MOCK_TOKEN, isDevSession } from "@/lib/devSession";
 
 // Clean up simulated credentials left by a previous run on this origin.
-if (!import.meta.env.DEV && localStorage.getItem("access_token") === DEV_MOCK_TOKEN) {
+if (localStorage.getItem("access_token") === "dev_mock_token") {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("auth-storage");
 }
 
+let sessionVersion = 0;
+
 interface AuthState {
   user: UserPrivate | null;
   isAuthenticated: boolean;
-  setTokens: (access: string, refresh: string) => void;
+  setTokens: (access: string, refresh: string, user?: UserPrivate) => void;
   setUser: (user: UserPrivate) => void;
-  /** Injects a simulated user session for the `/dev` playground without requiring backend auth */
-  setDevSession: (mockUser: UserPrivate) => void;
   fetchUser: () => Promise<UserPrivate | null>;
   logout: () => void;
 }
@@ -28,39 +27,31 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: !!localStorage.getItem("access_token"),
 
-      setTokens: (access, refresh) => {
+      setTokens: (access, refresh, user) => {
+        sessionVersion++;
         localStorage.setItem("access_token", access);
         localStorage.setItem("refresh_token", refresh);
-        set({ isAuthenticated: true });
+        set({ user: user ?? null, isAuthenticated: true });
       },
 
       setUser: (user) => set({ user }),
 
-      setDevSession: (mockUser) => {
-        if (!import.meta.env.DEV) return;
-        localStorage.setItem("access_token", DEV_MOCK_TOKEN);
-        localStorage.removeItem("refresh_token");
-        set({ user: mockUser, isAuthenticated: true });
-      },
-
       fetchUser: async (): Promise<UserPrivate | null> => {
-        // Preserve mock user when testing in the /dev playground
-        if (isDevSession()) {
-          return get().user;
-        }
+        const version = sessionVersion;
         try {
           const { data } = await usersApi.getMe();
-          if (isDevSession()) return get().user;
+          if (version !== sessionVersion) return get().user;
           set({ user: data, isAuthenticated: true });
           return data;
         } catch {
-          if (isDevSession()) return get().user;
+          if (version !== sessionVersion) return get().user;
           set({ user: null, isAuthenticated: false });
           return null;
         }
       },
 
       logout: () => {
+        sessionVersion++;
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         set({ user: null, isAuthenticated: false });

@@ -26,6 +26,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    dev_owner_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Profile fields
@@ -64,6 +65,10 @@ class User(Base):
 
     # Email verification
     verification_tokens: Mapped[list["EmailVerificationToken"]] = relationship("EmailVerificationToken", back_populates="user")
+
+    @property
+    def profile_complete(self) -> bool:
+        return self.dev_owner_hash is not None or bool(self.name and self.course and self.gender and self.birth_date)
 
     @property
     def age(self) -> int | None:

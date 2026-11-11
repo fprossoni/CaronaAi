@@ -15,7 +15,7 @@ import { HistoryPage } from "@/pages/HistoryPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { ProfileCompletePage } from "@/pages/ProfileCompletePage";
 import { HomePage } from "@/pages/HomePage";
-import { DevPlaygroundPage } from "@/pages/DevPlaygroundPage";
+import { DevAccountsPage } from "@/pages/DevAccountsPage";
 import "./index.css";
 
 // ─── Protected Route Guard ───────────────────────────────────────────────────
@@ -64,8 +64,7 @@ export default function App() {
           {/* Public Landing Page */}
           <Route path="/" element={<HomePage />} />
 
-          {/* Developer Playground (Active in Development Mode) */}
-          {import.meta.env.DEV && <Route path="/dev" element={<DevPlaygroundPage />} />}
+          {import.meta.env.DEV && <Route path="/dev" element={<DevAccountsPage />} />}
 
           {/* Authentication Routes */}
           <Route path="/login" element={<LoginPage />} />

@@ -7,7 +7,6 @@
 
 import React, { useState } from "react";
 import { ratingsApi } from "@/api/ratings";
-import { isDevSession } from "@/lib/devSession";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import { Avatar } from "@/components/ui/Avatar";
@@ -51,16 +50,6 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (import.meta.env.DEV && (ratedUser.id >= 9000 || isDevSession())) {
-      toast.success(
-        "Avaliação enviada!",
-        `Sua nota de ${stars} estrelas para ${ratedUser.name ?? "o participante"} foi registrada.`
-      );
-      onSuccess();
-      onClose();
-      return;
-    }
-
     setLoading(true);
     try {
       await ratingsApi.create({

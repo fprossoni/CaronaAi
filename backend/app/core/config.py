@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "Carona Aí"
     DEBUG: bool = False
+    DEV_ACCOUNTS_ENABLED: bool = False
     SECRET_KEY: str = "change-me-in-production-use-a-long-random-string"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30

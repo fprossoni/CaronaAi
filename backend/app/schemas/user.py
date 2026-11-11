@@ -1,7 +1,7 @@
 import re
 from datetime import date
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator
 
 from app.models.user import Gender
 
@@ -98,9 +98,3 @@ class UserPrivate(UserPublic):
     profile_complete: bool = False
 
     model_config = {"from_attributes": True}
-
-    @model_validator(mode="after")
-    def compute_profile_complete(self) -> "UserPrivate":
-        """A profile is complete when the mandatory fields are filled."""
-        self.profile_complete = bool(self.name and self.course and self.gender and self.birth_date)
-        return self

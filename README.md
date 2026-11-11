@@ -50,7 +50,9 @@ npm run dev
 
 - Frontend disponível em: http://localhost:5173
 
-Para experimentar o playground, execute os comandos do frontend e abra [http://localhost:5173/dev](http://localhost:5173/dev). Você pode entrar como visitante e simular motorista, passageira ou perfil incompleto sem iniciar o backend. As alterações simuladas em caronas, solicitações e endereços ficam em memória até recarregar a página. O mapa e as buscas de endereço podem consultar serviços públicos.
+Com o frontend e o backend em execução, abra [http://localhost:5173/dev](http://localhost:5173/dev) para criar uma conta de teste com nome e sexo. A conta já entra no app e usa os mesmos mapas, APIs e banco de dados que uma conta comum. Use o botão **Dev** para trocar de conta. As contas criadas ficam disponíveis no mesmo navegador após recarregar ou sair da sessão.
+
+Em um ambiente local existente, adicione `DEV_ACCOUNTS_ENABLED=true` ao `.env`, aplique `alembic upgrade head` e reinicie o backend. A opção vem ativada no `.env.example` de desenvolvimento. Mantenha-a desativada fora do ambiente de testes.
 
 ---
 
@@ -80,7 +82,7 @@ uv run --locked fastapi dev app/main.py
 - No grupo, abra **Participantes · Conversas privadas** para conversar somente com o motorista ou, para motoristas, com um passageiro. Cada conversa privada pertence àquela carona.
 - O motorista usa **Iniciar carona** e **Concluir carona**. Concluir ou cancelar encerra o acesso às conversas, que deixam de aparecer na lista ativa. Cancelar uma participação remove o acesso daquele passageiro imediatamente. Apenas chegar ao horário de partida não conclui a viagem.
 - As mensagens são armazenadas no banco. A tela busca atualizações a cada cinco segundos enquanto está visível, com paginação para mensagens anteriores. Não há notificações push nesta versão.
-- No `/dev`, as mesmas ações são simuladas em memória. Para experimentar os dois lados, confirme Marina como motorista, abra o grupo e depois troque para a sessão de passageira sem recarregar a página.
+- Para experimentar os dois lados, crie duas contas em `/dev`, ofereça uma carona com uma delas e solicite a vaga com a outra. Depois da confirmação, as duas contas podem acessar a mesma conversa.
 
 Em um backend já em execução, aplique a migração antes de usar mensagens:
 

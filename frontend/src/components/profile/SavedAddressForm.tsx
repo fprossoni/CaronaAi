@@ -1,7 +1,6 @@
 import React, { useRef, useState } from "react";
 import { addressesApi } from "@/api/addresses";
 import type { AddressCreate, AddressPublic } from "@/types/address";
-import { MOCK_HOME_ADDRESS } from "@/data/devMocks";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/Button";
@@ -30,12 +29,10 @@ function formatCepInput(raw: string): string {
 interface SavedAddressFormProps {
   onSaved: (address: AddressPublic) => void;
   onCancel: () => void;
-  playground?: boolean;
 }
 
-export function SavedAddressForm({ onSaved, onCancel, playground }: SavedAddressFormProps) {
+export function SavedAddressForm({ onSaved, onCancel }: SavedAddressFormProps) {
   const toast = useToastStore();
-  const isMockMode = import.meta.env.DEV && playground;
   const [submitting, setSubmitting] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepHint, setCepHint] = useState("");
@@ -51,37 +48,16 @@ export function SavedAddressForm({ onSaved, onCancel, playground }: SavedAddress
     if (cleanCep.length !== 8) return;
 
     try {
-      if (isMockMode) {
-        // Direct public ViaCEP lookup when testing in mock mode
-        const resp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-        const json = (await resp.json()) as {
-          erro?: boolean;
-          logradouro?: string;
-          bairro?: string;
-          localidade?: string;
-          uf?: string;
-        };
-        if (latestCep.current !== cleanCep) return;
-        if (json.erro) throw new Error("CEP não encontrado");
-        setForm((prev) => ({
-          ...prev,
-          street: json.logradouro || prev.street,
-          neighborhood: json.bairro || prev.neighborhood,
-          city: json.localidade || prev.city,
-          state: json.uf || prev.state,
-        }));
-      } else {
-        const { data } = await addressesApi.lookupCep(cleanCep);
-        if (latestCep.current !== cleanCep) return;
-        setForm((prev) => ({
-          ...prev,
-          postal_code: data.postal_code || formatCepInput(cleanCep),
-          street: data.street || prev.street,
-          neighborhood: data.neighborhood || prev.neighborhood,
-          city: data.city || prev.city,
-          state: data.state || prev.state,
-        }));
-      }
+      const { data } = await addressesApi.lookupCep(cleanCep);
+      if (latestCep.current !== cleanCep) return;
+      setForm((prev) => ({
+        ...prev,
+        postal_code: data.postal_code || formatCepInput(cleanCep),
+        street: data.street || prev.street,
+        neighborhood: data.neighborhood || prev.neighborhood,
+        city: data.city || prev.city,
+        state: data.state || prev.state,
+      }));
       setCepHint("Endereço preenchido automaticamente pelo CEP.");
     } catch {
       if (latestCep.current !== cleanCep) return;
@@ -102,27 +78,12 @@ export function SavedAddressForm({ onSaved, onCancel, playground }: SavedAddress
 
     setSubmitting(true);
     try {
-      if (isMockMode) {
-        const mockCreated: AddressPublic = {
-          ...form,
-          id: Date.now(),
-          user_id: MOCK_HOME_ADDRESS.user_id,
-          label: form.label.trim() || "Casa",
-          lat: MOCK_HOME_ADDRESS.lat,
-          lng: MOCK_HOME_ADDRESS.lng,
-          created_at: new Date().toISOString(),
-          full_address: `${form.street}, ${form.number} — ${form.neighborhood || form.city}`,
-        };
-        onSaved(mockCreated);
-        toast.success("Endereço salvo!", `${mockCreated.label} adicionado aos seus atalhos.`);
-      } else {
-        const { data: created } = await addressesApi.create({
-          ...form,
-          label: form.label.trim() || "Casa",
-        });
-        onSaved(created);
-        toast.success("Endereço salvo!", `${created.label} já pode ser usado nas caronas.`);
-      }
+      const { data: created } = await addressesApi.create({
+        ...form,
+        label: form.label.trim() || "Casa",
+      });
+      onSaved(created);
+      toast.success("Endereço salvo!", `${created.label} já pode ser usado nas caronas.`);
       setForm(EMPTY_FORM);
       setCepHint("");
     } catch (err: unknown) {

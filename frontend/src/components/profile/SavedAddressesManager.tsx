@@ -9,25 +9,20 @@
 import React, { useEffect, useState } from "react";
 import { addressesApi } from "@/api/addresses";
 import type { AddressPublic } from "@/types/address";
-import { MOCK_HOME_ADDRESS } from "@/data/devMocks";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/Button";
 import { SavedAddressForm } from "@/components/profile/SavedAddressForm";
 import { MapPinIcon, NavigationIcon, XIcon } from "@/components/ui/Icons";
 
-export const SavedAddressesManager: React.FC<{ playground?: boolean }> = ({ playground = false }) => {
+export const SavedAddressesManager: React.FC = () => {
   const toast = useToastStore();
-  const isMockMode = import.meta.env.DEV && playground;
 
-  const [addresses, setAddresses] = useState<AddressPublic[]>(() =>
-    isMockMode ? [MOCK_HOME_ADDRESS] : []
-  );
-  const [loading, setLoading] = useState(() => !isMockMode);
+  const [addresses, setAddresses] = useState<AddressPublic[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
-    if (isMockMode) return;
     let active = true;
     addressesApi
       .list()
@@ -43,7 +38,7 @@ export const SavedAddressesManager: React.FC<{ playground?: boolean }> = ({ play
     return () => {
       active = false;
     };
-  }, [isMockMode]);
+  }, []);
 
   const handleDelete = async (addr: AddressPublic) => {
     const ok = await toast.confirm({
@@ -55,9 +50,7 @@ export const SavedAddressesManager: React.FC<{ playground?: boolean }> = ({ play
     if (!ok) return;
 
     try {
-      if (!isMockMode) {
-        await addressesApi.delete(addr.id);
-      }
+      await addressesApi.delete(addr.id);
       setAddresses((prev) => prev.filter((item) => item.id !== addr.id));
       toast.info("Endereço removido.");
     } catch (err: unknown) {
@@ -99,7 +92,6 @@ export const SavedAddressesManager: React.FC<{ playground?: boolean }> = ({ play
       {showAddForm && (
         <div className="p-4 rounded-2xl border border-[var(--color-border)]">
           <SavedAddressForm
-            playground={playground}
             onCancel={() => setShowAddForm(false)}
             onSaved={(address) => {
               setAddresses((prev) => [...prev, address]);

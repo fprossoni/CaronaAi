@@ -6,7 +6,6 @@
  */
 
 import React, { useState } from "react";
-import { isDevSession } from "@/lib/devSession";
 import { usersApi } from "@/api/auth";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
@@ -43,17 +42,6 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (import.meta.env.DEV && (targetUser.id >= 9000 || isDevSession())) {
-      toast.success(
-        "Relato registrado com sucesso",
-        alsoBlock
-          ? `A ocorrência da carona #${rideId} foi registrada e ${targetUser.name ?? "o usuário"} foi bloqueado.`
-          : `A ocorrência da carona #${rideId} foi encaminhada para análise.`
-      );
-      onClose();
-      return;
-    }
-
     setLoading(true);
     try {
       if (alsoBlock) {

@@ -35,9 +35,6 @@ interface RideRequestsModalProps {
   ride: RideDetail;
   onClose: () => void;
   onChanged: () => void;
-  /** Optional mock data for isolated testing in the `/dev` playground */
-  mockRequests?: MatchForDriver[];
-  mockConfirmedDetails?: Record<number, MatchConfirmed>;
 }
 
 function formatTime(iso: string): string {
@@ -48,15 +45,11 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
   ride,
   onClose,
   onChanged,
-  mockRequests,
-  mockConfirmedDetails,
 }) => {
   const toast = useToastStore();
-  const [requests, setRequests] = useState<MatchForDriver[]>(() => mockRequests ?? []);
-  const [confirmedDetails, setConfirmedDetails] = useState<Record<number, MatchConfirmed>>(
-    () => mockConfirmedDetails ?? {}
-  );
-  const [loading, setLoading] = useState(() => !mockRequests);
+  const [requests, setRequests] = useState<MatchForDriver[]>([]);
+  const [confirmedDetails, setConfirmedDetails] = useState<Record<number, MatchConfirmed>>({});
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actingId, setActingId] = useState<number | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserPublic | null>(null);
@@ -86,7 +79,6 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
   }, [ride.id]);
 
   useEffect(() => {
-    if (mockRequests) return;
     let active = true;
     load()
       .then(({ list, detailsMap }) => {
@@ -104,29 +96,10 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
     return () => {
       active = false;
     };
-  }, [load, mockRequests]);
+  }, [load]);
 
   const handleRespond = async (matchId: number, action: "accept" | "reject") => {
     setActingId(matchId);
-
-    if (mockRequests) {
-      setRequests((prev) =>
-        prev.map((m) =>
-          m.id === matchId ? { ...m, status: action === "accept" ? "accepted" : "rejected" } : m
-        )
-      );
-      if (action === "accept") {
-        toast.success(
-          "Passageiro confirmado!",
-          "O ponto exato de origem e o contato de WhatsApp foram liberados."
-        );
-      } else {
-        toast.info("Solicitação recusada.");
-      }
-      setActingId(null);
-      onChanged();
-      return;
-    }
 
     try {
       const { data: confirmed } = await matchesApi.respond(matchId, action);

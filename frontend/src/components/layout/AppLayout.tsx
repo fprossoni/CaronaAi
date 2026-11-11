@@ -92,9 +92,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <Link
               to="/dev"
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border shadow-md backdrop-blur-md no-underline transition-transform hover:scale-105 bg-indigo-500/20 text-indigo-400 border-indigo-500/40"
-              title="Abrir Playground de Componentes (/dev)"
+              title="Contas de teste"
             >
-              <span>🛠️ /dev</span>
+              <span>Contas de teste</span>
             </Link>
           )}
         </div>
@@ -166,14 +166,15 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             {import.meta.env.DEV && (
               <Link
                 to="/dev"
+                state={isAuthenticated && !isDevRoute ? { returnTo: location.pathname } : undefined}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border no-underline transition-all ${
                   isDevRoute
                     ? "bg-indigo-500 text-white border-indigo-500"
                     : "bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/25"
                 }`}
-                title="Playground de Componentes e Estados (/dev)"
+                aria-label="Contas de teste"
               >
-                🛠️ /dev
+                Dev
               </Link>
             )}
 
