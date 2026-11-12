@@ -108,10 +108,7 @@ export const FindRidePage: React.FC = () => {
       try {
         const { data } = await ridesApi.search(params, controller.signal);
         if (controller.signal.aborted) return;
-        const ordered = [...data].sort((a, b) =>
-          Date.parse(a.estimated_pickup_at ?? a.departure_at) - Date.parse(b.estimated_pickup_at ?? b.departure_at)
-        );
-        setSearchResult({ params, rides: ordered });
+        setSearchResult({ params, rides: data });
       } catch (err: unknown) {
         if (!controller.signal.aborted) {
           setSearchResult({ params, error: getErrorMessage(err, "Não foi possível buscar caronas.") });
@@ -236,6 +233,9 @@ export const FindRidePage: React.FC = () => {
                 }`}
           </span>
         </h2>
+        {rides.length > 1 && (
+          <p className="text-sm text-[var(--color-text-muted)]">Menor desvio estimado primeiro</p>
+        )}
       </div>
 
       {/* Multi-Matching Batch Bar (shown when 2+ eligible rides exist) */}

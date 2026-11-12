@@ -73,7 +73,7 @@ export const RideCard: React.FC<RideCardProps> = ({
     maximumFractionDigits: 1,
   });
   const showDetour = !!(passengerPickup && passengerDropoff);
-  const comparisonRoute = showDetour && (ride.detour_meters || ride.detour_seconds) ? ride.route_geojson : null;
+  const comparisonRoute = showDetour && (!ride.detour_geojson || ride.detour_meters || ride.detour_seconds) ? ride.route_geojson : null;
   const isLowDetour = (ride.detour_meters ?? 0) <= 1200;
   const resolvedMatchStatus = existingMatchStatus ?? ride.my_match_status ?? null;
   const canSelectForBatch =
@@ -131,7 +131,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 title="Acréscimo estimado na rota original do motorista"
               >
                 <NavigationIcon size={11} />
-                +{formatDistance(ride.detour_meters)} · +{formatDuration(ride.detour_seconds ?? 0)}
+                ≈ +{formatDistance(ride.detour_meters)} · +{formatDuration(ride.detour_seconds ?? 0)}
               </span>
             )}
 

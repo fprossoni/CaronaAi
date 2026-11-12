@@ -9,7 +9,7 @@ Multi-matching flow:
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, status
 from geoalchemy2 import WKTElement
@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from app.api.deps import DbSession, VerifiedUser
 from app.core.campuses import CAMPUS_COORDS, CAMPUS_REQUIRED_MESSAGE, campus_at, campus_label
+from app.core.config import settings
 from app.models.match import Match, MatchStatus
 from app.models.ride import Ride, RideStatus
 from app.models.user import User
@@ -40,7 +41,9 @@ from app.services.match_rules import (
     request_rejection_reason,
     supersede_related_requests,
 )
-from app.services.matching import IncompatibleCampusError, calculate_ride_candidate, validate_campus_match
+from app.services.matching import (
+    IncompatibleCampusError, calculate_ride_candidate, confirmed_matches, remove_cancelled_stop, save_route_plan,
+)
 from app.services.osrm import InvalidRouteError
 
 router = APIRouter(prefix="/matches", tags=["matches"])
@@ -161,7 +164,9 @@ async def _build_match(
     if not (campus_at((pickup_lat, pickup_lng)) or campus_at((dropoff_lat, dropoff_lng))):
         raise HTTPException(status_code=400, detail=CAMPUS_REQUIRED_MESSAGE)
     try:
-        candidate = await calculate_ride_candidate(ride, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
+        candidate = await calculate_ride_candidate(
+            ride, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, confirmed=confirmed_matches(db, ride),
+        )
     except InvalidRouteError as exc:
         raise HTTPException(status_code=400, detail="Não foi possível calcular a rota até o ponto de origem.") from exc
     except IncompatibleCampusError as exc:
@@ -186,6 +191,8 @@ async def _build_match(
         pickup_city=city,
         detour_meters=candidate.detour_meters,
         detour_seconds=candidate.detour_seconds,
+        pickup_after=body.pickup_after,
+        pickup_before=body.pickup_before,
     )
 
 
@@ -322,7 +329,7 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
 
 
 @router.patch("/{match_id}/respond", response_model=MatchConfirmed)
-def respond_to_match(
+async def respond_to_match(
     match_id: int,
     body: MatchActionRequest,
     current_user: VerifiedUser,
@@ -369,16 +376,6 @@ def respond_to_match(
             raise HTTPException(409, "Peça ao passageiro que envie uma nova solicitação com origem e destino.")
         pickup_shape = to_shape(match.pickup_point)
         dropoff_shape = to_shape(match.dropoff_point)
-        driver_origin = to_shape(ride.origin_point)
-        driver_destination = to_shape(ride.destination_point)
-        try:
-            validate_campus_match(
-                (driver_origin.y, driver_origin.x), (driver_destination.y, driver_destination.x),
-                (pickup_shape.y, pickup_shape.x), (dropoff_shape.y, dropoff_shape.x),
-            )
-        except IncompatibleCampusError as exc:
-            raise HTTPException(409, str(exc)) from exc
-
         if find_confirmed_conflict(db, match.passenger_id, ride.departure_at, exclude_match_id=match.id):
             # Passenger already has a confirmed ride at a similar time
             match.status = MatchStatus.SUPERSEDED
@@ -386,6 +383,37 @@ def respond_to_match(
             db.commit()
             raise HTTPException(status_code=409, detail="Este passageiro já confirmou outra carona em horário próximo")
 
+        confirmed = confirmed_matches(db, ride)
+        try:
+            candidate = await calculate_ride_candidate(
+                ride, pickup_shape.y, pickup_shape.x, dropoff_shape.y, dropoff_shape.x,
+                confirmed=confirmed, with_geometry=True,
+            )
+        except IncompatibleCampusError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except InvalidRouteError as exc:
+            raise HTTPException(409, "Não foi possível incluir essa parada na rota da carona.") from exc
+        plan = candidate.plan
+        assert plan is not None
+        if len(plan.points) > 2 and plan.route.geometry is None:
+            raise HTTPException(503, "O serviço de rotas está indisponível. Tente confirmar a carona novamente.")
+        reason = candidate.rejection_reason(
+            match.pickup_after or ride.departure_at,
+            match.pickup_before or ride.departure_at + timedelta(seconds=settings.MATCH_MAX_PICKUP_DELAY_SECONDS),
+        )
+        if reason:
+            raise HTTPException(409, reason)
+        for passenger_match in confirmed:
+            if passenger_match.pickup_after is None or passenger_match.pickup_before is None:
+                continue
+            point = to_shape(passenger_match.pickup_point)
+            arrival = plan.arrival(ride, (point.y, point.x))
+            if not passenger_match.pickup_after <= arrival <= passenger_match.pickup_before:
+                raise HTTPException(409, "A nova parada alteraria o horário combinado com outro passageiro.")
+
+        save_route_plan(ride, plan)
+        match.detour_meters = candidate.detour_meters
+        match.detour_seconds = candidate.detour_seconds
         match.status = MatchStatus.ACCEPTED
         match.responded_at = datetime.now(UTC)
         ride.available_seats -= 1
@@ -436,8 +464,8 @@ def respond_to_match(
 
 
 @router.patch("/{match_id}/cancel")
-def cancel_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> dict:
-    """Passenger cancels their own pending match."""
+async def cancel_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> dict:
+    """Passenger cancels their own pending or accepted match."""
     match = db.get(Match, match_id)
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
@@ -451,11 +479,11 @@ def cancel_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> di
         raise HTTPException(status_code=400, detail="Cannot cancel this match")
 
     if match.status == MatchStatus.ACCEPTED:
-        # Restore the seat
-        if ride:
-            ride.available_seats += 1
-            if ride.status == RideStatus.FULL:
-                ride.status = RideStatus.ACTIVE
+        remaining = [item for item in confirmed_matches(db, ride) if item.id != match.id]
+        await remove_cancelled_stop(ride, remaining)
+        ride.available_seats += 1
+        if ride.status == RideStatus.FULL:
+            ride.status = RideStatus.ACTIVE
 
     match.status = MatchStatus.CANCELLED
     db.commit()

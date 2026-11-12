@@ -31,7 +31,7 @@ def _point_wkt(lat: float, lng: float) -> WKTElement:
     return WKTElement(f"POINT({lng} {lat})", srid=4326)
 
 
-def _serialize_ride(ride: Ride, schema_cls: type[RideSchema]) -> RideSchema:
+def _serialize_ride(ride: Ride, schema_cls: type[RideSchema], *, driver_view: bool = False) -> RideSchema:
     """Convert ORM Ride to Pydantic schema including PostGIS coordinates & route GeoJSON."""
     result = schema_cls.model_validate(ride)
     try:
@@ -43,8 +43,13 @@ def _serialize_ride(ride: Ride, schema_cls: type[RideSchema]) -> RideSchema:
             pt = to_shape(ride.destination_point)
             result.destination_lat = pt.y
             result.destination_lng = pt.x
-        if ride.route_line is not None:
-            result.route_geojson = dict(mapping(to_shape(ride.route_line)))
+        route_line = ride.route_line
+        if driver_view and ride.planned_route:
+            route_line = ride.planned_route_line
+            result.route_distance_meters = ride.planned_route["distance"]
+            result.route_duration_seconds = ride.planned_route["duration"]
+        if route_line is not None:
+            result.route_geojson = dict(mapping(to_shape(route_line)))
     except Exception:
         pass
     return result
@@ -308,7 +313,7 @@ def get_my_rides(current_user: VerifiedUser, db: DbSession) -> list[RideDetail]:
         .where(Ride.driver_id == current_user.id)
         .order_by(Ride.departure_at.desc())
     ).scalars().all()
-    return [_serialize_ride(r, RideDetail) for r in rides]
+    return [_serialize_ride(r, RideDetail, driver_view=True) for r in rides]
 
 
 @router.get("/history", response_model=list[TripHistory])
@@ -422,7 +427,7 @@ def get_ride(ride_id: int, db: DbSession, current_user: VerifiedUser) -> RideDet
     ride = db.get(Ride, ride_id)
     if not ride:
         raise HTTPException(status_code=404, detail="Ride not found")
-    return _serialize_ride(ride, RideDetail)
+    return _serialize_ride(ride, RideDetail, driver_view=ride.driver_id == current_user.id)
 
 
 @router.patch("/{ride_id}/cancel")

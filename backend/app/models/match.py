@@ -50,6 +50,8 @@ class Match(Base):
     # Detour metrics (calculated by matching service)
     detour_meters: Mapped[float] = mapped_column(Float, default=0.0)
     detour_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    pickup_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pickup_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     status: Mapped[MatchStatus] = mapped_column(Enum(MatchStatus), default=MatchStatus.PENDING)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

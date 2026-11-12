@@ -42,7 +42,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     { path: "/offer", label: "Oferecer", shortLabel: "Oferecer", icon: CarIcon },
     { path: "/rides", label: "Minhas Caronas", shortLabel: "Caronas", icon: CompassIcon },
     { path: "/rides/history", label: "Histórico", shortLabel: "Histórico", icon: HistoryIcon },
-    { path: "/profile", label: "Meu Perfil", shortLabel: "Perfil", icon: UserIcon },
   ];
 
   const publicMobileItems = [
@@ -103,7 +102,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     );
   }
 
-  const mobileNavList = isAuthenticated ? navItems : publicMobileItems;
+  const mobileNavList = isAuthenticated ? [
+    ...navItems,
+    { path: "/profile", label: "Meu Perfil", shortLabel: "Perfil", icon: UserIcon },
+  ] : publicMobileItems;
 
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-8">

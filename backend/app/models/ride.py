@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from enum import Enum as PyEnum
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.campuses import CAMPUS_COORDS, DEFAULT_CAMPUS_ID
@@ -47,6 +47,8 @@ class Ride(Base):
     origin_point = mapped_column(Geometry("POINT", srid=4326))
     destination_point = mapped_column(Geometry("POINT", srid=4326))
     route_line = mapped_column(Geometry("LINESTRING", srid=4326))   # Full route geometry from OSRM
+    planned_route_line = mapped_column(Geometry("LINESTRING", srid=4326, spatial_index=False))
+    planned_route: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Route metrics (pre-calculated)
     route_distance_meters: Mapped[float] = mapped_column(Float, default=0.0)
