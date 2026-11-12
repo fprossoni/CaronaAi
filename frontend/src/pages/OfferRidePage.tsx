@@ -5,7 +5,7 @@ import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
 import { TripRouteFields } from "@/components/rides/TripRouteFields";
-import { getInitialTripRoute, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
+import { getInitialTripRoute, hasTripCampus, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
 import { formatCarPlate, isValidCarPlate } from "@/lib/formatters";
 import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/Button";
@@ -82,6 +82,7 @@ export const OfferRidePage: React.FC = () => {
       setError("Confirme os pontos de origem e destino.");
       return;
     }
+    if (!hasTripCampus(route)) return;
 
     if (!departureAt) {
       setError("Informe a data e o horário de saída.");
@@ -91,7 +92,8 @@ export const OfferRidePage: React.FC = () => {
     setLoading(true);
     try {
       await ridesApi.create({
-        campus_point: destinationLocation.campusId ?? originLocation.campusId,
+        origin_campus_id: originLocation.campusId,
+        destination_campus_id: destinationLocation.campusId,
         origin_address_id: originLocation.addressId,
         destination_address_id: destinationLocation.addressId,
         origin_label: originLocation.label,
@@ -178,6 +180,7 @@ export const OfferRidePage: React.FC = () => {
         onChange={(update) => { setRoute(update); setError(""); }}
         onSubmit={handleSubmit}
         disabled={loading}
+        showRoutePreview
       >
         <Input label="Data e hora de saída do motorista" type="datetime-local" value={departureAt} onChange={(event) => setDepartureAt(event.target.value)} required />
         <Input label="Vagas disponíveis" type="number" min={1} max={6} value={totalSeats} onChange={(event) => setTotalSeats(Number(event.target.value))} required />

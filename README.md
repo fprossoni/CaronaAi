@@ -75,6 +75,12 @@ uv run --locked fastapi dev app/main.py
 
 ## Solução de problemas comuns
 
+### Mapa base
+
+Com `VITE_CARTO_API_KEY` vazia, o mapa usa os tiles públicos do OpenStreetMap, adequados para desenvolvimento e uso leve conforme a [política de uso dos tiles](https://operations.osmfoundation.org/policies/tiles/).
+
+Para usar os estilos Voyager e Dark Matter, solicite uma [chave de CARTO Basemaps](https://carto.com/basemaps/apikey), coloque `VITE_CARTO_API_KEY=<sua-chave>` em `frontend/.env.local` e reinicie o Vite. Para uma implantação, defina a variável antes de gerar o build do frontend.
+
 ### Mensagens nas caronas
 
 - Após confirmar ao menos um passageiro, motorista ou passageiro podem usar **Mensagens** em **Minhas caronas** para criar/abrir o grupo. Há apenas um grupo por carona; novos passageiros confirmados entram automaticamente.

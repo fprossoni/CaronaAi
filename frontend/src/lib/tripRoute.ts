@@ -6,6 +6,10 @@ export interface TripRoute {
   destination: LocationValue | null;
 }
 
+export function hasTripCampus({ origin, destination }: TripRoute): boolean {
+  return Boolean(origin?.campusId || destination?.campusId);
+}
+
 export interface TripPrefill {
   campus?: CampusId;
   direction?: TripDirection;

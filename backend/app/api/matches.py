@@ -17,6 +17,7 @@ from geoalchemy2.shape import to_shape
 from sqlalchemy import select
 
 from app.api.deps import DbSession, VerifiedUser
+from app.core.campuses import CAMPUS_COORDS, CAMPUS_REQUIRED_MESSAGE, campus_at, campus_label
 from app.models.match import Match, MatchStatus
 from app.models.ride import Ride, RideStatus
 from app.models.user import User
@@ -39,7 +40,7 @@ from app.services.match_rules import (
     request_rejection_reason,
     supersede_related_requests,
 )
-from app.services.matching import calculate_ride_candidate
+from app.services.matching import IncompatibleCampusError, calculate_ride_candidate, validate_campus_match
 from app.services.osrm import InvalidRouteError
 
 router = APIRouter(prefix="/matches", tags=["matches"])
@@ -66,6 +67,10 @@ async def _resolve_pickup_address(
     Returns:
         (lat, lng, pickup_label, pickup_region, street, number, complement, postal_code, neighborhood, city)
     """
+    if body.pickup_campus_id is not None:
+        lat, lng = CAMPUS_COORDS[body.pickup_campus_id]
+        label = campus_label(body.pickup_campus_id)
+        return lat, lng, label, label, None, None, None, None, None, None
     if body.pickup_address_id is not None:
         addr = get_owned_address(db, body.pickup_address_id, passenger_id)
         return (
@@ -145,25 +150,31 @@ async def _build_match(
     ) = await _resolve_pickup_address(db, passenger_id, body)
 
     dropoff_lat, dropoff_lng, dropoff_label = body.dropoff_lat, body.dropoff_lng, body.dropoff_label
-    if body.dropoff_address_id is not None:
+    if body.dropoff_campus_id is not None:
+        dropoff_lat, dropoff_lng = CAMPUS_COORDS[body.dropoff_campus_id]
+        dropoff_label = campus_label(body.dropoff_campus_id)
+    elif body.dropoff_address_id is not None:
         address = get_owned_address(db, body.dropoff_address_id, passenger_id)
         dropoff_lat, dropoff_lng, dropoff_label = address.lat, address.lng, body.dropoff_label or address.full_address
-    if (dropoff_lat is None) != (dropoff_lng is None):
+    if dropoff_lat is None or dropoff_lng is None:
         raise HTTPException(status_code=400, detail="Informe as coordenadas completas do destino.")
+    if not (campus_at((pickup_lat, pickup_lng)) or campus_at((dropoff_lat, dropoff_lng))):
+        raise HTTPException(status_code=400, detail=CAMPUS_REQUIRED_MESSAGE)
     try:
         candidate = await calculate_ride_candidate(ride, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
     except InvalidRouteError as exc:
         raise HTTPException(status_code=400, detail="Não foi possível calcular a rota até o ponto de origem.") from exc
+    except IncompatibleCampusError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     reason = candidate.rejection_reason(body.pickup_after, body.pickup_before)
     if reason:
         raise HTTPException(status_code=400, detail=reason)
-    has_dropoff = dropoff_lat is not None and dropoff_lng is not None
     return Match(
         ride_id=ride.id,
         passenger_id=passenger_id,
         batch_id=batch_id,
         pickup_point=_point_wkt(pickup_lat, pickup_lng),
-        dropoff_point=_point_wkt(dropoff_lat, dropoff_lng) if has_dropoff else None,
+        dropoff_point=_point_wkt(dropoff_lat, dropoff_lng),
         pickup_label=pickup_label,
         dropoff_label=dropoff_label,
         pickup_region=pickup_region,
@@ -354,6 +365,20 @@ def respond_to_match(
             db.rollback()
             raise HTTPException(status_code=409, detail="Este passageiro já confirmou outra carona")
 
+        if match.dropoff_point is None or ride.origin_point is None or ride.destination_point is None:
+            raise HTTPException(409, "Peça ao passageiro que envie uma nova solicitação com origem e destino.")
+        pickup_shape = to_shape(match.pickup_point)
+        dropoff_shape = to_shape(match.dropoff_point)
+        driver_origin = to_shape(ride.origin_point)
+        driver_destination = to_shape(ride.destination_point)
+        try:
+            validate_campus_match(
+                (driver_origin.y, driver_origin.x), (driver_destination.y, driver_destination.x),
+                (pickup_shape.y, pickup_shape.x), (dropoff_shape.y, dropoff_shape.x),
+            )
+        except IncompatibleCampusError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
         if find_confirmed_conflict(db, match.passenger_id, ride.departure_at, exclude_match_id=match.id):
             # Passenger already has a confirmed ride at a similar time
             match.status = MatchStatus.SUPERSEDED
@@ -375,8 +400,6 @@ def respond_to_match(
         db.refresh(match)
 
         # Build MatchConfirmed with full info revealed
-        pickup_shape = to_shape(match.pickup_point)
-        dropoff_shape = to_shape(match.dropoff_point) if match.dropoff_point is not None else None
         passenger = match.passenger
 
         return MatchConfirmed(
@@ -394,8 +417,8 @@ def respond_to_match(
             driver_phone=current_user.phone,
             pickup_lat=pickup_shape.y,
             pickup_lng=pickup_shape.x,
-            dropoff_lat=dropoff_shape.y if dropoff_shape is not None else None,
-            dropoff_lng=dropoff_shape.x if dropoff_shape is not None else None,
+            dropoff_lat=dropoff_shape.y,
+            dropoff_lng=dropoff_shape.x,
             passenger_phone=passenger.phone,
             pickup_street=match.pickup_street,
             pickup_number=match.pickup_number,

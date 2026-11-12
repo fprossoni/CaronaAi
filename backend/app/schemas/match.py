@@ -6,11 +6,13 @@ from pydantic import BaseModel, Field
 
 from app.models.match import MatchStatus
 from app.schemas.address import AddressCreate
-from app.schemas.ride import PickupWindow, RidePublic
+from app.schemas.ride import CampusId, PickupWindow, RidePublic
 from app.schemas.user import UserPublic
 
 
 class MatchTrip(PickupWindow):
+    pickup_campus_id: CampusId | None = None
+    dropoff_campus_id: CampusId | None = None
     # Address-first input: either a saved address ID or new address details
     pickup_address_id: int | None = None
     dropoff_address_id: int | None = None

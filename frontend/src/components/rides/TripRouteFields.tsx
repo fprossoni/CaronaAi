@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type Dispatch, type FormEventHandler, type ReactNode, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { addressesApi } from "@/api/addresses";
+import { ridesApi } from "@/api/rides";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { LocationField } from "@/components/map/LocationField";
 import { SavedAddressForm } from "@/components/profile/SavedAddressForm";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { AddressPublic } from "@/types/address";
 import { campusToLocation, geocodingService, type LocationValue } from "@/lib/geocoding";
-import type { TripRoute } from "@/lib/tripRoute";
+import { hasTripCampus, type TripRoute } from "@/lib/tripRoute";
 
 type Endpoint = keyof TripRoute;
 const endpoints = [
@@ -61,16 +62,47 @@ function savedLocation(address: AddressPublic): LocationValue {
   };
 }
 
+function TripRoutePreview({ origin, destination }: { origin: LocationValue; destination: LocationValue }) {
+  const [geometry, setGeometry] = useState<GeoJSON.LineString | null>();
+  const { lat: originLat, lng: originLng } = origin;
+  const { lat: destinationLat, lng: destinationLng } = destination;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    ridesApi.previewRoute(
+      { lat: originLat, lng: originLng },
+      { lat: destinationLat, lng: destinationLng },
+      controller.signal,
+    ).then(({ data }) => {
+      if (!controller.signal.aborted) setGeometry(data.route_geojson);
+    }).catch(() => {
+      if (!controller.signal.aborted) setGeometry(null);
+    });
+    return () => controller.abort();
+  }, [originLat, originLng, destinationLat, destinationLng]);
+
+  return (
+    <section aria-label="Prévia do trajeto" className="space-y-2">
+      <h2 className="text-base font-bold text-[var(--color-text)]">Trajeto previsto</h2>
+      <InteractiveMap origin={origin} destination={destination} routeGeoJson={geometry}
+        approximateRoute={!geometry} scrollWheelZoom={false} />
+      {geometry === undefined && <p role="status" className="text-sm text-[var(--color-text-muted)]">Calculando trajeto…</p>}
+      {geometry === null && <p role="status" className="text-sm text-[var(--color-text-muted)]">Trajeto pelas ruas indisponível. A linha no mapa é aproximada.</p>}
+    </section>
+  );
+}
+
 interface TripRouteFieldsProps {
   route: TripRoute;
   onChange: Dispatch<SetStateAction<TripRoute>>;
   onSubmit: FormEventHandler<HTMLFormElement>;
   disabled: boolean;
+  showRoutePreview?: boolean;
   initialQueries?: Partial<Record<Endpoint, string>>;
   children: ReactNode;
 }
 
-export function TripRouteFields({ route, onChange, onSubmit, disabled, initialQueries, children }: TripRouteFieldsProps) {
+export function TripRouteFields({ route, onChange, onSubmit, disabled, showRoutePreview = false, initialQueries, children }: TripRouteFieldsProps) {
   const [mode, setMode] = useState<Record<Endpoint, Mode>>(() => ({
     origin: route.origin?.campusId ? "campus" : "address",
     destination: route.destination?.campusId ? "campus" : "address",
@@ -195,7 +227,13 @@ export function TripRouteFields({ route, onChange, onSubmit, disabled, initialQu
               </fieldset>
             ))}
           </div>
-          {picking && !disabled && (
+          {!hasTripCampus(route) && (
+            <p role={origin && destination ? "alert" : undefined}
+              className={origin && destination ? "text-sm text-red-400" : "text-sm text-[var(--color-text-muted)]"}>
+              Selecione pelo menos um campus da UFRGS como origem ou destino.
+            </p>
+          )}
+          {picking && !disabled ? (
             <section ref={mapSection} aria-label="Escolher ponto no mapa">
               <InteractiveMap
                 height="280px"
@@ -205,6 +243,9 @@ export function TripRouteFields({ route, onChange, onSubmit, disabled, initialQu
                 onMapClick={pickOnMap}
               />
             </section>
+          ) : showRoutePreview && origin && destination && hasTripCampus(route) && (
+            <TripRoutePreview key={`${origin.lat},${origin.lng}:${destination.lat},${destination.lng}`}
+              origin={origin} destination={destination} />
           )}
           <div className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
             {children}

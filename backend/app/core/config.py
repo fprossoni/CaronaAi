@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     # OSRM
     OSRM_URL: str = "http://localhost:5000"
     OSRM_MAX_DETOUR_METERS: int = 3000   # 3 km
-    OSRM_MAX_DETOUR_SECONDS: int = 900   # 15 min
-    OSRM_PREFILER_BUFFER_METERS: int = 5000  # 5 km buffer for PostGIS pre-filter
+    OSRM_MAX_DETOUR_SECONDS: int = 600   # 10 min
+    OSRM_PREFILER_BUFFER_METERS: int = 3000  # 3 km buffer for PostGIS pre-filter
     OSRM_TABLE_MARGIN_SECONDS: NonNegativeInt = 300
     MATCH_MAX_PICKUP_DELAY_SECONDS: PositiveInt = 7200
 

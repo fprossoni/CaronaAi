@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
-import type { RidePublic, SearchRidesParams } from "@/types/ride";
+import type { RideSearchResult, SearchRidesParams } from "@/types/ride";
 import type { MatchStatus } from "@/types/match";
-import { getInitialTripRoute, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
+import { getInitialTripRoute, hasTripCampus, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
 import { getErrorMessage } from "@/lib/errors";
 import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { CheckCircleIcon } from "@/components/ui/Icons";
 
-type SearchResult = { params: SearchRidesParams } & ({ rides: RidePublic[] } | { error: string });
+type SearchResult = { params: SearchRidesParams } & ({ rides: RideSearchResult[] } | { error: string });
 
-const NO_RIDES: RidePublic[] = [];
+const NO_RIDES: RideSearchResult[] = [];
 
 export const FindRidePage: React.FC = () => {
   const location = useLocation();
@@ -36,12 +36,15 @@ export const FindRidePage: React.FC = () => {
   const [batchRequesting, setBatchRequesting] = useState(false);
 
   const { origin: pickup, destination: dropoff } = route;
+  const hasCampus = hasTripCampus(route);
   const startAt = date && startTime ? Date.parse(date + "T" + startTime) : NaN;
   const endAt = date && endTime ? Date.parse(date + "T" + endTime) : NaN;
   const validWindow = Number.isFinite(startAt) && Number.isFinite(endAt) && endAt > startAt;
   const params = useMemo<SearchRidesParams | null>(() => {
-    if (!pickup || !dropoff || !validWindow) return null;
+    if (!pickup || !dropoff || !hasCampus || !validWindow) return null;
     return {
+      pickup_campus_id: pickup.campusId,
+      dropoff_campus_id: dropoff.campusId,
       pickup_address_id: pickup.addressId,
       dropoff_address_id: dropoff.addressId,
       pickup_lat: pickup.lat,
@@ -52,7 +55,7 @@ export const FindRidePage: React.FC = () => {
       pickup_after: new Date(startAt).toISOString(),
       pickup_before: new Date(endAt).toISOString(),
     };
-  }, [pickup, dropoff, validWindow, startAt, endAt, canSearchWomenOnly, womenOnly]);
+  }, [pickup, dropoff, hasCampus, validWindow, startAt, endAt, canSearchWomenOnly, womenOnly]);
 
   const result = params && searchResult?.params === params ? searchResult : null;
   const searched = result !== null && "rides" in result;
@@ -61,6 +64,8 @@ export const FindRidePage: React.FC = () => {
   const loading = params !== null && result === null;
   const selectedRideIds = selection.params === params ? selection.ids : [];
   const matchPoints = searched && params && pickup && dropoff ? {
+    pickup_campus_id: pickup.campusId,
+    dropoff_campus_id: dropoff.campusId,
     pickup_after: params.pickup_after,
     pickup_before: params.pickup_before,
     pickup_address_id: pickup.addressId,
@@ -148,7 +153,7 @@ export const FindRidePage: React.FC = () => {
     setSelectedRideIds(allSelected ? [] : eligibleIds);
   };
 
-  const handleRequestMatch = async (ride: RidePublic) => {
+  const handleRequestMatch = async (ride: RideSearchResult) => {
     if (!matchPoints) return;
     setRequestingId(ride.id);
     try {
@@ -295,7 +300,6 @@ export const FindRidePage: React.FC = () => {
               onToggleSelect={handleToggleSelectRide}
               passengerPickup={pickup}
               passengerDropoff={dropoff}
-              initiallyShowMap
             />
           ))}
         </div>

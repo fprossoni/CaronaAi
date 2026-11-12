@@ -1,5 +1,5 @@
 import type { UserPublic } from "./user";
-import type { RidePublic } from "./ride";
+import type { CampusId, RidePublic } from "./ride";
 import type { AddressCreate } from "./address";
 
 export type MatchStatus = "pending" | "accepted" | "rejected" | "cancelled" | "superseded";
@@ -58,6 +58,8 @@ export interface MatchWithRide extends MatchPublic {
 }
 
 interface MatchTrip {
+  pickup_campus_id?: CampusId;
+  dropoff_campus_id?: CampusId;
   pickup_after: string;
   pickup_before: string;
   pickup_address_id?: number | null;

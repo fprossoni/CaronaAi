@@ -61,7 +61,7 @@ class DevAccountsTest(unittest.TestCase):
         departure = datetime.now(UTC) + timedelta(hours=1)
         trip = {
             "origin_label": "Origem", "origin_lat": -30.033, "origin_lng": -51.221,
-            "destination_label": "Destino", "destination_lat": -30.038, "destination_lng": -51.209,
+            "destination_campus_id": "campus_saude",
             "departure_at": departure.isoformat(),
         }
         with patch("app.api.rides.get_route", route_through):
@@ -77,7 +77,7 @@ class DevAccountsTest(unittest.TestCase):
         with patch("app.services.matching.get_route", route_through):
             search = self.client.get("/rides/search", headers=self.bearer(passenger), params={
                 "pickup_lat": trip["origin_lat"], "pickup_lng": trip["origin_lng"],
-                "dropoff_lat": trip["destination_lat"], "dropoff_lng": trip["destination_lng"],
+                "dropoff_campus_id": trip["destination_campus_id"],
                 "pickup_after": departure.isoformat(),
                 "pickup_before": (departure + timedelta(minutes=10)).isoformat(),
             })

@@ -1,15 +1,24 @@
 """Pydantic schemas for rides."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import AliasChoices, AwareDatetime, BaseModel, Field, field_validator, model_validator
+from pydantic import AfterValidator, AliasChoices, AwareDatetime, BaseModel, Field, field_validator, model_validator
 
 from app.models.ride import UFRGS_CAMPUS, RideStatus
 from app.schemas.address import AddressCreate
 from app.schemas.user import UserPublic
 
 TripDirection = Literal["to_campus", "from_campus"]
+
+
+def validate_campus_id(value: str) -> str:
+    if value not in UFRGS_CAMPUS:
+        raise ValueError("Campus da UFRGS inválido.")
+    return value
+
+
+CampusId = Annotated[str, AfterValidator(validate_campus_id)]
 
 
 class PickupWindow(BaseModel):
@@ -24,12 +33,23 @@ class PickupWindow(BaseModel):
 
 
 class Coordinates(BaseModel):
-    lat: float
-    lng: float
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+
+
+class RoutePreviewRequest(BaseModel):
+    origin: Coordinates
+    destination: Coordinates
+
+
+class RoutePreview(BaseModel):
+    route_geojson: dict | None
 
 
 class RideCreate(BaseModel):
-    campus_point: str | None = None
+    campus_point: CampusId | None = None
+    origin_campus_id: CampusId | None = None
+    destination_campus_id: CampusId | None = None
     direction: TripDirection = "to_campus"
 
     # Address selection: either an existing saved address or a new address definition
@@ -50,13 +70,6 @@ class RideCreate(BaseModel):
     departure_at: datetime
     total_seats: int = 1
     women_only: bool = False
-
-    @field_validator("campus_point")
-    @classmethod
-    def validate_campus(cls, v: str | None) -> str | None:
-        if v is not None and v not in UFRGS_CAMPUS:
-            raise ValueError(f"campus_point must be one of: {UFRGS_CAMPUS}")
-        return v
 
     @field_validator("total_seats")
     @classmethod
@@ -100,6 +113,10 @@ class RidePublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class RideSearchResult(RidePublic):
+    driver_completed_ride_count: int = 0
+
+
 class RideDetail(RidePublic):
     """Full ride info including geometry — returned to the driver."""
 
@@ -131,7 +148,9 @@ class TripHistory(BaseModel):
 
 
 class SearchRidesRequest(PickupWindow):
-    campus_point: str | None = None
+    campus_point: CampusId | None = None
+    pickup_campus_id: CampusId | None = None
+    dropoff_campus_id: CampusId | None = None
     direction: TripDirection | None = None
     pickup_address_id: int | None = None
     dropoff_address_id: int | None = None

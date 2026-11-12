@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from "react";
-import type { RidePublic } from "@/types/ride";
+import type { RideSearchResult } from "@/types/ride";
 import type { MatchStatus } from "@/types/match";
 import { formatDistance, formatDuration, getCampusInfo } from "@/lib/formatters";
 import { Avatar } from "@/components/ui/Avatar";
@@ -17,7 +17,6 @@ import {
   GraduationCapIcon,
   MapPinIcon,
   NavigationIcon,
-  ShieldCheckIcon,
   StarIcon,
   UsersIcon,
 } from "@/components/ui/Icons";
@@ -25,13 +24,12 @@ import { InteractiveMap, type MapPoint } from "@/components/map/InteractiveMap";
 import { UserProfileModal } from "@/components/users/UserProfileModal";
 
 interface RideCardProps {
-  ride: RidePublic;
-  onRequestMatch?: (ride: RidePublic) => void;
+  ride: RideSearchResult;
+  onRequestMatch?: (ride: RideSearchResult) => void;
   isRequesting?: boolean;
   existingMatchStatus?: MatchStatus | null;
   passengerPickup?: MapPoint | null;
   passengerDropoff?: MapPoint | null;
-  initiallyShowMap?: boolean;
   /** Optional Multi-Matching batch selection support */
   selectable?: boolean;
   selected?: boolean;
@@ -60,16 +58,22 @@ export const RideCard: React.FC<RideCardProps> = ({
   existingMatchStatus = null,
   passengerPickup = null,
   passengerDropoff = null,
-  initiallyShowMap = false,
   selectable = false,
   selected = false,
   onToggleSelect,
 }) => {
-  const [showMap, setShowMap] = useState(initiallyShowMap);
+  const [showMap, setShowMap] = useState(true);
   const [showDriverProfile, setShowDriverProfile] = useState(false);
 
   const campus = ride.campus_point ? getCampusInfo(ride.campus_point) : null;
+  const driverName = ride.driver.name ?? "Motorista UFRGS";
+  const completedRides = ride.driver_completed_ride_count;
+  const rating = ride.driver.avg_rating.toLocaleString("pt-BR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
   const showDetour = !!(passengerPickup && passengerDropoff);
+  const comparisonRoute = showDetour && (ride.detour_meters || ride.detour_seconds) ? ride.route_geojson : null;
   const isLowDetour = (ride.detour_meters ?? 0) <= 1200;
   const resolvedMatchStatus = existingMatchStatus ?? ride.my_match_status ?? null;
   const canSelectForBatch =
@@ -88,45 +92,31 @@ export const RideCard: React.FC<RideCardProps> = ({
         }}
       >
         {/* Top Row: Social Driver Header + Detour / Badges */}
-        <div className="flex items-start justify-between gap-3">
-          <div
-            className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => setShowDriverProfile(true)}
-            title="Ver perfil completo do motorista"
-          >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             <Avatar
               name={ride.driver.name}
               photoUrl={ride.driver.photo_url}
               size="md"
               ring
             />
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span
-                  className="font-bold text-sm group-hover:text-indigo-400 transition-colors"
-                  style={{ color: "var(--color-text)" }}
-                >
-                  {ride.driver.name ?? "Motorista UFRGS"}
-                </span>
-                <span
-                  className="inline-flex items-center gap-0.5 text-xs font-semibold text-amber-400"
-                  title={`${ride.driver.rating_count} avaliações`}
-                >
-                  <StarIcon size={13} filled />
-                  {ride.driver.avg_rating.toFixed(1)}
-                </span>
-                <ShieldCheckIcon size={14} className="text-emerald-400" />
-              </div>
-
-              <p
-                className="text-xs flex items-center gap-1 mt-0.5"
-                style={{ color: "var(--color-text-muted)" }}
-              >
+            <div className="min-w-0 space-y-1">
+              <h3 className="break-words text-sm font-bold text-[var(--color-text)]">{driverName}</h3>
+              <p className="flex items-start gap-1 text-xs text-[var(--color-text-muted)]">
                 <GraduationCapIcon size={13} className="text-indigo-400 shrink-0" />
-                <span className="truncate max-w-[210px]">
-                  {ride.driver.course ?? "Estudante UFRGS"}
-                </span>
+                <span className="break-words">{ride.driver.course || "Curso não informado"}</span>
               </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-text-secondary)]">
+                <span className="inline-flex items-center gap-1" title={`${ride.driver.rating_count} avaliações`}>
+                  <StarIcon size={13} filled className="text-amber-400" />
+                  {ride.driver.rating_count ? `Nota ${rating} de 5` : "Sem avaliações"}
+                </span>
+                <span>{completedRides} {completedRides === 1 ? "viagem concluída" : "viagens concluídas"}</span>
+              </div>
+              <button type="button" onClick={() => setShowDriverProfile(true)}
+                aria-label={`Ver perfil de ${driverName}`} className="text-xs font-semibold text-[var(--color-primary-light)] hover:underline">
+                Ver perfil
+              </button>
             </div>
           </div>
 
@@ -263,14 +253,15 @@ export const RideCard: React.FC<RideCardProps> = ({
               className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
             >
               <MapPinIcon size={13} />
-              <span>{showMap ? "Ocultar mapa" : showDetour ? "Ver mapa do desvio" : "Ver rota no mapa"}</span>
+              <span>{showMap ? "Ocultar mapa" : "Ver trajeto no mapa"}</span>
             </button>
           )}
         </div>
 
         {/* Collapsible Map Preview */}
         {showMap && (
-          <div className="mt-3">
+          <section aria-label="Trajeto previsto" className="mt-3 space-y-2">
+            <h4 className="text-sm font-bold text-[var(--color-text)]">Trajeto previsto</h4>
             <InteractiveMap
               height="210px"
               scrollWheelZoom={!showDetour}
@@ -288,18 +279,18 @@ export const RideCard: React.FC<RideCardProps> = ({
               dropoff={passengerDropoff}
               pickupIsApproximate={!showDetour}
               routeGeoJson={showDetour ? ride.detour_geojson : ride.route_geojson}
-              comparisonRoute={showDetour ? ride.route_geojson : null}
+              comparisonRoute={comparisonRoute}
               approximateRoute={showDetour && !ride.detour_geojson}
             />
             {showDetour && (
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)]">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)]">
                 <span className="inline-flex items-center gap-1.5"><span className={ride.detour_geojson ? "w-4 border-t-2 border-indigo-500" : "w-4 border-t-2 border-dashed border-indigo-500"} />{ride.detour_geojson ? "Rota via sua origem e seu destino" : "Trajeto aproximado entre os pontos"}</span>
-                {ride.route_geojson && <span className="inline-flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-slate-500" />Rota original</span>}
+                {comparisonRoute && <span className="inline-flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-slate-500" />Rota original</span>}
                 <span>P · Sua origem</span>
                 <span>D · Seu destino</span>
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {/* Action Button / Existing Match Status / Multi-Match Selection */}
@@ -330,14 +321,6 @@ export const RideCard: React.FC<RideCardProps> = ({
                 </button>
               )}
 
-              <button
-                type="button"
-                onClick={() => setShowDriverProfile(true)}
-                className="text-xs font-semibold hover:underline"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Ver perfil
-              </button>
             </div>
 
             {resolvedMatchStatus === "accepted" ? (

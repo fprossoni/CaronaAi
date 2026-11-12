@@ -1,9 +1,9 @@
 """Ride matching service — Detour Distance algorithm.
 
 Algorithm:
-  1. Pre-filter rides by proximity of both trip points to the driver’s route
-  2. Screen candidate pickup times in batches via OSRM Table
-  3. Confirm each remaining candidate via OSRM Route
+  1. Match campus endpoints and check proximity for the remaining address
+  2. Screen pickup times via OSRM Table when the driver needs to reach the pickup
+  3. Compute the detour, reusing the original route when both endpoints coincide
   4. Filter by estimated pickup time and max detour thresholds, then sort by detour distance
 """
 
@@ -14,9 +14,11 @@ from datetime import UTC, datetime, timedelta
 from geoalchemy2 import Geography, WKBElement, WKTElement
 from geoalchemy2.functions import ST_DWithin, ST_GeomFromText, ST_SetSRID
 from geoalchemy2.shape import to_shape
+from shapely.geometry import mapping
 from sqlalchemy import and_, cast, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.campuses import CAMPUS_COORDS, campus_at
 from app.core.config import settings
 from app.models.rating import Block
 from app.models.ride import Ride, RideStatus
@@ -24,6 +26,38 @@ from app.models.user import Gender
 from app.services.osrm import get_pickup_durations, get_route
 
 logger = logging.getLogger(__name__)
+
+CAMPUS_POINTS = {
+    campus_id: WKTElement(f"POINT({lng} {lat})", srid=4326)
+    for campus_id, (lat, lng) in CAMPUS_COORDS.items()
+}
+
+
+class IncompatibleCampusError(ValueError):
+    """The passenger and driver have different campus endpoints."""
+
+
+def validate_campus_match(
+    driver_origin: tuple[float, float],
+    driver_destination: tuple[float, float],
+    pickup: tuple[float, float],
+    dropoff: tuple[float, float],
+) -> None:
+    origin_campus = campus_at(driver_origin)
+    destination_campus = campus_at(driver_destination)
+    if not (origin_campus or destination_campus):
+        raise IncompatibleCampusError("A carona precisa ter pelo menos um campus da UFRGS.")
+    if (origin_campus and origin_campus != campus_at(pickup)) or (
+        destination_campus and destination_campus != campus_at(dropoff)
+    ):
+        raise IncompatibleCampusError("Use o mesmo campus da carona no lado correspondente do trajeto.")
+
+
+def _campus_filter(column, campus_id: str | None):
+    if campus_id is None:
+        return ~or_(*(column == point for point in CAMPUS_POINTS.values()))
+    point = CAMPUS_POINTS[campus_id]
+    return and_(column.intersects(point), column == point)
 
 
 @dataclass
@@ -77,15 +111,36 @@ async def find_matching_rides(
     if women_only and passenger_gender != Gender.FEMALE:
         return []
 
-    pickup = ST_SetSRID(ST_GeomFromText(f"POINT({pickup_lng} {pickup_lat})"), 4326)
-    dropoff = ST_SetSRID(ST_GeomFromText(f"POINT({dropoff_lng} {dropoff_lat})"), 4326)
-    buffer = settings.OSRM_PREFILER_BUFFER_METERS
+    pickup_campus = campus_at((pickup_lat, pickup_lng))
+    dropoff_campus = campus_at((dropoff_lat, dropoff_lng))
+    pickup = (pickup_lat, pickup_lng)
+    dropoff = (dropoff_lat, dropoff_lng)
+    if not (pickup_campus or dropoff_campus):
+        return []
 
-    def near_both(line):
-        return and_(
-            ST_DWithin(line, cast(pickup, Geography), buffer, False),
-            ST_DWithin(line, cast(dropoff, Geography), buffer, False),
+    line = func.coalesce(Ride.route_line, func.ST_MakeLine(Ride.origin_point, Ride.destination_point))
+
+    def near(point: tuple[float, float]):
+        lat, lng = point
+        address = cast(ST_SetSRID(ST_GeomFromText(f"POINT({lng} {lat})"), 4326), Geography)
+        return ST_DWithin(line, address, settings.OSRM_PREFILER_BUFFER_METERS, False)
+
+    campus_routes = []
+    if pickup_campus:
+        starts_at_campus = and_(
+            _campus_filter(Ride.origin_point, pickup_campus), Ride.departure_at >= pickup_after
         )
+        campus_routes.append(and_(starts_at_campus, _campus_filter(Ride.destination_point, None), near(dropoff)))
+        if dropoff_campus:
+            campus_routes.append(and_(starts_at_campus, _campus_filter(Ride.destination_point, dropoff_campus)))
+    if dropoff_campus:
+        campus_routes.append(and_(
+            _campus_filter(Ride.destination_point, dropoff_campus), _campus_filter(Ride.origin_point, None), near(pickup)
+        ))
+
+    earliest_departure = pickup_after
+    if dropoff_campus:
+        earliest_departure -= timedelta(seconds=settings.MATCH_MAX_PICKUP_DELAY_SECONDS)
 
     blocked_subq = select(Block.blocked_id).where(Block.blocker_id == passenger_id)
     blocker_subq = select(Block.blocker_id).where(Block.blocked_id == passenger_id)
@@ -97,20 +152,12 @@ async def find_matching_rides(
         .where(Ride.driver_id != passenger_id)
         .where(
             Ride.departure_at > datetime.now(UTC),
-            Ride.departure_at >= pickup_after - timedelta(seconds=settings.MATCH_MAX_PICKUP_DELAY_SECONDS),
+            Ride.departure_at >= earliest_departure,
             Ride.departure_at <= pickup_before,
         )
         .where(Ride.driver_id.notin_(blocked_subq))
         .where(Ride.driver_id.notin_(blocker_subq))
-        .where(
-            or_(
-                near_both(Ride.route_line),
-                and_(
-                    Ride.route_line.is_(None),
-                    near_both(func.ST_MakeLine(Ride.origin_point, Ride.destination_point)),
-                ),
-            )
-        )
+        .where(or_(*campus_routes))
     )
 
     if women_only:
@@ -131,8 +178,9 @@ async def find_matching_rides(
             logger.warning("Invalid origin for ride %d (%s)", ride.id, type(exc).__name__)
 
     durations = {}
-    if len(rides_with_origins) > 1:
-        durations = await get_pickup_durations([origin for _, origin in rides_with_origins], (pickup_lat, pickup_lng))
+    table_origins = [origin for _, origin in rides_with_origins if origin != pickup]
+    if len(table_origins) > 1:
+        durations = await get_pickup_durations(table_origins, pickup)
     margin = settings.OSRM_TABLE_MARGIN_SECONDS
     results: list[RideCandidate] = []
 
@@ -162,23 +210,38 @@ async def calculate_ride_candidate(
     ride: Ride,
     pickup_lat: float,
     pickup_lng: float,
-    dropoff_lat: float | None,
-    dropoff_lng: float | None,
+    dropoff_lat: float,
+    dropoff_lng: float,
     *,
     with_geometry: bool = False,
 ) -> RideCandidate:
     """Estimate boarding time and detour from the same route through the pickup point."""
-    # Extract driver origin and destination from PostGIS geometry
+    if ride.origin_point is None or ride.destination_point is None:
+        raise IncompatibleCampusError("A carona precisa ter origem e destino para receber solicitações.")
     driver_origin = _point_coordinates(ride.origin_point)
     driver_dest = _point_coordinates(ride.destination_point)
 
-    # Build waypoints: driver_origin → passenger_pickup → [dropoff] → driver_dest
-    waypoints = [driver_origin, (pickup_lat, pickup_lng)]
-    has_dropoff = dropoff_lat is not None and dropoff_lng is not None
-    if has_dropoff:
-        waypoints.append((dropoff_lat, dropoff_lng))
-    waypoints.append(driver_dest)
+    pickup = (pickup_lat, pickup_lng)
+    dropoff = (dropoff_lat, dropoff_lng)
+    validate_campus_match(driver_origin, driver_dest, pickup, dropoff)
+    shared_origin = pickup == driver_origin
+    shared_destination = dropoff == driver_dest
+    if shared_origin and shared_destination:
+        return RideCandidate(
+            ride=ride,
+            detour_meters=0.0,
+            detour_seconds=0.0,
+            estimated_pickup_at=ride.departure_at,
+            estimated_dropoff_at=ride.departure_at + timedelta(seconds=ride.route_duration_seconds),
+            detour_geojson=dict(mapping(to_shape(ride.route_line))) if with_geometry and ride.route_line else None,
+        )
 
+    waypoints = [driver_origin]
+    if not shared_origin:
+        waypoints.append(pickup)
+    if not shared_destination:
+        waypoints.append(dropoff)
+    waypoints.append(driver_dest)
     detour_route = await get_route(waypoints, with_geometry=with_geometry)
     legs = detour_route.leg_durations_seconds
 
@@ -190,7 +253,7 @@ async def calculate_ride_candidate(
         ride=ride,
         detour_meters=detour_meters,
         detour_seconds=detour_seconds,
-        estimated_pickup_at=ride.departure_at + timedelta(seconds=legs[0]),
-        estimated_dropoff_at=ride.departure_at + timedelta(seconds=sum(legs[:2])) if has_dropoff else None,
+        estimated_pickup_at=ride.departure_at + timedelta(seconds=0 if shared_origin else legs[0]),
+        estimated_dropoff_at=ride.departure_at + timedelta(seconds=sum(legs) if shared_destination else sum(legs[:-1])),
         detour_geojson=detour_route.geometry,
     )

@@ -38,12 +38,18 @@ export interface RidePublic {
   my_match_status?: "pending" | "accepted" | null;
 }
 
+export interface RideSearchResult extends RidePublic {
+  driver_completed_ride_count: number;
+}
+
 export interface RideDetail extends RidePublic {
   route_geojson?: GeoJSON.LineString | null;
 }
 
 export interface RideCreate {
   campus_point?: CampusId;
+  origin_campus_id?: CampusId;
+  destination_campus_id?: CampusId;
   origin_address_id?: number;
   destination_address_id?: number;
   direction?: TripDirection;
@@ -62,6 +68,8 @@ export interface RideCreate {
 }
 
 export interface SearchRidesParams {
+  pickup_campus_id?: CampusId;
+  dropoff_campus_id?: CampusId;
   pickup_address_id?: number;
   dropoff_address_id?: number;
   pickup_lat?: number;

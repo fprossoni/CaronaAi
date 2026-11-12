@@ -2,7 +2,7 @@
  * InteractiveMap Component (Leaflet + OpenStreetMap / Carto tiles)
  *
  * Provides an Uber/BlaBlaCar-style interactive map that:
- * - Adapts tile appearance automatically between Dark Mode and Light Mode
+ * - Uses CARTO styles for dark and light mode when a key is configured
  * - Renders custom vector HTML pins (`L.divIcon`) for Origin, Destination, and Pickup
  * - Displays an anonymized privacy circle when `pickupRegionCircle` is provided (before match confirmation)
  * - Renders OSRM route geometry (`GeoJSON.LineString`) and auto-fits bounds
@@ -47,6 +47,9 @@ export interface InteractiveMapProps {
 }
 
 const PORTO_ALEGRE_CENTER: [number, number] = [-30.0349, -51.2177]; // Campus Centro UFRGS
+const OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const CARTO_ATTRIBUTION = `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>`;
 
 function createCustomPin(color: string, badgeText: string): L.DivIcon {
   return L.divIcon({
@@ -151,15 +154,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     return pts;
   }, [polylinePositions, comparisonPositions, origin, destination, pickup, dropoff]);
 
-  const cartoApiKey = (import.meta.env.VITE_CARTO_API_KEY || "").trim();
-
-  const tileUrl = useMemo(() => {
-    const keyParam = cartoApiKey ? `?key=${cartoApiKey}` : "";
-    if (theme === "dark") {
-      return `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png${keyParam}`;
-    }
-    return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png${keyParam}`;
-  }, [theme, cartoApiKey]);
+  const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY?.trim();
+  const cartoStyle = theme === "dark" ? "dark_all" : "voyager";
+  const tileUrl = cartoApiKey
+    ? `https://basemaps.cartocdn.com/rastertiles/${cartoStyle}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoApiKey)}`
+    : OSM_TILE_URL;
 
   return (
     <div
@@ -192,14 +191,18 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         style={{ width: "100%", height: "100%" }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>'
+          attribution={cartoApiKey ? CARTO_ATTRIBUTION : OSM_ATTRIBUTION}
           url={tileUrl}
-          subdomains="abcd"
+          maxNativeZoom={cartoApiKey ? 20 : 19}
           maxZoom={20}
         />
 
         <MapClickHandler onMapClick={onMapClick} />
         <BoundsUpdater points={boundPoints} />
+
+        {comparisonPositions.length >= 2 && (
+          <Polyline positions={comparisonPositions} pathOptions={{ color: "#64748b", weight: 4, dashArray: "6 8" }} />
+        )}
 
         {polylinePositions.length >= 2 && (
           <Polyline
@@ -213,10 +216,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               lineJoin: "round",
             }}
           />
-        )}
-
-        {comparisonPositions.length >= 2 && (
-          <Polyline positions={comparisonPositions} pathOptions={{ color: "#64748b", weight: 4, dashArray: "6 8" }} />
         )}
 
         {origin && (
