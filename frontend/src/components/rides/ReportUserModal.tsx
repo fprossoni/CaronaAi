@@ -25,7 +25,8 @@ interface ReportUserModalProps {
 const REPORT_REASONS = [
   "Atraso excessivo ou não comparecimento no ponto combinado",
   "Comportamento desrespeitoso ou inadequado",
-  "Direção imprudente ou veículo diferente do informado",
+  "Direção imprudente",
+  "Veículo diferente do informado",
   "Solicitação de valores fora do combinado",
   "Outro motivo de segurança",
 ];
