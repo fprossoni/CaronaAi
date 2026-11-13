@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import addresses, auth, matches, ratings, rides, users
+from app.api import addresses, auth, dev_accounts, matches, messages, ratings, rides, users
 from app.core.config import settings
 
 app = FastAPI(
@@ -29,7 +29,9 @@ app.include_router(users.router)
 app.include_router(addresses.router)
 app.include_router(rides.router)
 app.include_router(matches.router)
+app.include_router(messages.router)
 app.include_router(ratings.router)
+app.include_router(dev_accounts.router, include_in_schema=settings.DEV_ACCOUNTS_ENABLED)
 
 
 @app.get("/health", tags=["health"])

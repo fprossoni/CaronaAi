@@ -7,27 +7,39 @@ export { CAMPUS_LIST, DEFAULT_CAMPUS };
 export const UFRGS_CAMPUS = CAMPUS_LIST;
 
 export type RideStatus = "active" | "full" | "in_progress" | "completed" | "cancelled";
+export type TripDirection = "to_campus" | "from_campus";
 
 export interface RidePublic {
   id: number;
   driver: UserPublic;
   origin_label: string;
   destination_label: string;
-  campus_point: CampusId;
+  campus_point: CampusId | null;
+  origin_lat?: number | null;
+  origin_lng?: number | null;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
   departure_at: string; // ISO datetime
-  delay_tolerance_minutes: number;
   total_seats: number;
   available_seats: number;
   women_only: boolean;
   status: RideStatus;
   route_distance_meters: number;
   route_duration_seconds: number;
+  route_geojson?: GeoJSON.LineString | null;
   // Set when returned from search
   detour_meters?: number;
   detour_seconds?: number;
+  estimated_pickup_at?: string | null;
+  estimated_dropoff_at?: string | null;
+  detour_geojson?: GeoJSON.LineString | null;
   // Passenger's own active request for this ride (search only)
   my_match_id?: number | null;
   my_match_status?: "pending" | "accepted" | null;
+}
+
+export interface RideSearchResult extends RidePublic {
+  driver_completed_ride_count: number;
 }
 
 export interface RideDetail extends RidePublic {
@@ -35,8 +47,12 @@ export interface RideDetail extends RidePublic {
 }
 
 export interface RideCreate {
-  campus_point: CampusId;
-  direction: "to_campus" | "from_campus";
+  campus_point?: CampusId;
+  origin_campus_id?: CampusId;
+  destination_campus_id?: CampusId;
+  origin_address_id?: number;
+  destination_address_id?: number;
+  direction?: TripDirection;
   address_id?: number | null;
   custom_address?: AddressCreate | null;
   save_address?: boolean;
@@ -47,19 +63,23 @@ export interface RideCreate {
   destination_lat?: number;
   destination_lng?: number;
   departure_at: string;
-  delay_tolerance_minutes?: number;
   total_seats?: number;
   women_only?: boolean;
 }
 
 export interface SearchRidesParams {
-  address_id?: number;
+  pickup_campus_id?: CampusId;
+  dropoff_campus_id?: CampusId;
+  pickup_address_id?: number;
+  dropoff_address_id?: number;
   pickup_lat?: number;
   pickup_lng?: number;
   pickup_label?: string;
   dropoff_lat?: number;
   dropoff_lng?: number;
   women_only?: boolean;
+  pickup_after: string;
+  pickup_before: string;
 }
 
 export interface TripParticipant {
@@ -70,6 +90,8 @@ export interface TripParticipant {
   avg_rating: number;
   rating_count: number;
   role: "driver" | "passenger";
+  match_id?: number | null;
+  already_rated?: boolean;
 }
 
 export interface TripHistory {

@@ -127,7 +127,7 @@ def refresh(body: RefreshRequest, db: DbSession) -> TokenResponse:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     user = db.get(User, int(user_id))
-    if not user or not user.is_active:
+    if not user or not user.is_active or (user.dev_owner_hash is not None and not settings.DEV_ACCOUNTS_ENABLED):
         raise HTTPException(status_code=401, detail="User not found")
 
     return TokenResponse(

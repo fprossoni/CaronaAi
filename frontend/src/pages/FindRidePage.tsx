@@ -1,388 +1,345 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
-import { addressesApi } from "@/api/addresses";
-import type { RidePublic } from "@/types/ride";
-import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
-import { RideCard } from "@/components/rides/RideCard";
-import { Button } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
-import { AddressSelector, type SelectedAddressValue } from "@/components/address/AddressSelector";
 import { matchesApi } from "@/api/matches";
+import type { RideSearchResult, SearchRidesParams } from "@/types/ride";
+import type { MatchStatus } from "@/types/match";
+import { getInitialTripRoute, hasTripCampus, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
 import { getErrorMessage } from "@/lib/errors";
-import styles from "./FindRidePage.module.css";
+import { useAuthStore } from "@/store/authStore";
+import { useToastStore } from "@/store/toastStore";
+import { RideCard } from "@/components/rides/RideCard";
+import { TripRouteFields } from "@/components/rides/TripRouteFields";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { CheckCircleIcon } from "@/components/ui/Icons";
 
-interface BatchFeedback {
-  sent: number;
-  skipped: { ride_id: number; reason: string }[];
-}
+type SearchResult = { params: SearchRidesParams } & ({ rides: RideSearchResult[] } | { error: string });
 
-/** Optional pre-selection coming from the home page search bar. */
-interface FindRideLocationState {
-  campus?: CampusId;
-  direction?: "to_campus" | "from_campus";
-}
+const NO_RIDES: RideSearchResult[] = [];
 
 export const FindRidePage: React.FC = () => {
-  const prefill = (useLocation().state ?? {}) as FindRideLocationState;
-  const [direction, setDirection] = useState<"to_campus" | "from_campus">(prefill.direction ?? "to_campus");
-  const [campusPoint, setCampusPoint] = useState<CampusId>(
-    prefill.campus && UFRGS_CAMPUS.some((c) => c.id === prefill.campus) ? prefill.campus : UFRGS_CAMPUS[0].id
-  );
+  const location = useLocation();
+  const prefill = location.state as TripPrefill | null;
+  const toast = useToastStore();
+  const canSearchWomenOnly = useAuthStore((state) => state.user?.gender === "female");
+  const [route, setRoute] = useState<TripRoute>(() => getInitialTripRoute(prefill));
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [womenOnly, setWomenOnly] = useState(false);
+  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [myMatchesByRide, setMyMatchesByRide] = useState<Record<number, MatchStatus>>({});
+  const [selection, setSelection] = useState<{ params: SearchRidesParams | null; ids: number[] }>({ params: null, ids: [] });
+  const [requestingId, setRequestingId] = useState<number | null>(null);
+  const [batchRequesting, setBatchRequesting] = useState(false);
 
-  const [addressValue, setAddressValue] = useState<SelectedAddressValue>({
-    type: "saved",
-  });
+  const { origin: pickup, destination: dropoff } = route;
+  const hasCampus = hasTripCampus(route);
+  const startAt = date && startTime ? Date.parse(date + "T" + startTime) : NaN;
+  const endAt = date && endTime ? Date.parse(date + "T" + endTime) : NaN;
+  const validWindow = Number.isFinite(startAt) && Number.isFinite(endAt) && endAt > startAt;
+  const params = useMemo<SearchRidesParams | null>(() => {
+    if (!pickup || !dropoff || !hasCampus || !validWindow) return null;
+    return {
+      pickup_campus_id: pickup.campusId,
+      dropoff_campus_id: dropoff.campusId,
+      pickup_address_id: pickup.addressId,
+      dropoff_address_id: dropoff.addressId,
+      pickup_lat: pickup.lat,
+      pickup_lng: pickup.lng,
+      dropoff_lat: dropoff.lat,
+      dropoff_lng: dropoff.lng,
+      women_only: canSearchWomenOnly && womenOnly,
+      pickup_after: new Date(startAt).toISOString(),
+      pickup_before: new Date(endAt).toISOString(),
+    };
+  }, [pickup, dropoff, hasCampus, validWindow, startAt, endAt, canSearchWomenOnly, womenOnly]);
 
-  const [resolvedCoords, setResolvedCoords] = useState<{
-    pickup_lat: number;
-    pickup_lng: number;
-    pickup_label: string;
-    pickup_region: string;
-    dropoff_lat?: number;
-    dropoff_lng?: number;
-  } | null>(null);
+  const result = params && searchResult?.params === params ? searchResult : null;
+  const searched = result !== null && "rides" in result;
+  const rides = result && "rides" in result ? result.rides : NO_RIDES;
+  const searchError = result && "error" in result ? result.error : null;
+  const loading = params !== null && result === null;
+  const selectedRideIds = selection.params === params ? selection.ids : [];
+  const matchPoints = searched && params && pickup && dropoff ? {
+    pickup_campus_id: pickup.campusId,
+    dropoff_campus_id: dropoff.campusId,
+    pickup_after: params.pickup_after,
+    pickup_before: params.pickup_before,
+    pickup_address_id: pickup.addressId,
+    pickup_lat: pickup.lat,
+    pickup_lng: pickup.lng,
+    pickup_label: pickup.label,
+    pickup_region: pickup.region || "Região próxima",
+    dropoff_address_id: dropoff.addressId,
+    dropoff_lat: dropoff.lat,
+    dropoff_lng: dropoff.lng,
+    dropoff_label: dropoff.label,
+  } : null;
 
-  const [rides, setRides] = useState<RidePublic[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [searched, setSearched] = useState(false);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [sending, setSending] = useState(false);
-  const [feedback, setFeedback] = useState<BatchFeedback | null>(null);
+  // Load passenger's existing match requests so cards show real-time status
+  useEffect(() => {
+    matchesApi
+      .getMyMatches()
+      .then(({ data }) => {
+        const map: Record<number, MatchStatus> = {};
+        for (const m of data) {
+          if (m.status === "pending" || m.status === "accepted" || m.status === "superseded") {
+            map[m.ride_id] = m.status;
+          }
+        }
+        setMyMatchesByRide(map);
+      })
+      .catch(() => {
+        // Ignore silently
+      });
+  }, []);
 
-  const selectableRides = useMemo(() => rides.filter((r) => !r.my_match_status), [rides]);
-  const alreadyRequested = rides.length - selectableRides.length;
-  const allSelected = selectableRides.length > 0 && selectableRides.every((r) => selected.has(r.id));
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setFeedback(null);
-    setSelected(new Set());
-
-    const campus = UFRGS_CAMPUS.find((c) => c.id === campusPoint) || UFRGS_CAMPUS[0];
-
-    // Valida endereço
-    if (addressValue.type === "saved" && !addressValue.addressId) {
-      setError("Selecione um endereço salvo ou cadastre um novo endereço.");
-      return;
-    }
-    if (addressValue.type === "custom") {
-      const c = addressValue.custom;
-      if (!c || !c.street || !c.number || !c.postal_code || !c.city) {
-        setError("Preencha rua, número, CEP e cidade do seu endereço.");
+  useEffect(() => {
+    if (!params) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      if (Date.parse(params.pickup_before) <= Date.now()) {
+        setSearchResult({ params, error: "Informe um horário de fim posterior ao horário atual." });
         return;
       }
-    }
-
-    setLoading(true);
-    setSearched(true);
-
-    try {
-      let lat = 0;
-      let lng = 0;
-      let label = "";
-      let region = "";
-
-      if (addressValue.type === "saved" && addressValue.addressId) {
-        // Busca direta pelo address_id do usuário salvo
-        const res = await ridesApi.search({
-          address_id: addressValue.addressId,
-        });
-        setRides(res.data);
-
-        // Guarda as coordenadas para posterior envio de match
-        // Obtemos os dados do endereço salvo
-        const addrList = await addressesApi.list();
-        const found = addrList.data.find((a) => a.id === addressValue.addressId);
-        if (found) {
-          lat = found.lat;
-          lng = found.lng;
-          label = `${found.street}, ${found.number}`;
-          region = found.neighborhood ? `${found.neighborhood}, ${found.city}` : found.city;
+      try {
+        const { data } = await ridesApi.search(params, controller.signal);
+        if (controller.signal.aborted) return;
+        setSearchResult({ params, rides: data });
+      } catch (err: unknown) {
+        if (!controller.signal.aborted) {
+          setSearchResult({ params, error: getErrorMessage(err, "Não foi possível buscar caronas.") });
         }
-      } else if (addressValue.type === "custom" && addressValue.custom) {
-        // Geocodifica transparentemente o endereço novo
-        const geoRes = await addressesApi.geocode({
-          street: addressValue.custom.street,
-          number: addressValue.custom.number,
-          city: addressValue.custom.city,
-          state: addressValue.custom.state,
-          postal_code: addressValue.custom.postal_code,
-          country: addressValue.custom.country,
-        });
-
-        lat = geoRes.data.lat;
-        lng = geoRes.data.lng;
-        label = `${addressValue.custom.street}, ${addressValue.custom.number}`;
-        region = addressValue.custom.neighborhood
-          ? `${addressValue.custom.neighborhood}, ${addressValue.custom.city}`
-          : addressValue.custom.city;
-
-        const res = await ridesApi.search({
-          pickup_lat: direction === "to_campus" ? lat : campus.lat,
-          pickup_lng: direction === "to_campus" ? lng : campus.lng,
-          pickup_label: direction === "to_campus" ? label : campus.name,
-          dropoff_lat: direction === "to_campus" ? campus.lat : lat,
-          dropoff_lng: direction === "to_campus" ? campus.lng : lng,
-        });
-        setRides(res.data);
       }
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [params, retryCount]);
 
-      setResolvedCoords({
-        pickup_lat: direction === "to_campus" ? lat : campus.lat,
-        pickup_lng: direction === "to_campus" ? lng : campus.lng,
-        pickup_label: direction === "to_campus" ? label : campus.name,
-        pickup_region: direction === "to_campus" ? region : campus.shortName,
-        dropoff_lat: direction === "to_campus" ? campus.lat : lat,
-        dropoff_lng: direction === "to_campus" ? campus.lng : lng,
-      });
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, "Erro ao buscar caronas disponíveis."));
-    } finally {
-      setLoading(false);
-    }
+  function setSelectedRideIds(update: number[] | ((previous: number[]) => number[])) {
+    setSelection((current) => ({
+      params,
+      ids: typeof update === "function" ? update(current.params === params ? current.ids : []) : update,
+    }));
+  }
+
+  const eligibleBatchRides = useMemo(
+    () =>
+      rides.filter((r) => {
+        const st = myMatchesByRide[r.id] ?? r.my_match_status ?? null;
+        return r.available_seats > 0 && !st;
+      }),
+    [rides, myMatchesByRide]
+  );
+
+  const handleToggleSelectRide = (rideId: number) => {
+    setSelectedRideIds((prev) =>
+      prev.includes(rideId) ? prev.filter((id) => id !== rideId) : [...prev, rideId]
+    );
   };
 
-  const toggleRide = (ride: RidePublic) => {
-    setFeedback(null);
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(ride.id)) next.delete(ride.id);
-      else next.add(ride.id);
-      return next;
-    });
+  const handleToggleSelectAll = () => {
+    const eligibleIds = eligibleBatchRides.map((r) => r.id);
+    const allSelected =
+      eligibleIds.length > 0 && eligibleIds.every((id) => selectedRideIds.includes(id));
+    setSelectedRideIds(allSelected ? [] : eligibleIds);
   };
 
-  const toggleAll = () => {
-    setFeedback(null);
-    setSelected(allSelected ? new Set() : new Set(selectableRides.map((r) => r.id)));
-  };
-
-  const handleSendMatches = async () => {
-    if (selected.size === 0) return;
-    setSending(true);
-    setError("");
-
+  const handleRequestMatch = async (ride: RideSearchResult) => {
+    if (!matchPoints) return;
+    setRequestingId(ride.id);
     try {
-      const rideIds = rides.filter((r) => selected.has(r.id)).map((r) => r.id);
-
-      const payload = {
-        ride_ids: rideIds,
-        pickup_address_id: addressValue.type === "saved" ? addressValue.addressId : undefined,
-        custom_address: addressValue.type === "custom" ? addressValue.custom : undefined,
-        pickup_lat: resolvedCoords?.pickup_lat,
-        pickup_lng: resolvedCoords?.pickup_lng,
-        pickup_label: resolvedCoords?.pickup_label,
-        pickup_region: resolvedCoords?.pickup_region,
-        dropoff_lat: resolvedCoords?.dropoff_lat,
-        dropoff_lng: resolvedCoords?.dropoff_lng,
-      };
-
-      const { data } = await matchesApi.requestBatch(payload);
-
-      const createdByRide = new Map(data.created.map((m) => [m.ride_id, m.id]));
-      setRides((prev) =>
-        prev.map((r) =>
-          createdByRide.has(r.id)
-            ? { ...r, my_match_id: createdByRide.get(r.id), my_match_status: "pending" }
-            : r
-        )
+      await matchesApi.request({
+        ride_id: ride.id,
+        ...matchPoints,
+      });
+      setMyMatchesByRide((prev) => ({ ...prev, [ride.id]: "pending" }));
+      setSelectedRideIds((prev) => prev.filter((id) => id !== ride.id));
+      toast.success(
+        "Solicitação enviada ao motorista!",
+        `Apenas a região "${matchPoints.pickup_region}" foi compartilhada. Seu endereço exato só será revelado quando o motorista aceitar.`
       );
-      setSelected(new Set());
-      setFeedback({ sent: data.created.length, skipped: data.skipped });
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Erro ao enviar os matchings."));
+      toast.error("Não foi possível solicitar a carona", getErrorMessage(err));
     } finally {
-      setSending(false);
+      setRequestingId(null);
     }
   };
 
-  const rideLabel = (rideId: number) => {
-    const r = rides.find((x) => x.id === rideId);
-    return r
-      ? `${r.driver.name ?? "Motorista"} (${r.origin_label} → ${r.destination_label})`
-      : `Carona #${rideId}`;
+  const handleRequestBatch = async () => {
+    if (!matchPoints || selectedRideIds.length === 0) return;
+    setBatchRequesting(true);
+    try {
+      const { data } = await matchesApi.requestBatch({
+        ride_ids: selectedRideIds,
+        ...matchPoints,
+      });
+
+      setMyMatchesByRide((prev) => {
+        const next = { ...prev };
+        for (const created of data.created) {
+          next[created.ride_id] = "pending";
+        }
+        return next;
+      });
+      setSelectedRideIds([]);
+
+      const createdCount = data.created.length;
+      const skippedCount = data.skipped.length;
+      if (createdCount > 0) {
+        toast.success(
+          `Multi-Matching enviado (${createdCount} ${createdCount === 1 ? "carona" : "caronas"})!`,
+          skippedCount > 0
+            ? `Assim que 1 motorista aceitar, as demais são encerradas automaticamente. (${skippedCount} ignorada(s)).`
+            : "Assim que o primeiro motorista aceitar sua vaga, as demais solicitações do lote são encerradas automaticamente."
+        );
+      } else {
+        toast.info(
+          "Nenhuma nova solicitação criada",
+          data.skipped[0]?.reason ?? "As caronas selecionadas não puderam receber o pedido."
+        );
+      }
+    } catch (err: unknown) {
+      toast.error("Erro ao enviar Multi-Matching", getErrorMessage(err));
+    } finally {
+      setBatchRequesting(false);
+    }
   };
 
-  return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Pedir Carona</h2>
-        <p className={styles.subtitle}>
-          Encontre motoristas da UFRGS que passam no seu trajeto com menor desvio
-        </p>
+  const results = loading ? (
+    <p role="status" className="text-sm text-[var(--color-text-muted)]">Buscando caronas compatíveis…</p>
+  ) : searchError ? (
+    <div className="space-y-2">
+      <p role="alert" className="text-sm text-red-400">{searchError}</p>
+      <Button type="button" size="sm" variant="secondary" onClick={() => {
+        setSearchResult(null);
+        setRetryCount((current) => current + 1);
+      }}>Tentar novamente</Button>
+    </div>
+  ) : searched ? (
+    <section className="space-y-4 pt-2 animate-fade-in" aria-label="Resultados da busca">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-lg font-extrabold flex items-center gap-2" style={{ color: "var(--color-text)" }}>
+          <span>
+            {rides.length === 0
+              ? "Nenhuma carona disponível para esse trajeto e horário"
+              : `${rides.length} ${
+                  rides.length === 1 ? "carona encontrada" : "caronas encontradas"
+                }`}
+          </span>
+        </h2>
+        {rides.length > 1 && (
+          <p className="text-sm text-[var(--color-text-muted)]">Menor desvio estimado primeiro</p>
+        )}
       </div>
 
-      <form onSubmit={handleSearch} className={styles.form}>
-        {/* Sentido da Viagem */}
-        <div className={styles.section}>
-          <label className={styles.sectionLabel}>Sentido da Carona</label>
-          <div className={styles.directionToggle}>
-            <button
-              type="button"
-              className={[
-                styles.directionBtn,
-                direction === "to_campus" ? styles.directionBtnActive : "",
-              ].join(" ")}
-              onClick={() => setDirection("to_campus")}
-            >
-              <span className={styles.directionIcon}><Icon name="school" size={24} /></span>
-              <div>
-                <strong>Indo para a UFRGS</strong>
-                <p>Embarque no seu endereço → Chegada no campus</p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={[
-                styles.directionBtn,
-                direction === "from_campus" ? styles.directionBtnActive : "",
-              ].join(" ")}
-              onClick={() => setDirection("from_campus")}
-            >
-              <span className={styles.directionIcon}><Icon name="home" size={24} /></span>
-              <div>
-                <strong>Saindo da UFRGS</strong>
-                <p>Embarque no campus → Chegada no seu endereço</p>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Campus da UFRGS */}
-        <div className={styles.section}>
-          <label className={styles.sectionLabel}>Campus da UFRGS</label>
-          <div className={styles.campusGrid}>
-            {UFRGS_CAMPUS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={[
-                  styles.campusCard,
-                  campusPoint === c.id ? styles.campusCardActive : "",
-                ].join(" ")}
-                onClick={() => setCampusPoint(c.id)}
-              >
-                <span className={styles.campusDot} />
-                <span className={styles.campusName}>{c.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Endereço Pessoal (Privado) */}
-        <div className={styles.section}>
-          <AddressSelector
-            label={
-              direction === "to_campus"
-                ? "Seu Ponto de Embarque (Endereço Pessoal)"
-                : "Seu Ponto de Desembarque (Endereço Pessoal)"
-            }
-            value={addressValue}
-            onChange={setAddressValue}
-            required
-          />
-        </div>
-
-        {error && <p className={styles.error}>{error}</p>}
-
-        <Button type="submit" fullWidth loading={loading}>
-          <Icon name="search" /> Buscar caronas disponíveis
-        </Button>
-      </form>
-
-      {searched && !loading && (
-        <div className={styles.results}>
-          {rides.length === 0 ? (
-            <div className={styles.empty}>
-              <p>Nenhuma carona encontrada com menos de 3 km de desvio.</p>
-              <p className={styles.emptyHint}>
-                Tente ajustar seu endereço ou o campus de destino.
-              </p>
+      {/* Multi-Matching Batch Bar (shown when 2+ eligible rides exist) */}
+      {(eligibleBatchRides.length >= 2 || selectedRideIds.length > 0) && (
+        <div
+          className="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          style={{
+            backgroundColor: "var(--color-surface)",
+            borderColor:
+              selectedRideIds.length > 0 ? "var(--color-primary)" : "var(--color-border)",
+          }}
+        >
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2 text-xs font-extrabold" style={{ color: "var(--color-text)" }}>
+              <CheckCircleIcon size={15} className="text-indigo-400 shrink-0" />
+              <span>Solicitar várias caronas</span>
             </div>
-          ) : (
-            <>
-              <div className={styles.resultsHeader}>
-                <div>
-                  <p className={styles.resultsLabel}>
-                    {rides.length}{" "}
-                    {rides.length === 1 ? "carona disponível" : "caronas disponíveis"}, ordenadas por
-                    menor desvio
-                  </p>
-                  <p className={styles.resultsHint}>
-                    Dê matching em quantas quiser. O primeiro motorista que aceitar confirma sua
-                    carona e os outros pedidos simultâneos são cancelados automaticamente.
-                  </p>
-                </div>
-                {selectableRides.length > 1 && (
-                  <button
-                    type="button"
-                    id="toggle-select-all"
-                    className={styles.selectAllBtn}
-                    onClick={toggleAll}
-                  >
-                    {allSelected ? "Limpar seleção" : "Selecionar todas"}
-                  </button>
-                )}
-              </div>
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              As outras solicitações são encerradas quando um motorista aceita.
+            </p>
+          </div>
 
-              {feedback && (
-                <div className={styles.feedback} role="status">
-                  {feedback.sent > 0 && (
-                    <p className={styles.feedbackOk}>
-                      <Icon name="check" size={16} /> {feedback.sent}{" "}
-                      {feedback.sent === 1 ? "matching enviado" : "matchings enviados"}! Seu
-                      endereço exato só será revelado ao motorista que aceitar.
-                    </p>
-                  )}
-                  {feedback.skipped.map((s) => (
-                    <p key={s.ride_id} className={styles.feedbackSkip}>
-                      <Icon name="alert" size={16} /> {rideLabel(s.ride_id)}: {s.reason}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {alreadyRequested > 0 && !feedback && (
-                <p className={styles.resultsHint}>
-                  Você já enviou matching para {alreadyRequested}{" "}
-                  {alreadyRequested === 1 ? "carona desta lista" : "caronas desta lista"}.
-                </p>
-              )}
-
-              {rides.map((ride, idx) => (
-                <RideCard
-                  key={ride.id}
-                  ride={ride}
-                  rank={idx + 1}
-                  selectable
-                  selected={selected.has(ride.id)}
-                  onToggleSelect={sending ? undefined : toggleRide}
-                />
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      {selected.size > 0 && (
-        <div className={styles.actionBar}>
-          <div className={styles.actionBarInner}>
-            <div className={styles.actionCount}>
-              <span className={styles.actionCountNum}>{selected.size}</span>
-              <span className={styles.actionCountLabel}>
-                {selected.size === 1 ? "carona selecionada" : "caronas selecionadas"}
-              </span>
-            </div>
-            <Button id="send-matchings" onClick={handleSendMatches} loading={sending}>
-              <Icon name="send" size={16} /> Enviar matching ({selected.size})
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={handleToggleSelectAll}
+            >
+              {eligibleBatchRides.length > 0 &&
+              eligibleBatchRides.every((r) => selectedRideIds.includes(r.id))
+                ? "Limpar seleção"
+                : `Selecionar todas (${eligibleBatchRides.length})`}
             </Button>
+
+            {selectedRideIds.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                loading={batchRequesting}
+                onClick={handleRequestBatch}
+              >
+                Solicitar em Lote ({selectedRideIds.length})
+              </Button>
+            )}
           </div>
         </div>
       )}
-    </div>
+
+      {rides.length > 0 && (
+        <div className="grid gap-4">
+          {rides.map((ride) => (
+            <RideCard
+              key={ride.id}
+              ride={ride}
+              onRequestMatch={handleRequestMatch}
+              isRequesting={requestingId === ride.id}
+              existingMatchStatus={myMatchesByRide[ride.id] ?? null}
+              selectable={eligibleBatchRides.length >= 2}
+              selected={selectedRideIds.includes(ride.id)}
+              onToggleSelect={handleToggleSelectRide}
+              passengerPickup={pickup}
+              passengerDropoff={dropoff}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  ) : null;
+
+  return (
+    <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
+      <h1 className="text-2xl font-extrabold text-[var(--color-text)]">Pedir carona</h1>
+      <TripRouteFields
+        route={route}
+        onChange={setRoute}
+        onSubmit={(event) => event.preventDefault()}
+        disabled={batchRequesting || requestingId !== null}
+        initialQueries={{
+          origin: prefill?.originQuery ?? (prefill?.direction !== "from_campus" ? prefill?.addressQuery : undefined),
+          destination: prefill?.destinationQuery ?? (prefill?.direction === "from_campus" ? prefill.addressQuery : undefined),
+        }}
+      >
+        <fieldset className="min-w-0 space-y-3">
+          <legend className="mb-2 text-sm font-bold text-[var(--color-text)]">Quando você quer sair?</legend>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Input label="Data" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+            <Input label="Horário de início" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
+            <Input label="Horário de fim" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required />
+          </div>
+          {date && startTime && endTime && !validWindow && (
+            <p role="alert" className="text-sm text-red-400">O horário de fim deve ser posterior ao de início no mesmo dia.</p>
+          )}
+        </fieldset>
+        {canSearchWomenOnly && (
+          <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">
+            <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
+            Mostrar apenas caronas exclusivas para mulheres
+          </label>
+        )}
+        <p className="text-xs text-[var(--color-text-muted)]">O endereço exato da origem só é compartilhado após o aceite.</p>
+      </TripRouteFields>
+      {results}
+    </section>
   );
 };

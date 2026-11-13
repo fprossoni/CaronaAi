@@ -1,21 +1,22 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Icon } from "@/components/ui/Icon";
+import { CarIcon, ShieldCheckIcon } from "@/components/ui/Icons";
 import { getErrorMessage } from "@/lib/errors";
-import styles from "./AuthPages.module.css";
 
-import { useLocation } from "react-router-dom";
+interface LoginLocationState {
+  returnTo?: string;
+  message?: string;
+  prefill?: unknown;
+}
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { returnTo?: string; message?: string; prefill?: unknown } | null;
-  const notice = state?.message;
-  const returnTo = state?.returnTo;
+  const navState = (location.state as LoginLocationState | null) ?? null;
 
   const { setTokens, fetchUser } = useAuthStore();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -27,15 +28,20 @@ export const LoginPage: React.FC = () => {
     setError("");
     setLoading(true);
     try {
-      const { data } = await authApi.login(form);
+      const { data } = await authApi.login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
       setTokens(data.access_token, data.refresh_token);
       const user = await fetchUser();
       if (user && !user.profile_complete) {
-        navigate("/profile/complete");
-      } else if (returnTo) {
-        navigate(returnTo, { state: state?.prefill });
+        navigate("/profile/complete", {
+          state: { returnTo: navState?.returnTo, prefill: navState?.prefill },
+        });
       } else {
-        navigate("/find");
+        navigate(navState?.returnTo || "/find", {
+          state: navState?.prefill,
+        });
       }
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Erro ao fazer login. Verifique suas credenciais."));
@@ -45,37 +51,46 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <div className={styles.logo}>
-          <Icon name="car" size={36} />
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div
+        className="w-full max-w-md rounded-3xl p-8 border shadow-2xl animate-fade-in"
+        style={{
+          background: "var(--gradient-card)",
+          borderColor: "var(--color-border)",
+          boxShadow: "var(--shadow-lg)",
+        }}
+      >
+        <div className="flex flex-col items-center text-center mb-6">
+          <Link to="/" className="no-underline flex flex-col items-center group">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg mb-3 transition-transform group-hover:scale-105"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              <CarIcon size={28} />
+            </div>
+          </Link>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 mb-2">
+            <ShieldCheckIcon size={14} /> Rede Universitária Verificada
+          </span>
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+            Carona Aí
+          </h1>
+          <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+            Compartilhe rotas com colegas dos campi da UFRGS
+          </p>
         </div>
-        <h1 className={styles.title}>Carona Aí</h1>
-        <p className={styles.subtitle}>Entre com seu e-mail da UFRGS</p>
 
-        {notice && (
-          <div
-            style={{
-              margin: "0 0 16px 0",
-              padding: "10px 14px",
-              borderRadius: "8px",
-              backgroundColor: "#f0f4fa",
-              color: "var(--color-primary, #2c5aa0)",
-              fontSize: "0.85rem",
-              lineHeight: "1.4",
-              textAlign: "center",
-              border: "1px solid #dce4f0",
-            }}
-          >
-            {notice}
+        {navState?.message && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-indigo-300 font-medium leading-relaxed">
+            {navState.message}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="E-mail institucional"
             type="email"
-            placeholder="seu.nome@ufrgs.br"
+            placeholder="seu.nome@ufrgs.br ou @inf.ufrgs.br"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
@@ -89,17 +104,30 @@ export const LoginPage: React.FC = () => {
             required
           />
 
-          {error && <p className={styles.error}>{error}</p>}
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-medium">
+              {error}
+            </div>
+          )}
 
           <Button type="submit" fullWidth loading={loading}>
             Entrar
           </Button>
         </form>
 
-        <p className={styles.footer}>
-          Não tem conta?{" "}
-          <Link to="/register">Cadastre-se</Link>
-        </p>
+        <div className="mt-6 space-y-2 text-center text-xs" style={{ color: "var(--color-text-muted)" }}>
+          <p>
+            Ainda não tem conta?{" "}
+            <Link to="/register" className="font-bold text-indigo-400 hover:underline">
+              Cadastre-se com seu e-mail UFRGS
+            </Link>
+          </p>
+          <p>
+            <Link to="/" className="font-semibold hover:underline" style={{ color: "var(--color-text-secondary)" }}>
+              ← Voltar para a página inicial
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

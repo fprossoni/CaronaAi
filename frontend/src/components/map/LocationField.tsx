@@ -1,0 +1,398 @@
+/**
+ * LocationField Component
+ *
+ * Smart mobility address picker inspired by Uber & BlaBlaCar.
+ * Allows selecting a location via:
+ * 1. Typing a street/neighborhood name (autocomplete via `geocodingService`)
+ * 2. One-tap UFRGS Campus shortcuts
+ * 3. Browser GPS ("Usar minha localização")
+ * 4. Interactive map click ("Marcar no mapa")
+ */
+
+import React, { useEffect, useId, useRef, useState } from "react";
+import { UFRGS_CAMPUS } from "@/types/ride";
+import type { AddressPublic } from "@/types/address";
+import { addressesApi } from "@/api/addresses";
+import { useAuthStore } from "@/store/authStore";
+import {
+  campusToLocation,
+  geocodingService,
+  getBrowserCurrentLocation,
+  type GeocodingSuggestion,
+  type LocationValue,
+} from "@/lib/geocoding";
+import { CrosshairIcon, MapPinIcon, NavigationIcon, SearchIcon } from "@/components/ui/Icons";
+
+interface LocationFieldProps {
+  label: string;
+  placeholder?: string;
+  value: LocationValue | null;
+  onChange: (location: LocationValue) => void;
+  onClear?: () => void;
+  initialQuery?: string;
+  dotColor?: string;
+  isPickingOnMap?: boolean;
+  onTogglePickOnMap?: () => void;
+  allowGps?: boolean;
+  showCampusShortcuts?: boolean;
+  showSavedAddresses?: boolean;
+  helperText?: string;
+}
+
+export const LocationField: React.FC<LocationFieldProps> = ({
+  label,
+  placeholder = "Digite rua, número, bairro ou campus...",
+  value,
+  onChange,
+  onClear,
+  initialQuery,
+  dotColor = "#10b981",
+  isPickingOnMap = false,
+  onTogglePickOnMap,
+  allowGps = true,
+  showCampusShortcuts = true,
+  showSavedAddresses = true,
+  helperText,
+}) => {
+  const { isAuthenticated, user } = useAuthStore();
+  const inputId = useId();
+  const [draftText, setDraftText] = useState<string | null>(initialQuery ?? null);
+  const [suggestions, setSuggestions] = useState<{ query: string; items: GeocodingSuggestion[] } | null>(null);
+  const [savedAddresses, setSavedAddresses] = useState<AddressPublic[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const displayedQuery = draftText !== null ? draftText : (value?.label ?? "");
+
+  // Load user's saved personal addresses for 1-click selection
+  useEffect(() => {
+    if (!showSavedAddresses || !isAuthenticated) return;
+
+    let active = true;
+    addressesApi
+      .list()
+      .then((res) => {
+        if (active) setSavedAddresses(res.data);
+      })
+      .catch(() => {
+        // Ignore if backend is offline
+      });
+    return () => {
+      active = false;
+    };
+  }, [showSavedAddresses, isAuthenticated, user?.id]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (isOpen && containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setDraftText(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isOpen]);
+
+  // Debounced address search
+  useEffect(() => {
+    const trimmed = displayedQuery.trim();
+    if (!isOpen || trimmed.length < 2) {
+      return;
+    }
+
+    let active = true;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await geocodingService.searchAddress(trimmed);
+        if (active) setSuggestions({ query: trimmed, items: res });
+      } finally {
+        if (active) setSearching(false);
+      }
+    }, 320);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [displayedQuery, isOpen]);
+
+  const handleSelectSuggestion = (item: GeocodingSuggestion) => {
+    setDraftText(null);
+    setIsOpen(false);
+    onChange({
+      label: item.label,
+      region: item.region,
+      lat: item.lat,
+      lng: item.lng,
+      campusId: item.campusId,
+    });
+  };
+
+  const handleSelectCampus = (campusId: string) => {
+    const loc = campusToLocation(campusId);
+    if (!loc) return;
+    setDraftText(null);
+    setIsOpen(false);
+    onChange(loc);
+  };
+
+  const handleUseGps = async () => {
+    setGpsError("");
+    setGpsLoading(true);
+    try {
+      const loc = await getBrowserCurrentLocation();
+      setDraftText(null);
+      onChange(loc);
+    } catch {
+      setGpsError("Não foi possível obter o GPS. Digite o endereço ou marque no mapa.");
+    } finally {
+      setGpsLoading(false);
+    }
+  };
+
+  const visibleSuggestions = suggestions?.query === displayedQuery.trim()
+    ? suggestions.items.filter((item) => showCampusShortcuts || !item.isCampus)
+    : [];
+
+  return (
+    <div ref={containerRef} className="relative flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          <span
+            className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+            style={{ backgroundColor: dotColor }}
+          />
+          {label}
+        </label>
+
+        <div className="flex items-center gap-1.5">
+          {allowGps && (
+            <button
+              type="button"
+              onClick={handleUseGps}
+              disabled={gpsLoading}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors hover:border-indigo-500/60"
+              style={{
+                backgroundColor: "var(--color-surface-2)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text-secondary)",
+              }}
+              title="Usar minha localização atual via GPS"
+            >
+              <CrosshairIcon
+                size={13}
+                className={gpsLoading ? "animate-spin text-indigo-400" : "text-indigo-400"}
+              />
+              <span>{gpsLoading ? "Localizando..." : "Meu GPS"}</span>
+            </button>
+          )}
+
+          {onTogglePickOnMap && (
+            <button
+              type="button"
+              onClick={onTogglePickOnMap}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors"
+              style={{
+                backgroundColor: isPickingOnMap
+                  ? "rgba(99, 102, 241, 0.18)"
+                  : "var(--color-surface-2)",
+                borderColor: isPickingOnMap ? "var(--color-primary)" : "var(--color-border)",
+                color: isPickingOnMap
+                  ? "var(--color-primary-light)"
+                  : "var(--color-text-secondary)",
+              }}
+            >
+              <MapPinIcon size={13} />
+              <span>{isPickingOnMap ? "Clicando no mapa..." : "Marcar no mapa"}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Main Search Input */}
+      <div className="relative">
+        <span
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          <SearchIcon size={16} />
+        </span>
+        <input
+          id={inputId}
+          type="text"
+          value={displayedQuery}
+          placeholder={placeholder}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && isOpen) {
+              setIsOpen(false);
+              setDraftText(null);
+            }
+          }}
+          onChange={(e) => {
+            const nextVal = e.target.value;
+            setDraftText(nextVal);
+            setIsOpen(true);
+            if (onClear) {
+              onClear();
+            } else if (value) {
+              onChange({ ...value, label: nextVal });
+            }
+          }}
+          className="w-full pl-10 pr-4 py-3 rounded-xl text-sm border outline-none transition-all focus:ring-2 focus:ring-indigo-500/30"
+          style={{
+            backgroundColor: "var(--color-surface-2)",
+            borderColor: value ? "var(--color-border-strong)" : "var(--color-border)",
+            color: "var(--color-text)",
+          }}
+        />
+        {isOpen && displayedQuery.trim().length >= 2 && searching && (
+          <span
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs animate-pulse"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            Buscando...
+          </span>
+        )}
+        {/* Autocomplete Suggestions Dropdown */}
+        {isOpen && visibleSuggestions.length > 0 && (
+          <ul
+            className="absolute top-full left-0 right-0 z-50 rounded-xl border shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
+            style={{
+              backgroundColor: "var(--color-surface)",
+              borderColor: "var(--color-border-strong)",
+            }}
+          >
+            {visibleSuggestions.map((item) => (
+              <li key={item.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                <button type="button" onClick={() => handleSelectSuggestion(item)}
+                  className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-indigo-500/10">
+                  <span
+                    className={`mt-0.5 shrink-0 ${
+                      item.isCampus ? "text-indigo-400" : "text-emerald-400"
+                    }`}
+                  >
+                    <NavigationIcon size={15} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate" style={{ color: "var(--color-text)" }}>
+                      {item.label}
+                    </p>
+                    <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>
+                      {item.subtitle}
+                    </p>
+                  </div>
+                  {item.isCampus && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-400 shrink-0">
+                      Campus UFRGS
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Saved Personal Addresses Quick Pills */}
+      {showSavedAddresses && savedAddresses.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-medium mr-0.5" style={{ color: "var(--color-text-muted)" }}>
+            Salvos:
+          </span>
+          {savedAddresses.map((addr) => {
+            const active = value?.addressId === addr.id;
+            return (
+              <button
+                key={addr.id}
+                type="button"
+                onClick={() => {
+                  setDraftText(null);
+                  setIsOpen(false);
+                  onChange({
+                    label: `${addr.label} (${addr.street}, ${addr.number})`,
+                    region: addr.neighborhood ? `${addr.neighborhood}, ${addr.city}` : addr.city,
+                    lat: addr.lat,
+                    lng: addr.lng,
+                    addressId: addr.id,
+                  });
+                }}
+                className="px-2.5 py-1 rounded-full text-xs font-semibold border transition-all inline-flex items-center gap-1"
+                style={{
+                  backgroundColor: active ? "#10b981" : "var(--color-surface-2)",
+                  borderColor: active ? "#10b981" : "var(--color-border)",
+                  color: active ? "#ffffff" : "var(--color-text-secondary)",
+                }}
+                title={`${addr.street}, ${addr.number} — CEP ${addr.postal_code}`}
+              >
+                <span>📍 {addr.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* UFRGS Campus Quick Pills */}
+      {showCampusShortcuts && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-medium mr-0.5" style={{ color: "var(--color-text-muted)" }}>
+            Campi:
+          </span>
+          {UFRGS_CAMPUS.map((c) => {
+            const active =
+              value?.campusId === c.id ||
+              (value && Math.abs(value.lat - c.lat) < 0.001 && Math.abs(value.lng - c.lng) < 0.001);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => handleSelectCampus(c.id)}
+                className="px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                style={{
+                  backgroundColor: active ? "var(--color-primary)" : "var(--color-surface-2)",
+                  borderColor: active ? "var(--color-primary)" : "var(--color-border)",
+                  color: active ? "#ffffff" : "var(--color-text-secondary)",
+                }}
+              >
+                {c.shortName}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Selected Location Metadata / Privacy Region Indicator */}
+      {value && (
+        <div
+          className="flex items-center justify-between text-[11px] px-1"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          <span>
+            ✓ Região identificada:{" "}
+            <strong style={{ color: "var(--color-text-secondary)" }}>{value.region}</strong>
+          </span>
+          <span className="font-mono opacity-75">
+            {value.lat.toFixed(4)}, {value.lng.toFixed(4)}
+          </span>
+        </div>
+      )}
+
+      {helperText && !gpsError && (
+        <p className="text-xs px-1" style={{ color: "var(--color-text-muted)" }}>
+          {helperText}
+        </p>
+      )}
+
+      {gpsError && <p className="text-xs text-red-400 px-1">{gpsError}</p>}
+    </div>
+  );
+};

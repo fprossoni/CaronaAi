@@ -28,3 +28,15 @@ CAMPUS_BY_ID: dict[str, CampusInfo] = {campus["id"]: campus for campus in CAMPUS
 DEFAULT_CAMPUS_ID = "campus_centro"
 DEFAULT_CAMPUS_COORDS = CAMPUS_BY_ID[DEFAULT_CAMPUS_ID]
 
+CAMPUS_REQUIRED_MESSAGE = "Selecione pelo menos um campus da UFRGS como origem ou destino."
+_CAMPUS_BY_COORDS = {coords: campus_id for campus_id, coords in CAMPUS_COORDS.items()}
+
+
+def campus_at(point: tuple[float, float]) -> str | None:
+    """Identify a campus by its exact catalog coordinates, including legacy offers."""
+    return _CAMPUS_BY_COORDS.get(point)
+
+
+def campus_label(campus_id: str) -> str:
+    return f"UFRGS - {CAMPUS_BY_ID[campus_id]['name']}"
+

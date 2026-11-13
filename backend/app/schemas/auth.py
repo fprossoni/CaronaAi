@@ -1,6 +1,9 @@
 """Pydantic schemas for authentication."""
 
+import re
 from pydantic import BaseModel, EmailStr, field_validator
+
+UFRGS_EMAIL_REGEX = re.compile(r"^[^\s@]+@(?:[a-zA-Z0-9-]+\.)*ufrgs\.br$", re.IGNORECASE)
 
 
 class RegisterRequest(BaseModel):
@@ -11,9 +14,10 @@ class RegisterRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def must_be_ufrgs(cls, v: str) -> str:
-        if not v.endswith("@ufrgs.br"):
-            raise ValueError("Only @ufrgs.br emails are allowed")
-        return v.lower()
+        clean = v.strip().lower()
+        if not UFRGS_EMAIL_REGEX.match(clean):
+            raise ValueError("Apenas e-mails institucionais da UFRGS (@ufrgs.br ou @*.ufrgs.br) são permitidos")
+        return clean
 
     @field_validator("password")
     @classmethod

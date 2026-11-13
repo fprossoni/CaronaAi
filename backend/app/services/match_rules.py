@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from geoalchemy2.shape import to_shape
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
@@ -23,7 +22,6 @@ from app.models.match import Match, MatchStatus
 from app.models.rating import Block
 from app.models.ride import Ride, RideStatus
 from app.models.user import Gender, User
-from app.services.osrm import get_route
 
 ACTIVE_MATCH_STATUSES = (MatchStatus.PENDING, MatchStatus.ACCEPTED)
 LIVE_RIDE_STATUSES = (RideStatus.ACTIVE, RideStatus.FULL, RideStatus.IN_PROGRESS)
@@ -134,25 +132,3 @@ def request_rejection_reason(db: Session, ride: Ride | None, passenger: User) ->
     if find_confirmed_conflict(db, passenger.id, ride.departure_at):
         return "Você já tem uma carona confirmada em horário próximo"
     return None
-
-
-async def compute_detour(
-    ride: Ride,
-    pickup_lat: float,
-    pickup_lng: float,
-    dropoff_lat: float | None,
-    dropoff_lng: float | None,
-) -> tuple[float, float]:
-    """(detour_meters, detour_seconds) added to the driver's route by this passenger."""
-    origin = to_shape(ride.origin_point)
-    dest = to_shape(ride.destination_point)
-    waypoints = [(origin.y, origin.x), (pickup_lat, pickup_lng)]
-    if dropoff_lat is not None and dropoff_lng is not None:
-        waypoints.append((dropoff_lat, dropoff_lng))
-    waypoints.append((dest.y, dest.x))
-
-    route = await get_route(waypoints)
-    return (
-        max(0.0, route.distance_meters - ride.route_distance_meters),
-        max(0.0, route.duration_seconds - ride.route_duration_seconds),
-    )

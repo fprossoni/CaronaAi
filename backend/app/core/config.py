@@ -1,6 +1,6 @@
 import json
 
-from pydantic import field_validator
+from pydantic import PositiveInt, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "Carona Aí"
     DEBUG: bool = False
+    DEV_ACCOUNTS_ENABLED: bool = False
     SECRET_KEY: str = "change-me-in-production-use-a-long-random-string"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -26,8 +27,10 @@ class Settings(BaseSettings):
     # OSRM
     OSRM_URL: str = "http://localhost:5000"
     OSRM_MAX_DETOUR_METERS: int = 3000   # 3 km
-    OSRM_MAX_DETOUR_SECONDS: int = 900   # 15 min
-    OSRM_PREFILER_BUFFER_METERS: int = 5000  # 5 km buffer for PostGIS pre-filter
+    OSRM_TABLE_MAX_DETOUR_METERS: int = 5000  # Estimated detour during search
+    OSRM_MAX_DETOUR_SECONDS: int = 600   # 10 min
+    OSRM_PREFILER_BUFFER_METERS: int = 3000  # 3 km buffer for PostGIS pre-filter
+    MATCH_MAX_PICKUP_DELAY_SECONDS: PositiveInt = 7200
 
     # Matching — when a passenger's request is accepted, their other pending
     # requests (same batch / same origin+destination) whose ride departs within

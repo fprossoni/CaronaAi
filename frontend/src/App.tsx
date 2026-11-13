@@ -1,20 +1,24 @@
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
-import { Navbar } from "@/components/layout/Navbar";
-import { HomePage } from "@/pages/HomePage";
+import { useThemeStore } from "@/store/themeStore";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage";
 import { FindRidePage } from "@/pages/FindRidePage";
 import { OfferRidePage } from "@/pages/OfferRidePage";
 import { MyRidesPage } from "@/pages/MyRidesPage";
+import { MessagesPage } from "@/pages/MessagesPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { ProfileCompletePage } from "@/pages/ProfileCompletePage";
+import { HomePage } from "@/pages/HomePage";
+import { DevAccountsPage } from "@/pages/DevAccountsPage";
 import "./index.css";
 
-// ─── Protected Route Wrapper ──────────────────────────────────────────────────
+// ─── Protected Route Guard ───────────────────────────────────────────────────
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { isAuthenticated, user } = useAuthStore();
@@ -26,7 +30,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         replace
         state={{
           returnTo: location.pathname,
-          message: "Faça login com seu e-mail institucional @ufrgs.br para acessar esta funcionalidade.",
+          message: "Faça login com seu e-mail institucional UFRGS para acessar esta funcionalidade.",
         }}
       />
     );
@@ -39,20 +43,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-// ─── App Panel Shell (aplicativo projetado sobre o site) ──────────────────────
-const AppPanelShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <div className="app-stage">
-      <div className="app-panel">
-        <div className="app-panel__body">{children}</div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Main App ─────────────────────────────────────────────────────────────────
+// ─── Application Root ────────────────────────────────────────────────────────
 export default function App() {
   const { fetchUser, isAuthenticated } = useAuthStore();
+  const { theme, setTheme } = useThemeStore();
+
+  useEffect(() => {
+    setTheme(theme);
+  }, [theme, setTheme]);
 
   useEffect(() => {
     if (isAuthenticated) fetchUser();
@@ -60,85 +58,32 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {/* Top Navbar present across all screens */}
-      <Navbar />
-
-      <main style={{ minHeight: "calc(100vh - var(--header-height, 68px))" }}>
+      <ToastContainer />
+      <AppLayout>
         <Routes>
-          {/* Public Home Page (BlaBlaCar style landing page) */}
+          {/* Public Landing Page */}
           <Route path="/" element={<HomePage />} />
 
-          {/* Auth Pages */}
+          {import.meta.env.DEV && <Route path="/dev" element={<DevAccountsPage />} />}
+
+          {/* Authentication Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-          {/* Protected Application Views (rendered inside projected AppPanelShell) */}
-          <Route
-            path="/find"
-            element={
-              <ProtectedRoute>
-                <AppPanelShell>
-                  <FindRidePage />
-                </AppPanelShell>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/offer"
-            element={
-              <ProtectedRoute>
-                <AppPanelShell>
-                  <OfferRidePage />
-                </AppPanelShell>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/rides"
-            element={
-              <ProtectedRoute>
-                <AppPanelShell>
-                  <MyRidesPage />
-                </AppPanelShell>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/rides/history"
-            element={
-              <ProtectedRoute>
-                <AppPanelShell>
-                  <HistoryPage />
-                </AppPanelShell>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <AppPanelShell>
-                  <ProfilePage />
-                </AppPanelShell>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile/complete"
-            element={
-              <ProtectedRoute>
-                <AppPanelShell>
-                  <ProfileCompletePage />
-                </AppPanelShell>
-              </ProtectedRoute>
-            }
-          />
+          {/* Protected Application Routes */}
+          <Route path="/find" element={<ProtectedRoute><FindRidePage /></ProtectedRoute>} />
+          <Route path="/offer" element={<ProtectedRoute><OfferRidePage /></ProtectedRoute>} />
+          <Route path="/rides" element={<ProtectedRoute><MyRidesPage /></ProtectedRoute>} />
+          <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+          <Route path="/rides/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/profile/complete" element={<ProtectedRoute><ProfileCompletePage /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </main>
+      </AppLayout>
     </BrowserRouter>
   );
 }

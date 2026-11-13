@@ -1,243 +1,198 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
+import { usersApi } from "@/api/auth";
+import { useAuthStore } from "@/store/authStore";
+import { useToastStore } from "@/store/toastStore";
+import { TripRouteFields } from "@/components/rides/TripRouteFields";
+import { getInitialTripRoute, hasTripCampus, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
+import { formatCarPlate, isValidCarPlate } from "@/lib/formatters";
+import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Icon } from "@/components/ui/Icon";
-import { AddressSelector, type SelectedAddressValue } from "@/components/address/AddressSelector";
-import { getErrorMessage } from "@/lib/errors";
-import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
-import styles from "./OfferRidePage.module.css";
+
+function getDefaultDepartureTime(): string {
+  const d = new Date(Date.now() + 45 * 60 * 1000);
+  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+}
 
 export const OfferRidePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefill = location.state as TripPrefill | null;
+
+  const { user, setUser } = useAuthStore();
+  const canOfferWomenOnly = user?.gender === "female";
+  const toast = useToastStore();
+
+  // Quick driver activation state (if user registered as passenger-only)
+  const [carModel, setCarModel] = useState(user?.car_model ?? "");
+  const [carColor, setCarColor] = useState(user?.car_color ?? "");
+  const [carPlate, setCarPlate] = useState(user?.car_plate ?? "");
+  const [activatingDriver, setActivatingDriver] = useState(false);
+
+  const [route, setRoute] = useState<TripRoute>(() => getInitialTripRoute(prefill));
+  const [departureAt, setDepartureAt] = useState(getDefaultDepartureTime);
+  const [totalSeats, setTotalSeats] = useState(3);
+  const [womenOnly, setWomenOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [direction, setDirection] = useState<"to_campus" | "from_campus">("to_campus");
-  const [campusPoint, setCampusPoint] = useState<CampusId>(UFRGS_CAMPUS[0].id);
+  const { origin: originLocation, destination: destinationLocation } = route;
 
-  const [addressValue, setAddressValue] = useState<SelectedAddressValue>({
-    type: "saved",
-  });
+  const handleActivateDriver = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (carPlate.trim() && !isValidCarPlate(carPlate)) {
+      toast.error(
+        "Placa inválida",
+        "Use o formato ABC1234 ou padrão Mercosul ABC1C34."
+      );
+      return;
+    }
 
-  const [details, setDetails] = useState({
-    departure_at: "",
-    delay_tolerance_minutes: 15,
-    total_seats: 3,
-    women_only: false,
-  });
-
-  const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setDetails((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setActivatingDriver(true);
+    try {
+      const { data } = await usersApi.updateMe({
+        is_driver: true,
+        car_model: carModel.trim() || undefined,
+        car_color: carColor.trim() || undefined,
+        car_plate: carPlate.trim() ? formatCarPlate(carPlate) : undefined,
+      });
+      setUser(data);
+      toast.success(
+        "Modo Motorista ativado!",
+        "Agora você já pode publicar caronas para a comunidade UFRGS."
+      );
+    } catch (err: unknown) {
+      toast.error("Erro ao ativar perfil de motorista", getErrorMessage(err));
+    } finally {
+      setActivatingDriver(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!details.departure_at) {
-      setError("Por favor, selecione a data e o horário de saída.");
+    if (!originLocation || !destinationLocation) {
+      setError("Confirme os pontos de origem e destino.");
       return;
     }
+    if (!hasTripCampus(route)) return;
 
-    if (addressValue.type === "saved" && !addressValue.addressId) {
-      setError("Por favor, selecione um endereço salvo ou cadastre um novo.");
+    if (!departureAt) {
+      setError("Informe a data e o horário de saída.");
       return;
-    }
-
-    if (addressValue.type === "custom") {
-      const c = addressValue.custom;
-      if (!c || !c.street || !c.number || !c.postal_code || !c.city) {
-        setError("Por favor, preencha rua, número, CEP e cidade do seu endereço.");
-        return;
-      }
     }
 
     setLoading(true);
-
     try {
-      const payload = {
-        campus_point: campusPoint,
-        direction,
-        address_id: addressValue.type === "saved" ? addressValue.addressId : undefined,
-        custom_address: addressValue.type === "custom" ? addressValue.custom : undefined,
-        save_address: addressValue.type === "custom" ? (addressValue.saveAddress ?? true) : undefined,
-        departure_at: new Date(details.departure_at).toISOString(),
-        delay_tolerance_minutes: Number(details.delay_tolerance_minutes),
-        total_seats: Number(details.total_seats),
-        women_only: details.women_only,
-      };
-
-      await ridesApi.create(payload);
-      alert("Carona publicada com sucesso! Ela já está disponível para matching com estudantes.");
+      await ridesApi.create({
+        origin_campus_id: originLocation.campusId,
+        destination_campus_id: destinationLocation.campusId,
+        origin_address_id: originLocation.addressId,
+        destination_address_id: destinationLocation.addressId,
+        origin_label: originLocation.label,
+        origin_lat: originLocation.lat,
+        origin_lng: originLocation.lng,
+        destination_label: destinationLocation.label,
+        destination_lat: destinationLocation.lat,
+        destination_lng: destinationLocation.lng,
+        departure_at: new Date(departureAt).toISOString(),
+        total_seats: Number(totalSeats),
+        women_only: canOfferWomenOnly && womenOnly,
+      });
+      toast.success(
+        "Carona publicada com sucesso!",
+        "Os estudantes que compartilham seu trajeto já podem enviar solicitações."
+      );
       navigate("/rides");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Erro ao publicar carona. Verifique os dados inseridos."));
+      setError(getErrorMessage(err, "Erro ao publicar carona. Verifique os dados."));
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedCampus = UFRGS_CAMPUS.find((c) => c.id === campusPoint);
+  // Guard: If user is not registered as a driver yet, show instant activation card
+  if (user && !user.is_driver) {
+    return (
+      <div className="max-w-xl mx-auto py-6 animate-fade-in">
+        <div
+          className="rounded-3xl p-6 md:p-8 border shadow-xl space-y-5"
+          style={{
+            background: "var(--gradient-card)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <div>
+            <h2 className="text-xl font-extrabold" style={{ color: "var(--color-text)" }}>
+              Ative seu Perfil de Motorista
+            </h2>
+            <p className="text-sm mt-1 leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+              No momento sua conta está configurada apenas como <strong>Passageiro</strong>.
+              Ative o modo motorista abaixo (e opcionalmente informe seu veículo) para oferecer
+              caronas.
+            </p>
+          </div>
+
+          <form onSubmit={handleActivateDriver} className="space-y-4">
+            <Input
+              label="Modelo do veículo (opcional)"
+              placeholder="Ex.: Chevrolet Onix 2021"
+              value={carModel}
+              onChange={(e) => setCarModel(e.target.value)}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Cor (opcional)"
+                placeholder="Ex.: Prata"
+                value={carColor}
+                onChange={(e) => setCarColor(e.target.value)}
+              />
+              <Input
+                label="Placa (opcional)"
+                placeholder="ABC1234 ou ABC1C34"
+                maxLength={7}
+                value={carPlate}
+                onChange={(e) => setCarPlate(formatCarPlate(e.target.value))}
+              />
+            </div>
+
+            <Button type="submit" fullWidth loading={activatingDriver}>
+              Habilitar Modo Motorista e Continuar
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Oferecer Carona</h2>
-        <p className={styles.subtitle}>
-          Conecte sua rota diária a um dos campi da UFRGS e ajude outros estudantes
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className={styles.form}>
-        {/* Sentido da Viagem */}
-        <div className={styles.section}>
-          <label className={styles.sectionLabel}>Sentido da Viagem</label>
-          <div className={styles.directionToggle}>
-            <button
-              type="button"
-              className={[
-                styles.directionBtn,
-                direction === "to_campus" ? styles.directionBtnActive : "",
-              ].join(" ")}
-              onClick={() => setDirection("to_campus")}
-            >
-              <span className={styles.directionIcon}><Icon name="school" size={24} /></span>
-              <div>
-                <strong>Indo para a UFRGS</strong>
-                <p>Do seu endereço pessoal para o campus</p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={[
-                styles.directionBtn,
-                direction === "from_campus" ? styles.directionBtnActive : "",
-              ].join(" ")}
-              onClick={() => setDirection("from_campus")}
-            >
-              <span className={styles.directionIcon}><Icon name="home" size={24} /></span>
-              <div>
-                <strong>Saindo da UFRGS</strong>
-                <p>Do campus de volta para seu destino</p>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Campus da UFRGS */}
-        <div className={styles.section}>
-          <label className={styles.sectionLabel}>Campus da UFRGS</label>
-          <div className={styles.campusGrid}>
-            {UFRGS_CAMPUS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={[
-                  styles.campusCard,
-                  campusPoint === c.id ? styles.campusCardActive : "",
-                ].join(" ")}
-                onClick={() => setCampusPoint(c.id)}
-              >
-                <span className={styles.campusDot} />
-                <span className={styles.campusName}>{c.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Endereço Pessoal (Origem se to_campus, Destino se from_campus) */}
-        <div className={styles.section}>
-          <AddressSelector
-            label={
-              direction === "to_campus"
-                ? "Ponto de Partida (Seu Endereço)"
-                : "Ponto de Chegada (Seu Endereço)"
-            }
-            value={addressValue}
-            onChange={setAddressValue}
-            required
-          />
-        </div>
-
-        {/* Resumo da Rota Selecionada */}
-        <div className={styles.routeSummary}>
-          <div className={styles.summaryStep}>
-            <span className={styles.stepBadge}>Origem</span>
-            <span className={styles.stepText}>
-              {direction === "to_campus"
-                ? "Seu Endereço Pessoal (Privado)"
-                : selectedCampus?.name ?? "Campus UFRGS"}
-            </span>
-          </div>
-          <span className={styles.summaryArrow}><Icon name="arrowRight" /></span>
-          <div className={styles.summaryStep}>
-            <span className={styles.stepBadge}>Destino</span>
-            <span className={styles.stepText}>
-              {direction === "to_campus"
-                ? selectedCampus?.name ?? "Campus UFRGS"
-                : "Seu Endereço Pessoal (Privado)"}
-            </span>
-          </div>
-        </div>
-
-        {/* Detalhes da Viagem */}
-        <div className={styles.section}>
-          <label className={styles.sectionLabel}>Detalhes do Trajeto</label>
-          <Input
-            label="Data e Horário de Saída"
-            name="departure_at"
-            type="datetime-local"
-            value={details.departure_at}
-            onChange={handleDetailChange}
-            required
-          />
-          <div className={styles.rowTwo}>
-            <Input
-              label="Assentos Disponíveis"
-              name="total_seats"
-              type="number"
-              min="1"
-              max="6"
-              value={details.total_seats}
-              onChange={handleDetailChange}
-              required
-            />
-            <Input
-              label="Tolerância de Atraso (min)"
-              name="delay_tolerance_minutes"
-              type="number"
-              min="0"
-              max="60"
-              value={details.delay_tolerance_minutes}
-              onChange={handleDetailChange}
-              required
-            />
-          </div>
-        </div>
-
-        <label className={styles.checkboxLabel}>
-          <input
-            type="checkbox"
-            name="women_only"
-            checked={details.women_only}
-            onChange={handleDetailChange}
-          />
-          <span>Carona apenas para mulheres</span>
-        </label>
-
-        {error && <p className={styles.error}>{error}</p>}
-
-        <Button type="submit" fullWidth loading={loading}>
-          <Icon name="car" /> Publicar carona
-        </Button>
-      </form>
-    </div>
+    <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
+      <h1 className="text-2xl font-extrabold text-[var(--color-text)]">Oferecer carona</h1>
+      <TripRouteFields
+        route={route}
+        onChange={(update) => { setRoute(update); setError(""); }}
+        onSubmit={handleSubmit}
+        disabled={loading}
+        showRoutePreview
+      >
+        <Input label="Data e hora de saída do motorista" type="datetime-local" value={departureAt} onChange={(event) => setDepartureAt(event.target.value)} required />
+        <Input label="Vagas disponíveis" type="number" min={1} max={6} value={totalSeats} onChange={(event) => setTotalSeats(Number(event.target.value))} required />
+        {canOfferWomenOnly && (
+          <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">
+            <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
+            Carona exclusiva para mulheres
+          </label>
+        )}
+        {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+        <Button type="submit" fullWidth size="lg" loading={loading}>Publicar carona</Button>
+      </TripRouteFields>
+    </section>
   );
 };

@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from enum import Enum as PyEnum
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.campuses import CAMPUS_COORDS, DEFAULT_CAMPUS_ID
@@ -41,12 +41,14 @@ class Ride(Base):
     # Route description
     origin_label: Mapped[str] = mapped_column(String(300))         # Human-readable
     destination_label: Mapped[str] = mapped_column(String(300))
-    campus_point: Mapped[str] = mapped_column(String(50))           # Which campus is origin/destination
+    campus_point: Mapped[str | None] = mapped_column(String(50))
 
     # Coordinates stored as PostGIS geometry (WGS84)
     origin_point = mapped_column(Geometry("POINT", srid=4326))
     destination_point = mapped_column(Geometry("POINT", srid=4326))
     route_line = mapped_column(Geometry("LINESTRING", srid=4326))   # Full route geometry from OSRM
+    planned_route_line = mapped_column(Geometry("LINESTRING", srid=4326, spatial_index=False))
+    planned_route: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Route metrics (pre-calculated)
     route_distance_meters: Mapped[float] = mapped_column(Float, default=0.0)
@@ -54,7 +56,8 @@ class Ride(Base):
 
     # Schedule
     departure_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    delay_tolerance_minutes: Mapped[int] = mapped_column(Integer, default=10)
+    # Retained for compatibility with databases created before fixed departure times.
+    delay_tolerance_minutes: Mapped[int] = mapped_column(Integer, default=0)
 
     # Seats
     total_seats: Mapped[int] = mapped_column(Integer, default=1)

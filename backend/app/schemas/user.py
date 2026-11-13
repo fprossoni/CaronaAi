@@ -1,7 +1,7 @@
 import re
 from datetime import date
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator
 
 from app.models.user import Gender
 
@@ -65,12 +65,13 @@ class UserPublic(BaseModel):
     """Public-facing user info (shown in ride listings and matching lists).
 
     Shown to the other side of a potential match: email, photo, name, course,
-    age, instagram and phone. The exact birth date is never exposed.
+    gender, age, instagram and phone. The exact birth date is never exposed.
     """
     id: int
     name: str | None
     email: str
     course: str | None
+    gender: Gender | None = None
     photo_url: str | None
     social_link: str | None
     instagram: str | None = None
@@ -81,13 +82,14 @@ class UserPublic(BaseModel):
     avg_rating: float
     rating_count: int
     is_driver: bool
+    car_model: str | None = None
+    car_color: str | None = None
 
     model_config = {"from_attributes": True}
 
 
 class UserPrivate(UserPublic):
     """Full profile — only returned to the user themselves."""
-    gender: Gender | None
     birth_date: date | None = None
     car_model: str | None
     car_plate: str | None
@@ -96,9 +98,3 @@ class UserPrivate(UserPublic):
     profile_complete: bool = False
 
     model_config = {"from_attributes": True}
-
-    @model_validator(mode="after")
-    def compute_profile_complete(self) -> "UserPrivate":
-        """A profile is complete when the mandatory fields are filled."""
-        self.profile_complete = bool(self.name and self.course and self.gender and self.birth_date)
-        return self

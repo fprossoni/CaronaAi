@@ -1,277 +1,156 @@
+/**
+ * SavedAddressesManager Component
+ *
+ * Allows students to save personal recurring addresses (e.g. "Casa", "Trabalho", "República")
+ * with automatic Brazilian postal code lookup (ViaCEP via `/addresses/cep/{cep}`)
+ * and backend Nominatim geocoding (`POST /addresses/`).
+ */
+
 import React, { useEffect, useState } from "react";
 import { addressesApi } from "@/api/addresses";
-import type { AddressPublic, AddressCreate } from "@/types/address";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Icon } from "@/components/ui/Icon";
+import type { AddressPublic } from "@/types/address";
+import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
-import styles from "./SavedAddressesManager.module.css";
+import { Button } from "@/components/ui/Button";
+import { SavedAddressForm } from "@/components/profile/SavedAddressForm";
+import { MapPinIcon, NavigationIcon, XIcon } from "@/components/ui/Icons";
 
 export const SavedAddressesManager: React.FC = () => {
+  const toast = useToastStore();
+
   const [addresses, setAddresses] = useState<AddressPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [cepLoading, setCepLoading] = useState(false);
-  const [cepNotice, setCepNotice] = useState("");
-
-  const [form, setForm] = useState<AddressCreate>({
-    label: "",
-    postal_code: "",
-    street: "",
-    number: "",
-    complement: "",
-    neighborhood: "",
-    city: "Porto Alegre",
-    state: "RS",
-    country: "Brasil",
-  });
-
-  const loadAddresses = async () => {
-    try {
-      setLoading(true);
-      const res = await addressesApi.list();
-      setAddresses(res.data);
-    } catch (err) {
-      setError(getErrorMessage(err, "Erro ao carregar endereços salvos."));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    loadAddresses();
+    let active = true;
+    addressesApi
+      .list()
+      .then((res) => {
+        if (active) setAddresses(res.data);
+      })
+      .catch(() => {
+        // Silent fallback if backend is unreachable
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  const handleDelete = async (addr: AddressPublic) => {
+    const ok = await toast.confirm({
+      title: `Remover "${addr.label}"?`,
+      description: `${addr.street}, ${addr.number} deixará de aparecer nos seus atalhos rápidos.`,
+      confirmLabel: "Remover endereço",
+      variant: "danger",
+    });
+    if (!ok) return;
 
-  const handleCepBlur = async () => {
-    const cleanCep = form.postal_code.replace(/\D/g, "");
-    if (cleanCep.length !== 8) return;
-
-    setCepLoading(true);
-    setCepNotice("");
     try {
-      const res = await addressesApi.lookupCep(cleanCep);
-      const data = res.data;
-      setForm((prev) => ({
-        ...prev,
-        postal_code: data.postal_code || cleanCep,
-        street: data.street || prev.street,
-        neighborhood: data.neighborhood || prev.neighborhood,
-        city: data.city || prev.city,
-        state: data.state || prev.state,
-      }));
-      setCepNotice("Endereço preenchido automaticamente pelo CEP.");
-    } catch {
-      setCepNotice("CEP não localizado. Preencha os dados manualmente.");
-    } finally {
-      setCepLoading(false);
-    }
-  };
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSubmitting(true);
-    try {
-      await addressesApi.create(form);
-      setShowAddForm(false);
-      setForm({
-        label: "",
-        postal_code: "",
-        street: "",
-        number: "",
-        complement: "",
-        neighborhood: "",
-        city: "Porto Alegre",
-        state: "RS",
-        country: "Brasil",
-      });
-      await loadAddresses();
-    } catch (err) {
-      setError(getErrorMessage(err, "Erro ao salvar endereço. Verifique os dados."));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir este endereço?")) return;
-    try {
-      await addressesApi.delete(id);
-      setAddresses((prev) => prev.filter((a) => a.id !== id));
-    } catch (err) {
-      alert(getErrorMessage(err, "Erro ao excluir endereço."));
+      await addressesApi.delete(addr.id);
+      setAddresses((prev) => prev.filter((item) => item.id !== addr.id));
+      toast.info("Endereço removido.");
+    } catch (err: unknown) {
+      toast.error("Não foi possível remover", getErrorMessage(err));
     }
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <h3 className={styles.title}>Meus Endereços Pessoais</h3>
-          <p className={styles.subtitle}>
-            <Icon name="lock" size={13} /> Endereços guardados com segurança. Eles permanecem privados e só são revelados após a confirmação do matching.
-          </p>
+    <div
+      className="rounded-3xl border p-6 space-y-4"
+      style={{
+        background: "var(--gradient-card)",
+        borderColor: "var(--color-border)",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-400 shrink-0 mt-0.5">
+            <MapPinIcon size={20} />
+          </div>
+          <div>
+            <h3 className="text-base font-extrabold" style={{ color: "var(--color-text)" }}>
+              Meus Endereços Salvos
+            </h3>
+            <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+              Cadastre Casa, Trabalho ou República por CEP para pedir e oferecer caronas com 1 clique.
+            </p>
+          </div>
         </div>
+
         {!showAddForm && (
-          <Button size="sm" onClick={() => setShowAddForm(true)}>
-            <Icon name="plus" size={16} /> Adicionar endereço
+          <Button size="sm" variant="secondary" onClick={() => setShowAddForm(true)}>
+            + Novo Endereço
           </Button>
         )}
       </div>
 
-      {error && <p className={styles.error}>{error}</p>}
-
       {showAddForm && (
-        <form onSubmit={handleAddSubmit} className={styles.addForm}>
-          <div className={styles.formHeader}>
-            <h4>Cadastrar Novo Endereço</h4>
-            <button
-              type="button"
-              className={styles.closeBtn}
-              onClick={() => setShowAddForm(false)}
-              aria-label="Fechar"
-            >
-              <Icon name="close" />
-            </button>
-          </div>
-
-          <div className={styles.gridTwo}>
-            <div>
-              <Input
-                label="CEP"
-                name="postal_code"
-                placeholder="Ex: 90040-060"
-                value={form.postal_code}
-                onChange={handleChange}
-                onBlur={handleCepBlur}
-                required
-              />
-              {cepLoading && <span className={styles.cepNotice}>Buscando CEP...</span>}
-              {cepNotice && <span className={styles.cepNotice}>{cepNotice}</span>}
-            </div>
-
-            <Input
-              label="Apelido (ex: Casa, Trabalho)"
-              name="label"
-              placeholder="Ex: Minha Casa"
-              value={form.label}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className={styles.gridStreet}>
-            <Input
-              label="Rua / Logradouro"
-              name="street"
-              placeholder="Ex: Rua dos Andradas"
-              value={form.street}
-              onChange={handleChange}
-              required
-            />
-            <Input
-              label="Número"
-              name="number"
-              placeholder="Ex: 1234"
-              value={form.number}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className={styles.gridTwo}>
-            <Input
-              label="Complemento"
-              name="complement"
-              placeholder="Ex: Apto 101"
-              value={form.complement ?? ""}
-              onChange={handleChange}
-            />
-            <Input
-              label="Bairro"
-              name="neighborhood"
-              placeholder="Ex: Centro Histórico"
-              value={form.neighborhood ?? ""}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className={styles.gridThree}>
-            <Input
-              label="Cidade"
-              name="city"
-              value={form.city}
-              onChange={handleChange}
-              required
-            />
-            <Input
-              label="Estado (UF)"
-              name="state"
-              maxLength={2}
-              value={form.state}
-              onChange={handleChange}
-              required
-            />
-            <Input
-              label="País"
-              name="country"
-              value={form.country}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className={styles.formActions}>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowAddForm(false)}
-              disabled={submitting}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" loading={submitting}>
-              Salvar Endereço
-            </Button>
-          </div>
-        </form>
+        <div className="p-4 rounded-2xl border border-[var(--color-border)]">
+          <SavedAddressForm
+            onCancel={() => setShowAddForm(false)}
+            onSaved={(address) => {
+              setAddresses((prev) => [...prev, address]);
+              setShowAddForm(false);
+            }}
+          />
+        </div>
       )}
 
+      {/* Saved List */}
       {loading ? (
-        <p className={styles.muted}>Carregando endereços...</p>
+        <p className="text-xs py-4 text-center animate-pulse" style={{ color: "var(--color-text-muted)" }}>
+          Carregando endereços salvos...
+        </p>
       ) : addresses.length === 0 ? (
-        <p className={styles.muted}>Você ainda não possui endereços cadastrados.</p>
+        <div
+          className="p-4 rounded-2xl border border-dashed text-center"
+          style={{ borderColor: "var(--color-border)" }}
+        >
+          <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+            Você ainda não possui endereços salvos. Adicione sua casa ou trabalho para agilizar suas próximas caronas!
+          </p>
+        </div>
       ) : (
-        <div className={styles.list}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {addresses.map((addr) => (
-            <div key={addr.id} className={styles.card}>
-              <div className={styles.cardMain}>
-                <div className={styles.cardTitleRow}>
-                  <span className={styles.cardLabel}><Icon name="pin" size={15} /> {addr.label}</span>
+            <div
+              key={addr.id}
+              className="p-3.5 rounded-2xl border flex items-start justify-between gap-3 transition hover:border-indigo-500/40"
+              style={{
+                backgroundColor: "var(--color-surface-2)",
+                borderColor: "var(--color-border)",
+              }}
+            >
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <NavigationIcon size={13} className="text-emerald-400 shrink-0" />
+                  <span className="text-sm font-bold truncate" style={{ color: "var(--color-text)" }}>
+                    {addr.label}
+                  </span>
                 </div>
-                <p className={styles.cardStreet}>
+                <p className="text-xs truncate" style={{ color: "var(--color-text-secondary)" }}>
                   {addr.street}, {addr.number}
-                  {addr.complement ? ` - ${addr.complement}` : ""}
+                  {addr.complement ? ` (${addr.complement})` : ""}
                 </p>
-                <p className={styles.cardMeta}>
-                  {addr.neighborhood} · {addr.city}/{addr.state} (CEP: {addr.postal_code})
+                <p className="text-[11px] truncate" style={{ color: "var(--color-text-muted)" }}>
+                  {addr.neighborhood ? `${addr.neighborhood} • ` : ""}
+                  {addr.city}/{addr.state} • CEP {addr.postal_code}
                 </p>
               </div>
+
               <button
                 type="button"
-                className={styles.deleteBtn}
-                onClick={() => handleDelete(addr.id)}
-                title="Excluir endereço"
+                onClick={() => handleDelete(addr)}
+                className="p-1.5 rounded-xl text-red-400 hover:bg-red-500/15 transition shrink-0"
+                title="Remover endereço"
+                aria-label={`Remover ${addr.label}`}
               >
-                <Icon name="trash" />
+                <XIcon size={15} />
               </button>
             </div>
           ))}

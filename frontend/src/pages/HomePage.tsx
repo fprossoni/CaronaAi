@@ -1,332 +1,320 @@
+/**
+ * HomePage (`/`)
+ *
+ * Public & Authenticated Landing Page inspired by BlaBlaCar & Uber,
+ * built in Tailwind CSS v4 with full Dark Mode and Light Mode support.
+ */
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { UFRGS_CAMPUS, type CampusId } from "@/types/ride";
-import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
+import {
+  CarIcon,
+  GraduationCapIcon,
+  MapPinIcon,
+  NavigationIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+} from "@/components/ui/Icons";
 import heroImg from "@/assets/hero-carona.jpg";
-import styles from "./HomePage.module.css";
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
 
-  const [campusPoint, setCampusPoint] = useState<CampusId>(UFRGS_CAMPUS[0].id);
-  const [direction, setDirection] = useState<"to_campus" | "from_campus">("to_campus");
-  const [addressInput, setAddressInput] = useState("");
+  const [originQuery, setOriginQuery] = useState("");
+  const [destinationQuery, setDestinationQuery] = useState("");
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const prefill = { originQuery: originQuery.trim(), destinationQuery: destinationQuery.trim() };
 
     if (isAuthenticated) {
-      // Directs to the projected app search page with prefilled options
       navigate("/find", {
-        state: {
-          campus: campusPoint,
-          direction,
-        },
+        state: prefill,
       });
     } else {
-      // Directs to login with helpful state
       navigate("/login", {
         state: {
           returnTo: "/find",
-          prefill: { campus: campusPoint, direction },
-          message: "Faça login com seu e-mail institucional @ufrgs.br para pesquisar e solicitar caronas.",
+          prefill,
+          message:
+            "Faça login com seu e-mail institucional UFRGS (@ufrgs.br ou @*.ufrgs.br) para pesquisar e solicitar caronas.",
         },
       });
     }
   };
 
-  const handleProtectedAction = (path: string, message: string) => {
+  const handleProtectedAction = (path: string, message: string, selectedCampus?: CampusId) => {
     if (isAuthenticated) {
-      navigate(path);
+      navigate(path, selectedCampus ? { state: { campus: selectedCampus } } : undefined);
     } else {
       navigate("/login", {
-        state: { returnTo: path, message },
+        state: {
+          returnTo: path,
+          prefill: selectedCampus ? { campus: selectedCampus } : undefined,
+          message,
+        },
       });
     }
   };
 
   return (
-    <div className={styles.page}>
-      {/* ─── Hero Section ─────────────────────────────────────────────────── */}
-      <section className={styles.heroSection}>
-        <div className={styles.heroContent}>
-          <div className={styles.heroText}>
-            <div className={styles.heroBadge}>
-              <Icon name="shield" size={14} />
-              <span>Rede Exclusiva UFRGS</span>
+    <div className="space-y-12 pb-12 animate-fade-in">
+      {/* ─── Hero Section + BlaBlaCar Search Bar ──────────────────────────── */}
+      <section
+        className="rounded-3xl p-6 sm:p-10 border relative overflow-hidden shadow-2xl"
+        style={{
+          background: "var(--gradient-cover)",
+          borderColor: "var(--color-border-strong)",
+        }}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-7 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 backdrop-blur-md text-emerald-300 text-xs font-bold border border-emerald-400/30">
+              <ShieldCheckIcon size={15} />
+              <span>Rede Exclusiva Comunidade UFRGS</span>
             </div>
 
-            <h1 className={styles.heroTitle}>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
               Viaje inteligente:{" "}
-              <span className={styles.heroTitleAccent}>carona universitária</span>, sempre com economia
+              <span className="bg-gradient-to-r from-indigo-300 via-purple-200 to-emerald-300 bg-clip-text text-transparent">
+                carona universitária
+              </span>
+              , segura e colaborativa
             </h1>
 
-            <p className={styles.heroSubtitle}>
+            <p className="text-sm sm:text-base text-indigo-100/90 leading-relaxed max-w-xl">
               Conecte sua rota diária a outros estudantes e servidores da UFRGS. Menos trânsito,
-              mais segurança e caronas com desvio mínimo calculado por rota real.
+              privacidade de endereço garantida e caronas com desvio mínimo calculado por rota real.
             </p>
           </div>
 
-          <div className={styles.heroImageWrapper}>
-            <img
-              src={heroImg}
-              alt="Estudantes da UFRGS compartilhando carona"
-              className={styles.heroImage}
-            />
+          <div className="lg:col-span-5">
+            <div className="rounded-3xl overflow-hidden border-2 border-white/15 shadow-2xl relative aspect-[16/10]">
+              <img
+                src={heroImg}
+                alt="Estudantes da UFRGS compartilhando carona"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white/95 font-semibold px-3 py-2 rounded-2xl bg-black/45 backdrop-blur-md border border-white/15">
+                <span>6 Campi Conectados</span>
+                <span className="text-emerald-300">Desvio máx. 3 km</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* ─── Search Bar (BlaBlaCar inspired) ────────────────────────────── */}
-        <div className={styles.searchBarWrapper}>
-          <form onSubmit={handleSearchSubmit} className={styles.searchBar}>
-            {/* Origem / Endereço */}
-            <div className={styles.searchSegment}>
-              <div className={styles.searchIconWrapper}>
-                <Icon name="pin" size={20} />
-              </div>
-              <div className={styles.searchFieldGroup}>
-                <label className={styles.searchLabel}>
-                  {direction === "to_campus" ? "Sua Partida" : "Campus Origem"}
-                </label>
-                {direction === "to_campus" ? (
-                  <input
-                    type="text"
-                    className={styles.searchInput}
-                    placeholder="Seu bairro ou endereço"
-                    value={addressInput}
-                    onChange={(e) => setAddressInput(e.target.value)}
-                  />
-                ) : (
-                  <select
-                    className={styles.searchSelect}
-                    value={campusPoint}
-                    onChange={(e) => setCampusPoint(e.target.value as CampusId)}
-                  >
-                    {UFRGS_CAMPUS.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
+        {/* Search Bar */}
+        <form
+          onSubmit={handleSearchSubmit}
+          className="mt-8 p-3 rounded-2xl border shadow-xl grid grid-cols-1 md:grid-cols-12 gap-3 items-center"
+          style={{
+            backgroundColor: "var(--color-surface)",
+            borderColor: "var(--color-border-strong)",
+          }}
+        >
+          {[
+            { label: "Origem", value: originQuery, onChange: setOriginQuery, Icon: MapPinIcon, color: "text-emerald-400" },
+            { label: "Destino", value: destinationQuery, onChange: setDestinationQuery, Icon: NavigationIcon, color: "text-indigo-400" },
+          ].map(({ label, value, onChange, Icon, color }) => (
+            <label key={label} className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3.5 py-2.5 md:col-span-5">
+              <Icon size={18} className={color + " shrink-0"} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-bold text-[var(--color-text-muted)]">{label}</span>
+                <input
+                  type="text"
+                  placeholder="Rua, número ou bairro"
+                  value={value}
+                  onChange={(event) => onChange(event.target.value)}
+                  className="w-full bg-transparent text-sm text-[var(--color-text)]"
+                />
+              </span>
+            </label>
+          ))}
 
-            {/* Destino */}
-            <div className={styles.searchSegment}>
-              <div className={styles.searchIconWrapper}>
-                <Icon name="flag" size={20} />
-              </div>
-              <div className={styles.searchFieldGroup}>
-                <label className={styles.searchLabel}>
-                  {direction === "to_campus" ? "Campus Destino" : "Seu Destino"}
-                </label>
-                {direction === "to_campus" ? (
-                  <select
-                    className={styles.searchSelect}
-                    value={campusPoint}
-                    onChange={(e) => setCampusPoint(e.target.value as CampusId)}
-                  >
-                    {UFRGS_CAMPUS.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    className={styles.searchInput}
-                    placeholder="Seu bairro ou endereço"
-                    value={addressInput}
-                    onChange={(e) => setAddressInput(e.target.value)}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Sentido da Viagem */}
-            <div className={styles.searchSegment}>
-              <div className={styles.searchIconWrapper}>
-                <Icon name="route" size={20} />
-              </div>
-              <div className={styles.searchFieldGroup}>
-                <label className={styles.searchLabel}>Sentido</label>
-                <select
-                  className={styles.searchSelect}
-                  value={direction}
-                  onChange={(e) => setDirection(e.target.value as "to_campus" | "from_campus")}
-                >
-                  <option value="to_campus">Indo para a UFRGS</option>
-                  <option value="from_campus">Saindo da UFRGS</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Botão de Busca */}
-            <button type="submit" className={styles.searchBtn} aria-label="Procurar caronas">
-              <Icon name="search" size={18} strokeWidth={2.4} />
+          {/* Submit */}
+          <div className="md:col-span-2">
+            <Button type="submit" variant="primary" fullWidth>
+              <SearchIcon size={16} />
               <span>Procurar</span>
-            </button>
-          </form>
-        </div>
+            </Button>
+          </div>
+        </form>
       </section>
 
-      {/* ─── Informative Banner when not logged in ─────────────────────────── */}
+      {/* ─── Unauthenticated Institutional Notice ─────────────────────────── */}
       {!isAuthenticated && (
-        <div className={styles.authNotice}>
-          <Icon name="info" size={20} />
-          <p>
-            O Carona Aí é uma plataforma segura exclusiva para a comunidade da UFRGS.{" "}
-            <Link to="/login" className={styles.authNoticeLink}>
-              Faça login
-            </Link>{" "}
-            ou{" "}
-            <Link to="/register" className={styles.authNoticeLink}>
-              cadastre-se
-            </Link>{" "}
-            com seu e-mail institucional para acessar todos os trajetos.
-          </p>
+        <div
+          className="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          style={{
+            backgroundColor: "var(--color-surface)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <div className="flex items-center gap-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            <ShieldCheckIcon size={20} className="text-emerald-400 shrink-0" />
+            <p>
+              Plataforma exclusiva para a comunidade acadêmica. Aceitamos{" "}
+              <code className="text-indigo-400 font-semibold">@ufrgs.br</code> e subdomínios de institutos (ex:{" "}
+              <code className="text-indigo-400 font-semibold">@inf.ufrgs.br</code>).
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/login" className="no-underline">
+              <Button size="sm" variant="secondary">Entrar</Button>
+            </Link>
+            <Link to="/register" className="no-underline">
+              <Button size="sm" variant="primary">Criar conta</Button>
+            </Link>
+          </div>
         </div>
       )}
 
-      {/* ─── Vantagens / Diferenciais ───────────────────────────────────────── */}
-      <section className={styles.section}>
-        <div className={styles.sectionInner}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTag}>Vantagens</span>
-            <h2 className={styles.sectionTitle}>Como funciona o Carona Aí?</h2>
-            <p className={styles.sectionSubtitle}>
-              Desenvolvido com tecnologia de mapas OSRM e PostGIS sob medida para os deslocamentos
-              entre a Região Metropolitana e os campi da UFRGS.
-            </p>
-          </div>
-
-          <div className={styles.featureGrid}>
-            <div className={styles.featureCard}>
-              <div className={styles.featureIconBox}>
-                <Icon name="shield" size={24} />
-              </div>
-              <h3 className={styles.featureTitle}>100% Comunidade UFRGS</h3>
-              <p className={styles.featureDescription}>
-                Todos os usuários têm o e-mail institucional @ufrgs.br verificado antes de poder
-                oferecer ou solicitar caronas, garantindo segurança entre colegas de faculdade.
-              </p>
-            </div>
-
-            <div className={styles.featureCard}>
-              <div className={[styles.featureIconBox, styles.featureIconBoxAccent].join(" ")}>
-                <Icon name="route" size={24} />
-              </div>
-              <h3 className={styles.featureTitle}>Matching com Menor Desvio</h3>
-              <p className={styles.featureDescription}>
-                O algoritmo analisa o trajeto real do motorista e só propõe passageiros cujo ponto de
-                embarque adicione menos de 3 km e 15 minutos ao tempo de viagem.
-              </p>
-            </div>
-
-            <div className={styles.featureCard}>
-              <div className={styles.featureIconBox}>
-                <Icon name="lock" size={24} />
-              </div>
-              <h3 className={styles.featureTitle}>Privacidade Protegida</h3>
-              <p className={styles.featureDescription}>
-                Seu endereço de casa nunca é exibido publicamente no mapa. Apenas o bairro aproximado
-                aparece na lista e o local exato só é revelado após o aceite mútuo.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Campi Conectados ──────────────────────────────────────────────── */}
-      <section className={styles.campusesSection}>
-        <div className={styles.sectionHeader}>
-          <span className={styles.sectionTag}>Destinos</span>
-          <h2 className={styles.sectionTitle}>Campi da UFRGS atendidos</h2>
-          <p className={styles.sectionSubtitle}>
-            Rotas diretas para todos os campi em Porto Alegre e no Litoral Norte.
+      {/* ─── Vantagens / Diferenciais ─────────────────────────────────────── */}
+      <section className="space-y-6">
+        <div className="text-center max-w-2xl mx-auto space-y-1.5">
+          <span className="text-xs font-bold uppercase tracking-widest text-indigo-400">
+            Vantagens
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+            Como funciona o Carona Aí?
+          </h2>
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+            Desenvolvido com roteamento OSRM, PostGIS e Multi-Matching sob medida para os campi da UFRGS.
           </p>
         </div>
 
-        <div className={styles.campusGrid}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[
+            {
+              icon: <ShieldCheckIcon size={22} />,
+              accent: "bg-emerald-500/15 text-emerald-400",
+              title: "100% Comunidade UFRGS",
+              desc: "Todos os usuários validam seu vínculo institucional antes de oferecer ou pedir carona, trazendo confiança real entre colegas.",
+            },
+            {
+              icon: <NavigationIcon size={22} />,
+              accent: "bg-indigo-500/15 text-indigo-400",
+              title: "Multi-Matching com Menor Desvio",
+              desc: "Solicite carona para várias opções da lista de uma só vez. Assim que um motorista aceitar, as demais são atualizadas automaticamente.",
+            },
+            {
+              icon: <MapPinIcon size={22} />,
+              accent: "bg-amber-500/15 text-amber-400",
+              title: "Privacidade de Endereço",
+              desc: "Seu endereço exato nunca fica exposto nas buscas públicas: o motorista vê apenas o bairro até confirmar sua vaga na viagem.",
+            },
+          ].map((feat) => (
+            <div
+              key={feat.title}
+              className="rounded-3xl border p-6 space-y-3 transition-transform hover:-translate-y-1"
+              style={{
+                background: "var(--gradient-card)",
+                borderColor: "var(--color-border)",
+              }}
+            >
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${feat.accent}`}>
+                {feat.icon}
+              </div>
+              <h3 className="text-base font-extrabold" style={{ color: "var(--color-text)" }}>
+                {feat.title}
+              </h3>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+                {feat.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── Campi Conectados ─────────────────────────────────────────────── */}
+      <section className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+              Destinos Oficiais
+            </span>
+            <h2 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+              6 Campi da UFRGS Atendidos
+            </h2>
+          </div>
+          <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+            Toque em um campus para buscar caronas disponíveis
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {UFRGS_CAMPUS.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={styles.campusCard}
-              onClick={() => {
-                setCampusPoint(c.id);
-                handleProtectedAction("/find", "Faça login para ver caronas com destino a este campus.");
+              onClick={() =>
+                handleProtectedAction(
+                  "/find",
+                  `Faça login para ver caronas conectadas ao ${c.name}.`,
+                  c.id
+                )
+              }
+              className="p-4 rounded-2xl border text-left flex items-center gap-3.5 transition-all hover:border-indigo-500/60 hover:-translate-y-0.5"
+              style={{
+                background: "var(--gradient-card)",
+                borderColor: "var(--color-border)",
               }}
             >
-              <div className={styles.campusIcon}>
-                <Icon name="school" size={22} />
+              <div className="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-400 shrink-0">
+                <GraduationCapIcon size={20} />
               </div>
-              <div>
-                <h4 className={styles.campusName}>{c.name}</h4>
-                <p className={styles.campusDesc}>Clique para pesquisar caronas</p>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold truncate" style={{ color: "var(--color-text)" }}>
+                  {c.name}
+                </h4>
+                <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                  Pesquisar rotas →
+                </p>
               </div>
             </button>
           ))}
         </div>
       </section>
 
-      {/* ─── Motorista CTA ─────────────────────────────────────────────────── */}
-      <section className={styles.driverBanner}>
-        <div className={styles.driverBannerCard}>
-          <div className={styles.driverBannerText}>
-            <h3 className={styles.driverBannerTitle}>Você vai de carro para a UFRGS?</h3>
-            <p className={styles.driverBannerSubtitle}>
-              Economize combustível, ajude seus colegas e reduza o número de carros nas ruas. Publique
-              sua carona em menos de 1 minuto.
-            </p>
-          </div>
+      {/* ─── Driver CTA Banner ────────────────────────────────────────────── */}
+      <section
+        className="rounded-3xl p-6 sm:p-8 border flex flex-col md:flex-row md:items-center justify-between gap-6"
+        style={{
+          background: "var(--gradient-card)",
+          borderColor: "var(--color-border-strong)",
+        }}
+      >
+        <div className="space-y-1.5 max-w-xl">
+          <h3 className="text-xl font-extrabold" style={{ color: "var(--color-text)" }}>
+            Você vai de carro para a UFRGS?
+          </h3>
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+            Divida os custos do trajeto, ajude colegas do seu instituto e publique sua oferta de
+            carona em menos de 1 minuto usando seus endereços salvos.
+          </p>
+        </div>
+
+        <div className="shrink-0">
           <Button
             size="lg"
             variant="primary"
             onClick={() =>
               handleProtectedAction(
                 "/offer",
-                "Entre com seu e-mail institucional @ufrgs.br para oferecer carona."
+                "Entre com seu e-mail institucional UFRGS para oferecer uma carona."
               )
             }
           >
-            <Icon name="car" size={18} />
+            <CarIcon size={18} />
             <span>Oferecer uma carona</span>
           </Button>
         </div>
       </section>
-
-      {/* ─── Footer ─────────────────────────────────────────────────────────── */}
-      <footer className={styles.footer}>
-        <div className={styles.footerInner}>
-          <div>
-            <strong>Carona Aí UFRGS</strong> · Projeto acadêmico de mobilidade universitária
-          </div>
-          <div className={styles.footerLinks}>
-            <button
-              type="button"
-              style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", font: "inherit" }}
-              onClick={() => handleProtectedAction("/find", "Faça login para pedir carona.")}
-            >
-              Pedir carona
-            </button>
-            <button
-              type="button"
-              style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", font: "inherit" }}
-              onClick={() => handleProtectedAction("/offer", "Faça login para oferecer carona.")}
-            >
-              Oferecer carona
-            </button>
-            <Link to="/login">Entre</Link>
-            <Link to="/register">Cadastre-se</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

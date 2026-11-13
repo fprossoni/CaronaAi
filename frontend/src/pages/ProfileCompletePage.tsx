@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { Avatar } from "@/components/ui/Avatar";
@@ -13,19 +13,18 @@ import {
   formatSocialHandle,
   isValidCarPlate,
 } from "@/lib/formatters";
+import { validateBirthDate } from "@/lib/validators";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
-import styles from "./ProfileCompletePage.module.css";
 
 type Preference = "passenger" | "driver" | "both";
 
 interface FormState {
   course: string;
+  birthDate: string;
   gender: Gender | "";
-  birthDate: string; // YYYY-MM-DD
   preference: Preference | "";
   instagram: string;
-  social: string;
   phone: string;
   photoUrl: string;
   bio: string;
@@ -51,16 +50,18 @@ const PREFERENCE_OPTIONS: { value: Preference; label: string; description: strin
 export const ProfileCompletePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const isEditMode = searchParams.has("edit");
+  const navState = (location.state as { returnTo?: string; prefill?: unknown } | null) ?? null;
+
   const { user, setUser } = useAuthStore();
-  const isEditing = location.search.includes("edit") || Boolean((location.state as { edit?: boolean } | null)?.edit);
 
   const [form, setForm] = useState<FormState>(() => ({
     course: user?.course ?? "",
-    gender: user?.gender ?? "",
     birthDate: user?.birth_date ?? "",
+    gender: user?.gender ?? "",
     preference: user ? (user.is_driver ? "both" : "passenger") : "",
-    instagram: user?.instagram ?? "",
-    social: user?.social_link ?? "",
+    instagram: user?.instagram ?? user?.social_link ?? "",
     phone: user?.phone ?? "",
     photoUrl: user?.photo_url ?? "",
     bio: user?.bio ?? "",
@@ -69,15 +70,20 @@ export const ProfileCompletePage: React.FC = () => {
     carPlate: user?.car_plate ?? "",
     carColor: user?.car_color ?? "",
   }));
-  const [errors, setErrors] = useState<Partial<Record<"course" | "gender" | "birthDate" | "preference" | "carPlate", string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<"course" | "birthDate" | "gender" | "preference" | "carPlate", string>>
+  >({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user && user.profile_complete && !isEditing) {
-      navigate("/", { replace: true });
+    if (user && user.profile_complete && !isEditMode) {
+      navigate(navState?.returnTo || "/find", {
+        replace: true,
+        state: navState?.prefill,
+      });
     }
-  }, [user, navigate, isEditing]);
+  }, [user, isEditMode, navigate, navState]);
 
   const isDriver = useMemo(() => form.preference !== "passenger", [form.preference]);
 
@@ -102,19 +108,9 @@ export const ProfileCompletePage: React.FC = () => {
     e.preventDefault();
     const nextErrors: typeof errors = {};
     if (!form.course.trim()) nextErrors.course = "Informe seu curso.";
+    const birthDateErr = validateBirthDate(form.birthDate);
+    if (birthDateErr) nextErrors.birthDate = birthDateErr;
     if (!form.gender) nextErrors.gender = "Selecione seu gênero.";
-    if (!form.birthDate) {
-      nextErrors.birthDate = "Informe sua data de nascimento.";
-    } else {
-      const birth = new Date(form.birthDate);
-      const today = new Date();
-      let age = today.getFullYear() - birth.getFullYear();
-      const m = today.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-      if (isNaN(age) || age < 16 || age > 100) {
-        nextErrors.birthDate = "Data de nascimento inválida (idade deve ser entre 16 e 100 anos).";
-      }
-    }
     if (!form.preference) nextErrors.preference = "Selecione uma preferência.";
     if (isDriver && form.carPlate.trim()) {
       if (!isValidCarPlate(form.carPlate)) {
@@ -127,15 +123,14 @@ export const ProfileCompletePage: React.FC = () => {
     setError("");
     setLoading(true);
     try {
-      const formattedSocial = form.social.trim() ? formatSocialHandle(form.social) : undefined;
-      const formattedInstagram = form.instagram.trim() ? formatSocialHandle(form.instagram) : undefined;
+      const formattedInsta = form.instagram.trim() ? formatSocialHandle(form.instagram) : undefined;
       const formattedPhone = form.phone.trim() ? formatPhone(form.phone) : undefined;
       const payload: ProfileUpdate = {
         course: form.course.trim(),
+        birth_date: form.birthDate.trim(),
         gender: form.gender as Gender,
-        birth_date: form.birthDate,
-        instagram: formattedInstagram,
-        social_link: formattedSocial,
+        instagram: formattedInsta,
+        social_link: formattedInsta,
         phone: formattedPhone,
         photo_url: form.photoUrl.trim() || undefined,
         bio: form.bio.trim() || undefined,
@@ -149,7 +144,10 @@ export const ProfileCompletePage: React.FC = () => {
       }
       const { data } = await usersApi.updateMe(payload);
       setUser(data);
-      navigate("/", { replace: true });
+      navigate(isEditMode ? "/profile" : navState?.returnTo || "/find", {
+        replace: true,
+        state: navState?.prefill,
+      });
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Erro ao salvar o perfil."));
     } finally {
@@ -158,17 +156,36 @@ export const ProfileCompletePage: React.FC = () => {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Complete seu perfil</h1>
-        <p className={styles.subtitle}>Só mais algumas informações para terminar seu cadastro.</p>
+    <div className="min-h-screen flex items-start justify-center p-4 sm:p-6 pt-8 pb-16">
+      <div
+        className="w-full max-w-lg rounded-3xl p-6 sm:p-8 border shadow-2xl animate-fade-in"
+        style={{
+          background: "var(--gradient-card)",
+          borderColor: "var(--color-border)",
+          boxShadow: "var(--shadow-lg)",
+        }}
+      >
+        <div className="text-center mb-6">
+          <h1
+            className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent"
+            style={{ backgroundImage: "var(--gradient-primary)" }}
+          >
+            Complete seu perfil
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>
+            Só mais algumas informações para terminar seu cadastro.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.avatarSection}>
-            <div className={styles.avatarWrap}>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div
+            className="flex items-center gap-4 p-4 rounded-2xl border"
+            style={{ borderColor: "var(--color-border)", background: "var(--color-surface-2)" }}
+          >
+            <div className="shrink-0">
               <Avatar name={user.name} photoUrl={form.photoUrl.trim() || null} size="lg" />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1 min-w-0">
               <Input
                 label="Foto de perfil (opcional)"
                 placeholder="https://exemplo.com/sua-foto.jpg"
@@ -192,38 +209,61 @@ export const ProfileCompletePage: React.FC = () => {
           <Input
             label="Data de nascimento"
             type="date"
-            required
             value={form.birthDate}
             onChange={(e) => setField("birthDate", e.target.value)}
             error={errors.birthDate}
-            hint="Sua data exata é privada; apenas sua idade é exibida publicamente nas opções de matching"
+            hint="Apenas sua idade aproximada é exibida nos perfis; a data exata permanece privada."
+            required
           />
 
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Campi que você frequenta (opcional)</legend>
-            <div className={styles.checkboxGrid}>
+          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
+              Campi que você frequenta (opcional)
+            </legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {UFRGS_CAMPUS.map((c) => (
-                <label key={c.id} className={styles.checkboxLabel}>
+                <label
+                  key={c.id}
+                  className="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer select-none transition"
+                  style={{
+                    background: "var(--color-surface-2)",
+                    borderColor: form.campuses.includes(c.id) ? "var(--color-primary)" : "var(--color-border)",
+                    boxShadow: form.campuses.includes(c.id) ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
+                  }}
+                >
                   <input
                     type="checkbox"
+                    className="accent-indigo-500 w-4 h-4 rounded"
                     checked={form.campuses.includes(c.id)}
                     onChange={() => handleToggleCampus(c.id)}
                   />
-                  <span>{c.shortName}</span>
+                  <span className="text-sm font-medium" style={{ color: "var(--color-text)" }}>{c.shortName}</span>
                 </label>
               ))}
             </div>
-            <p className={styles.helperText}>Você pode selecionar mais de um campus.</p>
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Você pode selecionar mais de um campus.</p>
           </fieldset>
 
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Gênero <span className={styles.req}>*</span></legend>
-            <div className={styles.radioGroup}>
+          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
+              Gênero <span className="text-red-500">*</span>
+            </legend>
+            <div className="grid grid-cols-2 gap-2">
               {GENDER_OPTIONS.map((opt) => (
-                <label key={opt.value} className={styles.radioLabel}>
+                <label
+                  key={opt.value}
+                  className="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition text-sm"
+                  style={{
+                    background: "var(--color-surface-2)",
+                    borderColor: form.gender === opt.value ? "var(--color-primary)" : "var(--color-border)",
+                    boxShadow: form.gender === opt.value ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
+                    color: "var(--color-text)",
+                  }}
+                >
                   <input
                     type="radio"
                     name="gender"
+                    className="accent-indigo-500 w-4 h-4"
                     value={opt.value}
                     checked={form.gender === opt.value}
                     onChange={() => setField("gender", opt.value)}
@@ -232,79 +272,99 @@ export const ProfileCompletePage: React.FC = () => {
                 </label>
               ))}
             </div>
-            {errors.gender && <p className={styles.fieldError}>{errors.gender}</p>}
+            {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
           </fieldset>
 
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Preferência <span className={styles.req}>*</span></legend>
-            <div className={styles.radioGroup}>
+          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
+              Preferência inicial <span className="text-red-500">*</span>
+            </legend>
+            <div className="flex flex-col gap-2">
               {PREFERENCE_OPTIONS.map((opt) => (
-                <label key={opt.value} className={styles.radioRow}>
+                <label
+                  key={opt.value}
+                  className="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition"
+                  style={{
+                    background: "var(--color-surface-2)",
+                    borderColor: form.preference === opt.value ? "var(--color-primary)" : "var(--color-border)",
+                    boxShadow: form.preference === opt.value ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
+                  }}
+                >
                   <input
                     type="radio"
                     name="preference"
+                    className="accent-indigo-500 w-4 h-4 mt-1"
                     value={opt.value}
                     checked={form.preference === opt.value}
                     onChange={() => setField("preference", opt.value)}
                   />
-                  <span className={styles.radioText}>
-                    <span className={styles.radioTitle}>{opt.label}</span>
-                    <span className={styles.radioDesc}>{opt.description}</span>
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{opt.label}</span>
+                    <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{opt.description}</span>
                   </span>
                 </label>
               ))}
             </div>
-            {errors.preference && <p className={styles.fieldError}>{errors.preference}</p>}
-            <p className={styles.infoNote}>
+            {errors.preference && <p className="text-xs text-red-500">{errors.preference}</p>}
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
               Você poderá alterar sua preferência (motorista / passageiro) a qualquer momento no seu perfil.
             </p>
           </fieldset>
 
-          <div className={styles.textareaWrap}>
-            <label className={styles.legend} htmlFor="bio">
-              Bio / Apresentação curta (opcional)
-            </label>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="bio" className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                Bio / Apresentação curta (opcional)
+              </label>
+              <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{form.bio.length}/250</span>
+            </div>
             <textarea
               id="bio"
-              className={styles.textarea}
               rows={3}
               maxLength={250}
-              placeholder="Conte um pouco sobre você (ex.: horários frequentes, estilo de viagem...)"
+              placeholder="Conte um pouco sobre você (ex.: horários frequentes no campus do Vale, estilo de viagem, música favorita...)"
               value={form.bio}
               onChange={(e) => setField("bio", e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition resize-none focus:ring-2 focus:ring-indigo-500/30"
+              style={{
+                background: "var(--color-surface-2)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text)",
+              }}
             />
-            <span className={styles.charCount}>{form.bio.length}/250</span>
           </div>
 
           <Input
-            label="Instagram / Twitter / X (opcional)"
+            label="Instagram (opcional)"
             placeholder="@seu_usuario"
-            value={form.instagram.trim() ? form.instagram : form.social}
-            onChange={(e) => {
-              setField("instagram", e.target.value);
-              setField("social", e.target.value);
-            }}
+            value={form.instagram}
+            onChange={(e) => setField("instagram", e.target.value)}
             onBlur={() => {
-              if ((form.instagram.trim() || form.social.trim())) {
-                const handle = formatSocialHandle((form.instagram || form.social).trim());
-                setField("instagram", handle);
-                setField("social", handle);
+              if (form.instagram.trim()) {
+                setField("instagram", formatSocialHandle(form.instagram));
               }
             }}
-            hint="Use o formato @seu_usuario"
+            hint="Digite seu @usuario ou link do Instagram"
           />
           <Input
-            label="Telefone (WhatsApp) (opcional)"
-            placeholder="(51) 999999999"
+            label="Telefone / WhatsApp (opcional)"
+            placeholder="(51) 99999-9999"
             type="tel"
             value={form.phone}
             onChange={(e) => setField("phone", formatPhone(e.target.value))}
-            hint="Visível publicamente nas opções de matching para facilitar contato"
           />
 
           {isDriver && (
-            <div className={styles.carSection}>
-              <p className={styles.carTitle}>Dados do seu carro (opcional)</p>
+            <div
+              className="rounded-2xl border border-dashed p-4 flex flex-col gap-3"
+              style={{
+                borderColor: "var(--color-border)",
+                background: "rgba(99, 102, 241, 0.05)",
+              }}
+            >
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--color-text)" }}>
+                Dados do seu veículo (opcional)
+              </p>
               <Input
                 label="Modelo"
                 placeholder="Ex.: Volkswagen Gol 2022"
@@ -329,9 +389,16 @@ export const ProfileCompletePage: React.FC = () => {
             </div>
           )}
 
-          {error && <p className={styles.error}>{error}</p>}
+          {error && (
+            <div
+              className="p-3 rounded-xl text-xs text-center border"
+              style={{ background: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.25)", color: "var(--color-danger)" }}
+            >
+              {error}
+            </div>
+          )}
 
-          <Button type="submit" fullWidth loading={loading}>
+          <Button type="submit" fullWidth loading={loading} size="lg">
             Concluir cadastro
           </Button>
         </form>

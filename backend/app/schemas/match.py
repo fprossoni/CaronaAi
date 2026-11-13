@@ -6,44 +6,35 @@ from pydantic import BaseModel, Field
 
 from app.models.match import MatchStatus
 from app.schemas.address import AddressCreate
-from app.schemas.ride import RidePublic
+from app.schemas.ride import CampusId, PickupWindow, RidePublic
 from app.schemas.user import UserPublic
 
 
-class MatchRequest(BaseModel):
-    ride_id: int
-
+class MatchTrip(PickupWindow):
+    pickup_campus_id: CampusId | None = None
+    dropoff_campus_id: CampusId | None = None
     # Address-first input: either a saved address ID or new address details
     pickup_address_id: int | None = None
+    dropoff_address_id: int | None = None
     custom_address: AddressCreate | None = None
 
     # Optional / Direct coordinates (computed automatically if address is provided)
-    pickup_lat: float | None = None
-    pickup_lng: float | None = None
+    pickup_lat: float | None = Field(default=None, ge=-90, le=90)
+    pickup_lng: float | None = Field(default=None, ge=-180, le=180)
     pickup_label: str | None = None
-    dropoff_lat: float | None = None
-    dropoff_lng: float | None = None
+    dropoff_lat: float | None = Field(default=None, ge=-90, le=90)
+    dropoff_lng: float | None = Field(default=None, ge=-180, le=180)
     dropoff_label: str | None = None
     pickup_region: str | None = None  # Neighbourhood/area — shown to driver pre-acceptance
 
 
-class MatchBatchRequest(BaseModel):
+class MatchRequest(MatchTrip):
+    ride_id: int
+
+
+class MatchBatchRequest(MatchTrip):
     """Passenger sends a "matching" to several rides from the search list at once."""
     ride_ids: list[int] = Field(min_length=1, max_length=30)
-
-    # Address-first input: either a saved address ID or new address details
-    pickup_address_id: int | None = None
-    custom_address: AddressCreate | None = None
-
-    # Optional / Direct coordinates (computed automatically if address is provided)
-    pickup_lat: float | None = None
-    pickup_lng: float | None = None
-    pickup_label: str | None = None
-    dropoff_lat: float | None = None
-    dropoff_lng: float | None = None
-    dropoff_label: str | None = None
-    pickup_region: str | None = None
-
 
 class MatchPublic(BaseModel):
     """What the passenger sees about their own match."""
@@ -98,6 +89,8 @@ class MatchConfirmed(MatchPublic):
     # Passenger exact pickup & address (revealed to driver only after acceptance)
     pickup_lat: float | None = None
     pickup_lng: float | None = None
+    dropoff_lat: float | None = None
+    dropoff_lng: float | None = None
     passenger_phone: str | None = None
     pickup_street: str | None = None
     pickup_number: str | None = None
