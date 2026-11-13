@@ -197,6 +197,7 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
         route_distance_meters=route.distance_meters,
         route_duration_seconds=route.duration_seconds,
         departure_at=body.departure_at,
+        delay_tolerance_minutes=body.delay_tolerance_minutes,
         total_seats=body.total_seats,
         available_seats=body.total_seats,
         women_only=body.women_only,
@@ -267,6 +268,8 @@ async def search_rides(
         women_only=search.women_only,
         pickup_after=search.pickup_after,
         pickup_before=search.pickup_before,
+        max_detour_meters=search.max_detour_meters,
+        max_detour_seconds=search.max_detour_seconds,
     )
 
     my_matches: dict[int, Match] = {}

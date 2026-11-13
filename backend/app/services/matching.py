@@ -77,6 +77,7 @@ class RideCandidate:
 
     def rejection_reason(
         self, pickup_after: datetime, pickup_before: datetime, *, max_detour_meters: int | None = None,
+        max_detour_seconds: int | None = None,
     ) -> str | None:
         if not pickup_after <= self.estimated_pickup_at <= pickup_before:
             return "O horário previsto de chegada à origem está fora do intervalo informado."
@@ -85,9 +86,11 @@ class RideCandidate:
             return "A chegada à origem está fora do tempo máximo após a saída do motorista."
         if max_detour_meters is None:
             max_detour_meters = settings.OSRM_MAX_DETOUR_METERS
+        if max_detour_seconds is None:
+            max_detour_seconds = settings.OSRM_MAX_DETOUR_SECONDS
         if (
             self.detour_meters > max_detour_meters
-            or self.detour_seconds > settings.OSRM_MAX_DETOUR_SECONDS
+            or self.detour_seconds > max_detour_seconds
         ):
             return "O ponto informado exige um desvio maior que o permitido."
         return None
@@ -285,6 +288,8 @@ async def find_matching_rides(
     pickup_after: datetime,
     pickup_before: datetime,
     women_only: bool = False,
+    max_detour_meters: int | None = None,
+    max_detour_seconds: int | None = None,
 ) -> list[RideCandidate]:
     """
     Returns a list of RideCandidate ordered by detour_meters ASC.
@@ -389,7 +394,11 @@ async def find_matching_rides(
     candidates.extend(_estimate_insertion(ride, plan, pickup, dropoff, stop_tables.get(stop, {}))
                       for ride, plan, stop in planned_trips)
     results = [candidate for candidate in candidates if candidate and candidate.rejection_reason(
-        pickup_after, pickup_before, max_detour_meters=settings.OSRM_TABLE_MAX_DETOUR_METERS,
+        pickup_after, pickup_before,
+        max_detour_meters=(
+            max_detour_meters if max_detour_meters is not None else settings.OSRM_TABLE_MAX_DETOUR_METERS
+        ),
+        max_detour_seconds=max_detour_seconds,
     ) is None]
 
     results.sort(key=lambda r: (r.detour_meters, r.detour_seconds, r.estimated_pickup_at, r.ride.id))

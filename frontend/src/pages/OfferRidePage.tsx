@@ -37,6 +37,7 @@ export const OfferRidePage: React.FC = () => {
 
   const [route, setRoute] = useState<TripRoute>(() => getInitialTripRoute(prefill));
   const [departureAt, setDepartureAt] = useState(getDefaultDepartureTime);
+  const [delayTolerance, setDelayTolerance] = useState(10);
   const [totalSeats, setTotalSeats] = useState(3);
   const [womenOnly, setWomenOnly] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,6 +104,7 @@ export const OfferRidePage: React.FC = () => {
         destination_lat: destinationLocation.lat,
         destination_lng: destinationLocation.lng,
         departure_at: new Date(departureAt).toISOString(),
+        delay_tolerance_minutes: Number(delayTolerance),
         total_seats: Number(totalSeats),
         women_only: canOfferWomenOnly && womenOnly,
       });
@@ -183,6 +185,16 @@ export const OfferRidePage: React.FC = () => {
         showRoutePreview
       >
         <Input label="Data e hora de saída do motorista" type="datetime-local" value={departureAt} onChange={(event) => setDepartureAt(event.target.value)} required />
+        <Input
+          label="Tolerância de atraso (minutos)"
+          type="number"
+          min={0}
+          max={120}
+          step={5}
+          value={delayTolerance}
+          onChange={(event) => setDelayTolerance(Number(event.target.value))}
+          required
+        />
         <Input label="Vagas disponíveis" type="number" min={1} max={6} value={totalSeats} onChange={(event) => setTotalSeats(Number(event.target.value))} required />
         {canOfferWomenOnly && (
           <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">

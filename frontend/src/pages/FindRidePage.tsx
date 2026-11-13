@@ -28,6 +28,7 @@ export const FindRidePage: React.FC = () => {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [womenOnly, setWomenOnly] = useState(false);
+  const [maxDetourKm, setMaxDetourKm] = useState(5);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [myMatchesByRide, setMyMatchesByRide] = useState<Record<number, MatchStatus>>({});
@@ -52,10 +53,11 @@ export const FindRidePage: React.FC = () => {
       dropoff_lat: dropoff.lat,
       dropoff_lng: dropoff.lng,
       women_only: canSearchWomenOnly && womenOnly,
+      max_detour_meters: maxDetourKm > 0 ? maxDetourKm * 1000 : 20000,
       pickup_after: new Date(startAt).toISOString(),
       pickup_before: new Date(endAt).toISOString(),
     };
-  }, [pickup, dropoff, hasCampus, validWindow, startAt, endAt, canSearchWomenOnly, womenOnly]);
+  }, [pickup, dropoff, hasCampus, validWindow, startAt, endAt, canSearchWomenOnly, womenOnly, maxDetourKm]);
 
   const result = params && searchResult?.params === params ? searchResult : null;
   const searched = result !== null && "rides" in result;
@@ -331,6 +333,21 @@ export const FindRidePage: React.FC = () => {
             <p role="alert" className="text-sm text-red-400">O horário de fim deve ser posterior ao de início no mesmo dia.</p>
           )}
         </fieldset>
+        <label className="block text-sm text-[var(--color-text)]">
+          <span className="mb-1 block font-bold">Desvio máximo aceitável</span>
+          <select
+            className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/30"
+            style={{ backgroundColor: "var(--color-surface-2)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            value={maxDetourKm}
+            onChange={(event) => setMaxDetourKm(Number(event.target.value))}
+          >
+            {[1, 2, 3, 5, 8, 10].map((km) => (
+              <option key={km} value={km}>Até {km} km de desvio</option>
+            ))}
+            <option value={0}>Sem limite de desvio</option>
+          </select>
+          <span className="mt-1 block text-xs text-[var(--color-text-muted)]">Quanto o motorista pode desviar do trajeto para te buscar.</span>
+        </label>
         {canSearchWomenOnly && (
           <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">
             <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />

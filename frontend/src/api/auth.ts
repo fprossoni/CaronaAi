@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { ReportCreate, ReportPublic } from "@/types/report";
 import type { UserPrivate, ProfileUpdate } from "@/types/user";
 
 export const authApi = {
@@ -25,4 +26,9 @@ export const usersApi = {
   blockUser: (id: number) => apiClient.post(`/users/${id}/block`),
 
   unblockUser: (id: number) => apiClient.delete(`/users/${id}/block`),
+
+  reportUser: (id: number, data: ReportCreate) =>
+    apiClient.post<{ message: string; report_id: number }>(`/users/${id}/report`, data),
+
+  getMyReports: () => apiClient.get<ReportPublic[]>("/users/me/reports"),
 };

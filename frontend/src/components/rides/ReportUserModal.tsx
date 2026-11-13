@@ -2,7 +2,8 @@
  * ReportUserModal Component
  *
  * Provides a structured moderation & safety report flow for trip participants,
- * with an integrated option to immediately block the reported user (`POST /users/{id}/block`).
+ * persisting the report (`POST /users/{id}/report`) with an integrated option
+ * to immediately block the reported user in the same request.
  */
 
 import React, { useState } from "react";
@@ -44,9 +45,12 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
     e.preventDefault();
     setLoading(true);
     try {
-      if (alsoBlock) {
-        await usersApi.blockUser(targetUser.id);
-      }
+      await usersApi.reportUser(targetUser.id, {
+        reason,
+        details: details.trim() || null,
+        ride_id: rideId,
+        block: alsoBlock,
+      });
       toast.success(
         "Relato registrado com sucesso",
         alsoBlock

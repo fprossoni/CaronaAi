@@ -136,6 +136,14 @@ export const RideCard: React.FC<RideCardProps> = ({
             )}
 
             <div className="flex items-center gap-1.5">
+              {(ride.delay_tolerance_minutes ?? 0) > 0 && (
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30"
+                  title="Tolerância de atraso informada pelo motorista"
+                >
+                  Tolerância {ride.delay_tolerance_minutes} min
+                </span>
+              )}
               {ride.women_only && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-pink-500/15 text-pink-400 border border-pink-500/30">
                   ♀ Só Mulheres
