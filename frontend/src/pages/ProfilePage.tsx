@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { CourseAutocomplete } from "@/components/ui/CourseAutocomplete";
 import { Input } from "@/components/ui/Input";
 import { SavedAddressesManager } from "@/components/profile/SavedAddressesManager";
+import { ReportsManager } from "@/components/profile/ReportsManager";
 import {
   CarIcon,
   EditIcon,
@@ -728,6 +729,9 @@ export const ProfilePage: React.FC = () => {
 
       {/* Personal Saved Addresses Manager (CEP / ViaCEP + Nominatim) */}
       <SavedAddressesManager />
+
+      {/* Reports filed by the user (moderation status) */}
+      <ReportsManager />
     </div>
   );
 };
