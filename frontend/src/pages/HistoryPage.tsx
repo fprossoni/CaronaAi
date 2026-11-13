@@ -250,6 +250,7 @@ export const HistoryPage: React.FC = () => {
                                 name: p.name,
                                 email: "",
                                 course: p.course,
+                                gender: null,
                                 age: null,
                                 phone: null,
                                 photo_url: p.photo_url,

@@ -15,7 +15,7 @@ import type { UserPublic } from "@/types/user";
 import { matchesApi } from "@/api/matches";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
-import { buildWhatsAppUrl, formatDistance, formatDuration } from "@/lib/formatters";
+import { buildWhatsAppUrl, formatDistance, formatDuration, getGenderLabel } from "@/lib/formatters";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import {
@@ -224,7 +224,13 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                           {m.passenger.name ?? "Passageiro UFRGS"}
                         </p>
                         <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                          {m.passenger.course ?? "Curso não informado"}
+                          {[
+                            m.passenger.course ?? "Curso não informado",
+                            m.passenger.gender ? getGenderLabel(m.passenger.gender) : null,
+                            m.passenger.age != null ? `${m.passenger.age} anos` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" • ")}
                         </p>
                         <p className="text-[11px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>
                           Solicitado às {formatTime(m.created_at)} • Toque para ver perfil
