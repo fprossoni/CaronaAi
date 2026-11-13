@@ -68,7 +68,6 @@ class RideCreate(BaseModel):
     destination_lng: float | None = Field(default=None, ge=-180, le=180)
 
     departure_at: datetime
-    delay_tolerance_minutes: int = 0
     total_seats: int = 1
     women_only: bool = False
 
@@ -77,13 +76,6 @@ class RideCreate(BaseModel):
     def seats_range(cls, v: int) -> int:
         if not (1 <= v <= 8):
             raise ValueError("Seats must be between 1 and 8")
-        return v
-
-    @field_validator("delay_tolerance_minutes")
-    @classmethod
-    def delay_tolerance_range(cls, v: int) -> int:
-        if not (0 <= v <= 120):
-            raise ValueError("A tolerância de atraso deve estar entre 0 e 120 minutos.")
         return v
 
 
@@ -99,7 +91,6 @@ class RidePublic(BaseModel):
     destination_lat: float | None = Field(default=None, ge=-90, le=90)
     destination_lng: float | None = Field(default=None, ge=-180, le=180)
     departure_at: datetime
-    delay_tolerance_minutes: int = 0
     total_seats: int
     available_seats: int
     women_only: bool
@@ -171,6 +162,3 @@ class SearchRidesRequest(PickupWindow):
     dropoff_lng: float | None = Field(default=None, ge=-180, le=180)
     dropoff_label: str | None = None
     women_only: bool = False
-    # Distance preferences: max extra route the passenger accepts (None = server default)
-    max_detour_meters: int | None = Field(default=None, ge=0, le=20000)
-    max_detour_seconds: int | None = Field(default=None, ge=0, le=3600)

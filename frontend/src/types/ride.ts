@@ -20,7 +20,6 @@ export interface RidePublic {
   destination_lat?: number | null;
   destination_lng?: number | null;
   departure_at: string; // ISO datetime
-  delay_tolerance_minutes?: number;
   total_seats: number;
   available_seats: number;
   women_only: boolean;
@@ -64,7 +63,6 @@ export interface RideCreate {
   destination_lat?: number;
   destination_lng?: number;
   departure_at: string;
-  delay_tolerance_minutes?: number;
   total_seats?: number;
   women_only?: boolean;
 }
@@ -80,8 +78,6 @@ export interface SearchRidesParams {
   dropoff_lat?: number;
   dropoff_lng?: number;
   women_only?: boolean;
-  max_detour_meters?: number;
-  max_detour_seconds?: number;
   pickup_after: string;
   pickup_before: string;
 }
