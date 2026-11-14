@@ -26,7 +26,6 @@ export const FindRidePage: React.FC = () => {
   const [route, setRoute] = useState<TripRoute>(() => getInitialTripRoute(prefill));
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
   const [womenOnly, setWomenOnly] = useState(false);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -38,8 +37,7 @@ export const FindRidePage: React.FC = () => {
   const { origin: pickup, destination: dropoff } = route;
   const hasCampus = hasTripCampus(route);
   const startAt = date && startTime ? Date.parse(date + "T" + startTime) : NaN;
-  const endAt = date && endTime ? Date.parse(date + "T" + endTime) : NaN;
-  const validWindow = Number.isFinite(startAt) && Number.isFinite(endAt) && endAt > startAt;
+  const validWindow = Number.isFinite(startAt);
   const params = useMemo<SearchRidesParams | null>(() => {
     if (!pickup || !dropoff || !hasCampus || !validWindow) return null;
     return {
@@ -52,10 +50,9 @@ export const FindRidePage: React.FC = () => {
       dropoff_lat: dropoff.lat,
       dropoff_lng: dropoff.lng,
       women_only: canSearchWomenOnly && womenOnly,
-      pickup_after: new Date(startAt).toISOString(),
-      pickup_before: new Date(endAt).toISOString(),
+      desired_pickup_at: new Date(startAt).toISOString(),
     };
-  }, [pickup, dropoff, hasCampus, validWindow, startAt, endAt, canSearchWomenOnly, womenOnly]);
+  }, [pickup, dropoff, hasCampus, validWindow, startAt, canSearchWomenOnly, womenOnly]);
 
   const result = params && searchResult?.params === params ? searchResult : null;
   const searched = result !== null && "rides" in result;
@@ -66,8 +63,7 @@ export const FindRidePage: React.FC = () => {
   const matchPoints = searched && params && pickup && dropoff ? {
     pickup_campus_id: pickup.campusId,
     dropoff_campus_id: dropoff.campusId,
-    pickup_after: params.pickup_after,
-    pickup_before: params.pickup_before,
+    desired_pickup_at: params.desired_pickup_at,
     pickup_address_id: pickup.addressId,
     pickup_lat: pickup.lat,
     pickup_lng: pickup.lng,
@@ -101,10 +97,6 @@ export const FindRidePage: React.FC = () => {
     if (!params) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      if (Date.parse(params.pickup_before) <= Date.now()) {
-        setSearchResult({ params, error: "Informe um horário de fim posterior ao horário atual." });
-        return;
-      }
       try {
         const { data } = await ridesApi.search(params, controller.signal);
         if (controller.signal.aborted) return;
@@ -234,7 +226,7 @@ export const FindRidePage: React.FC = () => {
           </span>
         </h2>
         {rides.length > 1 && (
-          <p className="text-sm text-[var(--color-text-muted)]">Menor desvio estimado primeiro</p>
+          <p className="text-sm text-[var(--color-text-muted)]">Melhor combinação de horário e desvio</p>
         )}
       </div>
 
@@ -321,15 +313,12 @@ export const FindRidePage: React.FC = () => {
         }}
       >
         <fieldset className="min-w-0 space-y-3">
-          <legend className="mb-2 text-sm font-bold text-[var(--color-text)]">Quando você quer sair?</legend>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <legend className="mb-2 text-sm font-bold text-[var(--color-text)]">Quando você quer embarcar?</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
             <Input label="Data" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
-            <Input label="Horário de início" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
-            <Input label="Horário de fim" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required />
+            <Input label="Horário desejado" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
           </div>
-          {date && startTime && endTime && !validWindow && (
-            <p role="alert" className="text-sm text-red-400">O horário de fim deve ser posterior ao de início no mesmo dia.</p>
-          )}
+          <p className="text-xs text-[var(--color-text-muted)]">Confira o embarque previsto de cada opção; ele pode ser antes ou depois do horário desejado.</p>
         </fieldset>
         {canSearchWomenOnly && (
           <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">

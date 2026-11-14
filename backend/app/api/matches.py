@@ -174,6 +174,12 @@ async def _build_match(
     reason = candidate.rejection_reason(body.pickup_after, body.pickup_before)
     if reason:
         raise HTTPException(status_code=400, detail=reason)
+    pickup_after, pickup_before = body.pickup_after, body.pickup_before
+    if body.desired_pickup_at is not None:
+        # Freeze the offered boarding agreement; later stops cannot use the full search window.
+        margin = timedelta(seconds=settings.MATCH_AGREED_TOLERANCE_SECONDS)
+        pickup_after = max(pickup_after, candidate.estimated_pickup_at - margin)
+        pickup_before = min(pickup_before, candidate.estimated_pickup_at + margin)
     return Match(
         ride_id=ride.id,
         passenger_id=passenger_id,
@@ -191,8 +197,10 @@ async def _build_match(
         pickup_city=city,
         detour_meters=candidate.detour_meters,
         detour_seconds=candidate.detour_seconds,
-        pickup_after=body.pickup_after,
-        pickup_before=body.pickup_before,
+        desired_pickup_at=body.desired_pickup_at,
+        offered_pickup_at=candidate.estimated_pickup_at if body.desired_pickup_at else None,
+        pickup_after=pickup_after,
+        pickup_before=pickup_before,
     )
 
 

@@ -1,10 +1,11 @@
 """Pydantic schemas for rides."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, AliasChoices, AwareDatetime, BaseModel, Field, field_validator, model_validator
 
+from app.core.config import settings
 from app.models.ride import UFRGS_CAMPUS, RideStatus
 from app.schemas.address import AddressCreate
 from app.schemas.user import UserPublic
@@ -22,11 +23,20 @@ CampusId = Annotated[str, AfterValidator(validate_campus_id)]
 
 
 class PickupWindow(BaseModel):
-    pickup_after: AwareDatetime = Field(validation_alias=AliasChoices("pickup_after", "departure_after"))
-    pickup_before: AwareDatetime = Field(validation_alias=AliasChoices("pickup_before", "departure_before"))
+    desired_pickup_at: AwareDatetime | None = None
+    pickup_after: AwareDatetime | None = Field(default=None, validation_alias=AliasChoices("pickup_after", "departure_after"))
+    pickup_before: AwareDatetime | None = Field(default=None, validation_alias=AliasChoices("pickup_before", "departure_before"))
 
     @model_validator(mode="after")
     def validate_pickup_window(self) -> "PickupWindow":
+        if self.desired_pickup_at is not None:
+            if self.pickup_after is not None or self.pickup_before is not None:
+                raise ValueError("Informe somente o horário desejado, sem intervalo.")
+            tolerance = timedelta(seconds=settings.MATCH_TIME_TOLERANCE_SECONDS)
+            self.pickup_after = self.desired_pickup_at - tolerance
+            self.pickup_before = self.desired_pickup_at + tolerance
+        if self.pickup_after is None or self.pickup_before is None:
+            raise ValueError("Informe a data e o horário desejado de embarque.")
         if self.pickup_before <= self.pickup_after:
             raise ValueError("O fim do intervalo de saída deve ser posterior ao início.")
         return self
@@ -102,6 +112,8 @@ class RidePublic(BaseModel):
     # Detour calculated for a specific passenger search
     detour_meters: float | None = None
     detour_seconds: float | None = None
+    match_cost: float | None = None
+    pickup_difference_seconds: float | None = None
     estimated_pickup_at: datetime | None = None
     estimated_dropoff_at: datetime | None = None
     detour_geojson: dict | None = None

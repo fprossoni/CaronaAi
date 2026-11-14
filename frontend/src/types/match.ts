@@ -60,8 +60,7 @@ export interface MatchWithRide extends MatchPublic {
 interface MatchTrip {
   pickup_campus_id?: CampusId;
   dropoff_campus_id?: CampusId;
-  pickup_after: string;
-  pickup_before: string;
+  desired_pickup_at: string;
   pickup_address_id?: number | null;
   dropoff_address_id?: number | null;
   custom_address?: AddressCreate | null;

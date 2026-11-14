@@ -3,7 +3,7 @@
 Algorithm:
   1. Match campus endpoints and check proximity for the remaining address
   2. Estimate the direct and amended trips with directional OSRM Table batches
-  3. Filter by pickup time and detour thresholds, then sort by estimated detour distance
+  3. Filter by pickup time and detour thresholds, then rank by configurable quadratic cost
 """
 
 from __future__ import annotations
@@ -74,6 +74,16 @@ class RideCandidate:
     estimated_dropoff_at: datetime | None = None
     detour_geojson: dict | None = None
     plan: RoutePlan | None = None
+    match_cost: float | None = None
+    pickup_difference_seconds: float | None = None
+
+    def rank(self, desired_pickup_at: datetime) -> None:
+        self.pickup_difference_seconds = (self.estimated_pickup_at - desired_pickup_at).total_seconds()
+        self.match_cost = (
+            settings.MATCH_TIME_WEIGHT * (self.pickup_difference_seconds / settings.MATCH_TIME_SCALE_SECONDS) ** 2
+            + settings.MATCH_DISTANCE_WEIGHT * (self.detour_meters / settings.MATCH_DISTANCE_SCALE_METERS) ** 2
+            + settings.MATCH_DURATION_WEIGHT * (self.detour_seconds / settings.MATCH_DURATION_SCALE_SECONDS) ** 2
+        )
 
     def rejection_reason(
         self, pickup_after: datetime, pickup_before: datetime, *, max_detour_meters: int | None = None,
@@ -285,9 +295,10 @@ async def find_matching_rides(
     pickup_after: datetime,
     pickup_before: datetime,
     women_only: bool = False,
+    desired_pickup_at: datetime | None = None,
 ) -> list[RideCandidate]:
     """
-    Returns a list of RideCandidate ordered by detour_meters ASC.
+    Returns candidates ordered by quadratic cost (legacy windows use detour distance).
     
     Privacy note: exact passenger coordinates are only used server-side
     for the matching computation — they are never stored until a match
@@ -389,10 +400,15 @@ async def find_matching_rides(
     candidates.extend(_estimate_insertion(ride, plan, pickup, dropoff, stop_tables.get(stop, {}))
                       for ride, plan, stop in planned_trips)
     results = [candidate for candidate in candidates if candidate and candidate.rejection_reason(
-        pickup_after, pickup_before, max_detour_meters=settings.OSRM_TABLE_MAX_DETOUR_METERS,
+        pickup_after, pickup_before,
     ) is None]
 
-    results.sort(key=lambda r: (r.detour_meters, r.detour_seconds, r.estimated_pickup_at, r.ride.id))
+    if desired_pickup_at is not None:
+        for candidate in results:
+            candidate.rank(desired_pickup_at)
+        results.sort(key=lambda r: (r.match_cost, r.detour_meters, abs(r.pickup_difference_seconds), r.ride.id))
+    else:  # Compatibility for existing clients using explicit windows.
+        results.sort(key=lambda r: (r.detour_meters, r.detour_seconds, r.estimated_pickup_at, r.ride.id))
     return results
 
 

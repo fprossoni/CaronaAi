@@ -220,6 +220,14 @@ export const RideCard: React.FC<RideCardProps> = ({
           </p>
         )}
 
+        {ride.pickup_difference_seconds != null && (
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+            {Math.abs(ride.pickup_difference_seconds) < 60
+              ? "Embarque próximo do horário desejado"
+              : `${Math.round(Math.abs(ride.pickup_difference_seconds) / 60)} min ${ride.pickup_difference_seconds < 0 ? "antes" : "depois"} do horário desejado`}
+          </p>
+        )}
+
         {ride.estimated_dropoff_at && (
           <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-[var(--color-text)]">
             <ClockIcon size={14} className="text-indigo-400" />

@@ -30,6 +30,8 @@ export interface RidePublic {
   // Set when returned from search
   detour_meters?: number;
   detour_seconds?: number;
+  match_cost?: number | null;
+  pickup_difference_seconds?: number | null;
   estimated_pickup_at?: string | null;
   estimated_dropoff_at?: string | null;
   detour_geojson?: GeoJSON.LineString | null;
@@ -78,8 +80,7 @@ export interface SearchRidesParams {
   dropoff_lat?: number;
   dropoff_lng?: number;
   women_only?: boolean;
-  pickup_after: string;
-  pickup_before: string;
+  desired_pickup_at: string;
 }
 
 export interface TripParticipant {

@@ -50,6 +50,8 @@ class Match(Base):
     # Detour metrics (calculated by matching service)
     detour_meters: Mapped[float] = mapped_column(Float, default=0.0)
     detour_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    desired_pickup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    offered_pickup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pickup_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pickup_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

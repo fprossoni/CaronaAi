@@ -119,6 +119,53 @@ class RideRoutesTest(unittest.TestCase):
         self.assertEqual(accepted.json()["dropoff_lat"], -30.043243)
         self.assertIn("Campus Saúde", accepted.json()["dropoff_label"])
 
+    def test_single_time_search_request_and_accept(self):
+        ride_id = self.create_ride()
+        self.user_id = 2
+        target = self.departure + timedelta(minutes=10)
+        trip = {"pickup_address_id": 1, "dropoff_campus_id": "campus_saude",
+                "desired_pickup_at": target.isoformat()}
+        response = self.client.get("/rides/search", params=trip)
+        self.assertEqual(response.status_code, 200, response.text)
+        result, = response.json()
+        self.assertEqual(result["pickup_difference_seconds"], -420)
+        self.assertGreater(result["match_cost"], 0)
+        self.table.assert_awaited_once()
+        self.route.assert_not_called()
+        response = self.client.post("/matches/", json={"ride_id": ride_id, **trip})
+        self.assertEqual(response.status_code, 201, response.text)
+        from app.models.match import Match
+        match = self.db.get(Match, response.json()["id"])
+        self.assertEqual(match.desired_pickup_at, target)
+        self.assertEqual(match.pickup_before - match.pickup_after, timedelta(minutes=10))
+        self.user_id = 1
+        response = self.client.patch(f"/matches/{match.id}/respond", json={"action": "accept"})
+        self.assertEqual(response.status_code, 200, response.text)
+
+    def test_single_time_batch_and_changed_pickup_requires_new_request(self):
+        ids = [self.create_ride(), self.create_ride()]
+        self.user_id = 2
+        response = self.client.post("/matches/batch", json={
+            "ride_ids": ids, "pickup_address_id": 1,
+            "dropoff_campus_id": "campus_saude",
+            "desired_pickup_at": self.departure.isoformat(),
+        })
+        self.assertEqual(response.status_code, 201, response.text)
+        created = response.json()["created"]
+        self.assertEqual(len(created), 2)
+
+        async def delayed_route(points, with_geometry=False):
+            route = await route_through(points, with_geometry)
+            route.leg_durations_seconds = (900,) * (len(points) - 1)
+            route.duration_seconds = sum(route.leg_durations_seconds)
+            return route
+
+        self.route.side_effect = delayed_route
+        self.user_id = 1
+        response = self.client.patch(f"/matches/{created[0]['id']}/respond", json={"action": "accept"})
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(self.client.get(f"/rides/{ids[0]}").json()["available_seats"], 1)
+
     def test_offer_preview_uses_the_published_route(self):
         points = {
             "origin": {"lat": -30.033, "lng": -51.221},
@@ -133,7 +180,7 @@ class RideRoutesTest(unittest.TestCase):
         self.assertEqual(self.client.post("/rides/preview", json=points).status_code, 403)
 
     def test_acceptance_checks_each_detour_against_the_current_route(self):
-        combined_distance = 5500
+        combined_distance = 12500
 
         async def route_with_expensive_second_stop(points, with_geometry=False):
             route = await route_through(points, with_geometry)
@@ -278,7 +325,18 @@ class RideRoutesTest(unittest.TestCase):
         self.table.assert_awaited_once()
         self.route.assert_not_called()
 
-    def test_search_allows_estimated_detours_up_to_five_kilometers(self):
+        # A punctual ride with a larger detour loses to a slightly later one.
+        response = self.client.get("/rides/search", params={
+            "pickup_address_id": 1, "dropoff_campus_id": "campus_saude",
+            "desired_pickup_at": (self.departure + timedelta(minutes=2)).isoformat(),
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        smaller, punctual = response.json()
+        self.assertEqual((smaller["id"], punctual["id"]), (smaller_id, earlier_id))
+        self.assertEqual(punctual["pickup_difference_seconds"], 0)
+        self.assertLess(smaller["match_cost"], punctual["match_cost"])
+
+    def test_search_allows_estimated_detours_below_ten_kilometers(self):
         first_origin = (-30.033, -51.221)
         second_origin = (-30.034, -51.222)
         pickup = (-30.034, -51.219)
@@ -287,8 +345,8 @@ class RideRoutesTest(unittest.TestCase):
         self.create_ride(origin_lat=second_origin[0], origin_lng=second_origin[1])
         self.table.side_effect = None
         self.table.return_value = {
-            (first_origin, pickup): TravelLeg(1700, 180),
-            (second_origin, pickup): TravelLeg(2800, 180),
+            (first_origin, pickup): TravelLeg(7700, 180),
+            (second_origin, pickup): TravelLeg(7701, 180),
             (pickup, dropoff): TravelLeg(3500, 240),
             (first_origin, dropoff): TravelLeg(1200, 180),
             (second_origin, dropoff): TravelLeg(1200, 180),
@@ -299,7 +357,7 @@ class RideRoutesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         ride, = response.json()
         self.assertEqual(ride["id"], eligible_id)
-        self.assertEqual(ride["detour_meters"], 4000)
+        self.assertEqual(ride["detour_meters"], 10000)
         self.route.assert_not_called()
 
     def test_two_campuses_reuse_original_route_without_osrm_calls(self):

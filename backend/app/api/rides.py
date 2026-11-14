@@ -217,9 +217,9 @@ async def search_rides(
     db: DbSession,
     search: Annotated[SearchRidesRequest, Query()],
 ) -> list[RideSearchResult]:
-    """Search by pickup, dropoff and estimated pickup window, ordered by detour."""
+    """Search by desired boarding time, ranked by time difference and detour cost."""
     if search.pickup_before <= datetime.now(UTC):
-        raise HTTPException(status_code=400, detail="Informe um fim posterior ao horário atual.")
+        raise HTTPException(status_code=400, detail="O horário informado não permite mais encontrar embarques futuros.")
 
     pickup = (search.pickup_lat, search.pickup_lng)
     dropoff = (search.dropoff_lat, search.dropoff_lng)
@@ -265,6 +265,7 @@ async def search_rides(
         dropoff_lng=dropoff[1],
         passenger_gender=current_user.gender,
         women_only=search.women_only,
+        desired_pickup_at=search.desired_pickup_at,
         pickup_after=search.pickup_after,
         pickup_before=search.pickup_before,
     )
@@ -291,6 +292,8 @@ async def search_rides(
     for c in candidates:
         ride_schema = _serialize_ride(c.ride, RideSearchResult)
         ride_schema.driver_completed_ride_count = completed_counts.get(c.ride.driver_id, 0)
+        ride_schema.match_cost = c.match_cost
+        ride_schema.pickup_difference_seconds = c.pickup_difference_seconds
         ride_schema.detour_meters = c.detour_meters
         ride_schema.detour_seconds = c.detour_seconds
         ride_schema.estimated_pickup_at = c.estimated_pickup_at
