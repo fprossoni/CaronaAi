@@ -14,7 +14,7 @@ import {
   isValidCarPlate,
 } from "@/lib/formatters";
 import { validateBirthDate } from "@/lib/validators";
-import { UFRGS_CAMPUS } from "@/types/ride";
+import { CAMPUS_LIST } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
 
 type Preference = "passenger" | "driver" | "both";
@@ -221,7 +221,7 @@ export const ProfileCompletePage: React.FC = () => {
               Campi que você frequenta (opcional)
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {UFRGS_CAMPUS.map((c) => (
+              {CAMPUS_LIST.map((c) => (
                 <label
                   key={c.id}
                   className="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer select-none transition"

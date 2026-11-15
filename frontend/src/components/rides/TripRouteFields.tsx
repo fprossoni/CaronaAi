@@ -227,6 +227,11 @@ export function TripRouteFields({ route, onChange, onSubmit, disabled, showRoute
               </fieldset>
             ))}
           </div>
+          {(picking || (origin && destination)) && (
+            <p className="wrap-anywhere text-sm text-[var(--color-text-secondary)]">
+              <strong>Sentido da carona:</strong> A · {origin?.label ?? "Origem"} → B · {destination?.label ?? "Destino"}
+            </p>
+          )}
           {!hasTripCampus(route) && (
             <p role={origin && destination ? "alert" : undefined}
               className={origin && destination ? "text-sm text-red-400" : "text-sm text-[var(--color-text-muted)]"}>

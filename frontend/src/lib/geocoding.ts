@@ -21,6 +21,17 @@ export interface LocationValue {
   lng: number;
   campusId?: CampusId;
   addressId?: number;
+  mapAddress?: MapAddress;
+}
+
+interface MapAddress {
+  street: string;
+  number: string;
+  neighborhood: string;
+}
+
+export function formatMapAddress({ street, number, neighborhood }: MapAddress): string {
+  return `${street}${number.trim() ? `, ${number.trim()}` : ""} — ${neighborhood}`;
 }
 
 export interface GeocodingSuggestion extends LocationValue {
@@ -44,6 +55,8 @@ interface NominatimAddress {
   road?: string;
   house_number?: string;
   pedestrian?: string;
+  residential?: string;
+  living_street?: string;
   suburb?: string;
   neighbourhood?: string;
   quarter?: string;
@@ -59,7 +72,6 @@ interface NominatimItem {
   lat: string;
   lon: string;
   display_name: string;
-  name?: string;
   address?: NominatimAddress;
 }
 
@@ -87,22 +99,16 @@ function parseNominatimAddress(item: NominatimItem, fallbackLat: number, fallbac
 
   const region = `${neighborhood}, ${city}`;
 
-  let streetPart = item.name || addr?.road || addr?.pedestrian || "";
-  if (addr?.road && addr?.house_number) {
-    streetPart = `${addr.road}, ${addr.house_number}`;
-  } else if (addr?.road && !streetPart) {
-    streetPart = addr.road;
-  }
-
-  const label = streetPart
-    ? `${streetPart} — ${neighborhood}`
-    : item.display_name.split(",").slice(0, 3).join(",").trim();
+  const street = addr?.road || addr?.pedestrian || addr?.residential || addr?.living_street;
+  const mapAddress = street ? { street, number: addr?.house_number ?? "", neighborhood } : undefined;
+  const label = mapAddress ? formatMapAddress(mapAddress) : item.display_name;
 
   return {
     label: label || `Ponto no mapa (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
     region,
     lat,
     lng,
+    mapAddress,
   };
 }
 
@@ -199,6 +205,7 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
       const url = new URL("https://nominatim.openstreetmap.org/reverse");
       url.searchParams.set("format", "jsonv2");
       url.searchParams.set("addressdetails", "1");
+      url.searchParams.set("layer", "address");
       url.searchParams.set("lat", String(lat));
       url.searchParams.set("lon", String(lng));
 
@@ -207,7 +214,7 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
       });
       if (!res.ok) throw new Error("Reverse geocoding failed");
       const item = (await res.json()) as NominatimItem;
-      return parseNominatimAddress(item, lat, lng);
+      return { ...parseNominatimAddress(item, lat, lng), lat, lng };
     } catch {
       return {
         label: `Local selecionado (${lat.toFixed(4)}, ${lng.toFixed(4)})`,

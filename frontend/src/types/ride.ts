@@ -4,7 +4,7 @@ import { CAMPUS_LIST, DEFAULT_CAMPUS, type CampusId, type CampusInfo } from "@/c
 
 export type { CampusId, CampusInfo };
 export { CAMPUS_LIST, DEFAULT_CAMPUS };
-export const UFRGS_CAMPUS = CAMPUS_LIST;
+export const UFRGS_CAMPUS = CAMPUS_LIST.filter(({ id }) => id !== "campus_litoral_norte");
 
 export type RideStatus = "active" | "full" | "in_progress" | "completed" | "cancelled";
 export type TripDirection = "to_campus" | "from_campus";

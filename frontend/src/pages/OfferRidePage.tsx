@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { addMinutes, format, startOfMinute } from "date-fns";
 import { ridesApi } from "@/api/rides";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
@@ -10,15 +11,6 @@ import { formatCarPlate, isValidCarPlate } from "@/lib/formatters";
 import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-
-function getDefaultDepartureTime(): string {
-  const d = new Date(Date.now() + 45 * 60 * 1000);
-  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-}
 
 export const OfferRidePage: React.FC = () => {
   const navigate = useNavigate();
@@ -36,7 +28,8 @@ export const OfferRidePage: React.FC = () => {
   const [activatingDriver, setActivatingDriver] = useState(false);
 
   const [route, setRoute] = useState<TripRoute>(() => getInitialTripRoute(prefill));
-  const [departureAt, setDepartureAt] = useState(getDefaultDepartureTime);
+  const [departureAt, setDepartureAt] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [departureEdited, setDepartureEdited] = useState(false);
   const [totalSeats, setTotalSeats] = useState(3);
   const [womenOnly, setWomenOnly] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -89,6 +82,10 @@ export const OfferRidePage: React.FC = () => {
       return;
     }
 
+    const departure = departureEdited
+      ? new Date(departureAt)
+      : addMinutes(startOfMinute(new Date()), 1);
+
     setLoading(true);
     try {
       await ridesApi.create({
@@ -102,7 +99,7 @@ export const OfferRidePage: React.FC = () => {
         destination_label: destinationLocation.label,
         destination_lat: destinationLocation.lat,
         destination_lng: destinationLocation.lng,
-        departure_at: new Date(departureAt).toISOString(),
+        departure_at: departure.toISOString(),
         total_seats: Number(totalSeats),
         women_only: canOfferWomenOnly && womenOnly,
       });
@@ -182,7 +179,17 @@ export const OfferRidePage: React.FC = () => {
         disabled={loading}
         showRoutePreview
       >
-        <Input label="Data e hora de saída do motorista" type="datetime-local" value={departureAt} onChange={(event) => setDepartureAt(event.target.value)} required />
+        <Input
+          label="Data e hora de saída do motorista"
+          type="datetime-local"
+          value={departureAt}
+          hint={departureEdited ? undefined : "Ao publicar com o horário automático, a saída fica marcada para o próximo minuto."}
+          onChange={(event) => {
+            setDepartureEdited(true);
+            setDepartureAt(event.target.value);
+          }}
+          required
+        />
         <Input label="Vagas disponíveis" type="number" min={1} max={6} value={totalSeats} onChange={(event) => setTotalSeats(Number(event.target.value))} required />
         {canOfferWomenOnly && (
           <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">

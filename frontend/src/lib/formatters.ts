@@ -3,7 +3,7 @@
  */
 
 import type { Gender } from "@/types/user";
-import { UFRGS_CAMPUS } from "@/types/ride";
+import { CAMPUS_LIST } from "@/constants/campuses";
 
 /**
  * Formats a raw phone string into (XX) XXXXXXXXX.
@@ -124,7 +124,7 @@ export function getGenderLabel(gender?: Gender | null): string {
  */
 export function getCampusInfo(campusId: string) {
   return (
-    UFRGS_CAMPUS.find((c) => c.id === campusId) ?? {
+    CAMPUS_LIST.find((c) => c.id === campusId) ?? {
       id: campusId,
       name: campusId,
       shortName: campusId,

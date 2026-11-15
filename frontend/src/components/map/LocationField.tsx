@@ -16,12 +16,14 @@ import { addressesApi } from "@/api/addresses";
 import { useAuthStore } from "@/store/authStore";
 import {
   campusToLocation,
+  formatMapAddress,
   geocodingService,
   getBrowserCurrentLocation,
   type GeocodingSuggestion,
   type LocationValue,
 } from "@/lib/geocoding";
 import { CrosshairIcon, MapPinIcon, NavigationIcon, SearchIcon } from "@/components/ui/Icons";
+import { Input } from "@/components/ui/Input";
 
 interface LocationFieldProps {
   label: string;
@@ -66,6 +68,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const displayedQuery = draftText !== null ? draftText : (value?.label ?? "");
+  const mapAddress = value?.mapAddress;
 
   // Load user's saved personal addresses for 1-click selection
   useEffect(() => {
@@ -199,7 +202,11 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           {onTogglePickOnMap && (
             <button
               type="button"
-              onClick={onTogglePickOnMap}
+              onClick={() => {
+                setDraftText(null);
+                setIsOpen(false);
+                onTogglePickOnMap();
+              }}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors"
               style={{
                 backgroundColor: isPickingOnMap
@@ -393,6 +400,19 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       )}
 
       {gpsError && <p className="text-xs text-red-400 px-1">{gpsError}</p>}
+      {value && mapAddress && (
+        <Input
+          id={`${inputId}-number`}
+          label={`Número · ${label}`}
+          value={mapAddress.number}
+          placeholder="Informe o número, se houver"
+          maxLength={20}
+          onChange={(event) => {
+            const address = { ...mapAddress, number: event.target.value };
+            onChange({ ...value, mapAddress: address, label: formatMapAddress(address) });
+          }}
+        />
+      )}
     </div>
   );
 };

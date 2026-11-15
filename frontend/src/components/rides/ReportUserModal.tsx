@@ -6,7 +6,8 @@
  * to immediately block the reported user in the same request.
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usersApi } from "@/api/auth";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
@@ -37,10 +38,17 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
   onClose,
 }) => {
   const toast = useToastStore();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const detailsId = useId();
   const [reason, setReason] = useState(REPORT_REASONS[0]);
   const [details, setDetails] = useState("");
   const [alsoBlock, setAlsoBlock] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,26 +74,24 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
     }
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
+  return createPortal(
+    <dialog
+      ref={dialog}
+      aria-labelledby={titleId}
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-xl backdrop:bg-black/70"
     >
-      <div
-        className="w-full max-w-md rounded-3xl p-6 border shadow-2xl animate-slide-up"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderColor: "var(--color-border)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-red-500/15 text-red-400">
+      <div className="p-4 sm:p-6">
+        <div className="mb-4 flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="shrink-0 p-2 rounded-xl bg-red-500/15 text-red-400">
               <AlertTriangleIcon size={20} />
             </div>
-            <div>
-              <h3 className="text-base font-bold" style={{ color: "var(--color-text)" }}>
+            <div className="min-w-0 wrap-anywhere">
+              <h3 id={titleId} className="text-base font-bold">
                 Reportar Ocorrência
               </h3>
               <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
@@ -95,8 +101,9 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
           </div>
           <button
             type="button"
+            aria-label="Fechar denúncia"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+            className="shrink-0 p-1.5 rounded-full hover:bg-white/10 transition-colors"
             style={{ color: "var(--color-text-muted)" }}
           >
             <XIcon size={18} />
@@ -129,7 +136,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
                     name="reportReason"
                     checked={reason === item}
                     onChange={() => setReason(item)}
-                    className="mt-0.5 accent-red-500"
+                    className="mt-0.5 shrink-0 accent-red-500"
                   />
                   <span>{item}</span>
                 </label>
@@ -139,12 +146,14 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
 
           <div>
             <label
+              htmlFor={detailsId}
               className="block text-xs font-semibold mb-1.5"
               style={{ color: "var(--color-text-secondary)" }}
             >
               Detalhes adicionais (opcional)
             </label>
             <textarea
+              id={detailsId}
               rows={3}
               maxLength={400}
               placeholder="Descreva brevemente o que aconteceu..."
@@ -171,15 +180,15 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
               type="checkbox"
               checked={alsoBlock}
               onChange={(e) => setAlsoBlock(e.target.checked)}
-              className="mt-0.5 accent-red-500"
+              className="mt-0.5 shrink-0 accent-red-500"
             />
-            <span>
+            <span className="min-w-0 wrap-anywhere">
               <strong>Bloquear {targetUser.name ?? "este usuário"}</strong> para que não apareça
               mais nas minhas buscas ou ofertas de carona.
             </span>
           </label>
 
-          <div className="flex items-center justify-end gap-2.5 pt-2">
+          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2">
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               Cancelar
             </Button>
@@ -189,6 +198,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </dialog>,
+    document.body,
   );
 };

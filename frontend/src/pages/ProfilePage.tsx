@@ -13,7 +13,7 @@ import React, { useState } from "react";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
-import { UFRGS_CAMPUS } from "@/types/ride";
+import { CAMPUS_LIST } from "@/types/ride";
 import type { Gender, ProfileUpdate } from "@/types/user";
 import {
   buildSocialUrl,
@@ -659,7 +659,7 @@ export const ProfilePage: React.FC = () => {
               Campi da UFRGS que você frequenta
             </label>
             <div className="flex flex-wrap gap-2">
-              {UFRGS_CAMPUS.map((c) => {
+              {CAMPUS_LIST.map((c) => {
                 const selected = campuses.includes(c.id);
                 return (
                   <button

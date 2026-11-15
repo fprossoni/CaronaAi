@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { format } from "date-fns";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
 import type { RideSearchResult, SearchRidesParams } from "@/types/ride";
@@ -16,6 +17,12 @@ import { CheckCircleIcon } from "@/components/ui/Icons";
 
 type SearchResult = { params: SearchRidesParams } & ({ rides: RideSearchResult[] } | { error: string });
 
+type SubmittedSearch = {
+  params: SearchRidesParams;
+  pickup: NonNullable<TripRoute["origin"]>;
+  dropoff: NonNullable<TripRoute["destination"]>;
+};
+
 const NO_RIDES: RideSearchResult[] = [];
 
 export const FindRidePage: React.FC = () => {
@@ -24,11 +31,13 @@ export const FindRidePage: React.FC = () => {
   const toast = useToastStore();
   const canSearchWomenOnly = useAuthStore((state) => state.user?.gender === "female");
   const [route, setRoute] = useState<TripRoute>(() => getInitialTripRoute(prefill));
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
+  const [{ date, startTime }, setSchedule] = useState(() => {
+    const now = new Date();
+    return { date: format(now, "yyyy-MM-dd"), startTime: format(now, "HH:mm") };
+  });
   const [womenOnly, setWomenOnly] = useState(false);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [submittedSearch, setSubmittedSearch] = useState<SubmittedSearch | null>(null);
   const [myMatchesByRide, setMyMatchesByRide] = useState<Record<number, MatchStatus>>({});
   const [selection, setSelection] = useState<{ params: SearchRidesParams | null; ids: number[] }>({ params: null, ids: [] });
   const [requestingId, setRequestingId] = useState<number | null>(null);
@@ -38,21 +47,32 @@ export const FindRidePage: React.FC = () => {
   const hasCampus = hasTripCampus(route);
   const startAt = date && startTime ? Date.parse(date + "T" + startTime) : NaN;
   const validWindow = Number.isFinite(startAt);
-  const params = useMemo<SearchRidesParams | null>(() => {
-    if (!pickup || !dropoff || !hasCampus || !validWindow) return null;
-    return {
-      pickup_campus_id: pickup.campusId,
-      dropoff_campus_id: dropoff.campusId,
-      pickup_address_id: pickup.addressId,
-      dropoff_address_id: dropoff.addressId,
-      pickup_lat: pickup.lat,
-      pickup_lng: pickup.lng,
-      dropoff_lat: dropoff.lat,
-      dropoff_lng: dropoff.lng,
-      women_only: canSearchWomenOnly && womenOnly,
-      desired_pickup_at: new Date(startAt).toISOString(),
-    };
-  }, [pickup, dropoff, hasCampus, validWindow, startAt, canSearchWomenOnly, womenOnly]);
+  const params = submittedSearch?.params ?? null;
+  const canSearch = Boolean(pickup && dropoff && hasCampus && validWindow);
+
+  function handleSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSearch || !pickup || !dropoff) return;
+
+    setSubmittedSearch({
+      pickup,
+      dropoff,
+      params: {
+        pickup_campus_id: pickup.campusId,
+        dropoff_campus_id: dropoff.campusId,
+        pickup_address_id: pickup.addressId,
+        dropoff_address_id: dropoff.addressId,
+        pickup_lat: pickup.lat,
+        pickup_lng: pickup.lng,
+        dropoff_lat: dropoff.lat,
+        dropoff_lng: dropoff.lng,
+        women_only: canSearchWomenOnly && womenOnly,
+        desired_pickup_at: new Date(startAt).toISOString(),
+      },
+    });
+    setSearchResult(null);
+    setSelection({ params: null, ids: [] });
+  }
 
   const result = params && searchResult?.params === params ? searchResult : null;
   const searched = result !== null && "rides" in result;
@@ -60,19 +80,19 @@ export const FindRidePage: React.FC = () => {
   const searchError = result && "error" in result ? result.error : null;
   const loading = params !== null && result === null;
   const selectedRideIds = selection.params === params ? selection.ids : [];
-  const matchPoints = searched && params && pickup && dropoff ? {
-    pickup_campus_id: pickup.campusId,
-    dropoff_campus_id: dropoff.campusId,
-    desired_pickup_at: params.desired_pickup_at,
-    pickup_address_id: pickup.addressId,
-    pickup_lat: pickup.lat,
-    pickup_lng: pickup.lng,
-    pickup_label: pickup.label,
-    pickup_region: pickup.region || "Região próxima",
-    dropoff_address_id: dropoff.addressId,
-    dropoff_lat: dropoff.lat,
-    dropoff_lng: dropoff.lng,
-    dropoff_label: dropoff.label,
+  const matchPoints = searched && submittedSearch ? {
+    pickup_campus_id: submittedSearch.params.pickup_campus_id,
+    dropoff_campus_id: submittedSearch.params.dropoff_campus_id,
+    desired_pickup_at: submittedSearch.params.desired_pickup_at,
+    pickup_address_id: submittedSearch.params.pickup_address_id,
+    pickup_lat: submittedSearch.params.pickup_lat,
+    pickup_lng: submittedSearch.params.pickup_lng,
+    pickup_label: submittedSearch.pickup.label,
+    pickup_region: submittedSearch.pickup.region || "Região próxima",
+    dropoff_address_id: submittedSearch.params.dropoff_address_id,
+    dropoff_lat: submittedSearch.params.dropoff_lat,
+    dropoff_lng: submittedSearch.params.dropoff_lng,
+    dropoff_label: submittedSearch.dropoff.label,
   } : null;
 
   // Load passenger's existing match requests so cards show real-time status
@@ -96,22 +116,17 @@ export const FindRidePage: React.FC = () => {
   useEffect(() => {
     if (!params) return;
     const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      try {
-        const { data } = await ridesApi.search(params, controller.signal);
-        if (controller.signal.aborted) return;
-        setSearchResult({ params, rides: data });
-      } catch (err: unknown) {
+    ridesApi.search(params, controller.signal)
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setSearchResult({ params, rides: data });
+      })
+      .catch((err: unknown) => {
         if (!controller.signal.aborted) {
           setSearchResult({ params, error: getErrorMessage(err, "Não foi possível buscar caronas.") });
         }
-      }
-    }, 300);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [params, retryCount]);
+      });
+    return () => controller.abort();
+  }, [params]);
 
   function setSelectedRideIds(update: number[] | ((previous: number[]) => number[])) {
     setSelection((current) => ({
@@ -205,12 +220,12 @@ export const FindRidePage: React.FC = () => {
 
   const results = loading ? (
     <p role="status" className="text-sm text-[var(--color-text-muted)]">Buscando caronas compatíveis…</p>
-  ) : searchError ? (
+  ) : searchError !== null ? (
     <div className="space-y-2">
       <p role="alert" className="text-sm text-red-400">{searchError}</p>
       <Button type="button" size="sm" variant="secondary" onClick={() => {
         setSearchResult(null);
-        setRetryCount((current) => current + 1);
+        setSubmittedSearch((current) => current && { ...current, params: { ...current.params } });
       }}>Tentar novamente</Button>
     </div>
   ) : searched ? (
@@ -226,7 +241,7 @@ export const FindRidePage: React.FC = () => {
           </span>
         </h2>
         {rides.length > 1 && (
-          <p className="text-sm text-[var(--color-text-muted)]">Melhor combinação de horário e desvio</p>
+          <p className="text-xs text-[var(--color-text-muted)]">Ordenadas por relevância</p>
         )}
       </div>
 
@@ -290,8 +305,6 @@ export const FindRidePage: React.FC = () => {
               selectable={eligibleBatchRides.length >= 2}
               selected={selectedRideIds.includes(ride.id)}
               onToggleSelect={handleToggleSelectRide}
-              passengerPickup={pickup}
-              passengerDropoff={dropoff}
             />
           ))}
         </div>
@@ -302,32 +315,50 @@ export const FindRidePage: React.FC = () => {
   return (
     <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
       <h1 className="text-2xl font-extrabold text-[var(--color-text)]">Pedir carona</h1>
-      <TripRouteFields
-        route={route}
-        onChange={setRoute}
-        onSubmit={(event) => event.preventDefault()}
-        disabled={batchRequesting || requestingId !== null}
-        initialQueries={{
-          origin: prefill?.originQuery ?? (prefill?.direction !== "from_campus" ? prefill?.addressQuery : undefined),
-          destination: prefill?.destinationQuery ?? (prefill?.direction === "from_campus" ? prefill.addressQuery : undefined),
-        }}
-      >
-        <fieldset className="min-w-0 space-y-3">
-          <legend className="mb-2 text-sm font-bold text-[var(--color-text)]">Quando você quer embarcar?</legend>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="Data" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
-            <Input label="Horário desejado" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
-          </div>
-          <p className="text-xs text-[var(--color-text-muted)]">Confira o embarque previsto de cada opção; ele pode ser antes ou depois do horário desejado.</p>
-        </fieldset>
-        {canSearchWomenOnly && (
-          <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">
-            <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
-            Mostrar apenas caronas exclusivas para mulheres
-          </label>
-        )}
-        <p className="text-xs text-[var(--color-text-muted)]">O endereço exato da origem só é compartilhado após o aceite.</p>
-      </TripRouteFields>
+      {submittedSearch && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <dl className="min-w-0 space-y-1 text-xs text-[var(--color-text-secondary)] wrap-anywhere">
+            <div><dt className="inline font-bold">Origem</dt>{" · "}<dd className="inline">{submittedSearch.pickup.label}</dd></div>
+            <div><dt className="inline font-bold">Destino</dt>{" · "}<dd className="inline">{submittedSearch.dropoff.label}</dd></div>
+          </dl>
+          <Button type="button" size="sm" variant="secondary" disabled={batchRequesting || requestingId !== null}
+            onClick={() => {
+              setSubmittedSearch(null);
+              setSearchResult(null);
+              setSelection({ params: null, ids: [] });
+            }}>
+            Nova busca
+          </Button>
+        </div>
+      )}
+      <div hidden={submittedSearch !== null}>
+        <TripRouteFields
+          route={route}
+          onChange={setRoute}
+          onSubmit={handleSearch}
+          disabled={batchRequesting || requestingId !== null}
+          initialQueries={{
+            origin: prefill?.originQuery ?? (prefill?.direction !== "from_campus" ? prefill?.addressQuery : undefined),
+            destination: prefill?.destinationQuery ?? (prefill?.direction === "from_campus" ? prefill.addressQuery : undefined),
+          }}
+        >
+          <fieldset className="min-w-0 space-y-3">
+            <legend className="mb-2 text-sm font-bold text-[var(--color-text)]">Quando você quer embarcar?</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input label="Data" type="date" value={date} onChange={(event) => setSchedule({ date: event.target.value, startTime })} required />
+              <Input label="Horário desejado" type="time" value={startTime} onChange={(event) => setSchedule({ date, startTime: event.target.value })} required />
+            </div>
+          </fieldset>
+          {canSearchWomenOnly && (
+            <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">
+              <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
+              Mostrar apenas caronas exclusivas para mulheres
+            </label>
+          )}
+          <p className="text-xs text-[var(--color-text-muted)]">O endereço exato da origem só é compartilhado após o aceite.</p>
+          <Button type="submit" disabled={!canSearch}>Procurar caronas</Button>
+        </TripRouteFields>
+      </div>
       {results}
     </section>
   );
