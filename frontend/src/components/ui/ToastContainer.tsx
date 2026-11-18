@@ -38,11 +38,7 @@ export const ToastContainer: React.FC = () => {
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl border backdrop-blur-xl shadow-xl animate-slide-up ${borderColors}`}
-              style={{
-                backgroundColor: "var(--color-surface)",
-                borderColor: "var(--color-border-strong)",
-              }}
+              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl border border-border-strong bg-surface backdrop-blur-xl shadow-xl animate-slide-up ${borderColors}`}
             >
               <span className={`mt-0.5 shrink-0 ${iconColors}`}>
                 {toast.variant === "success" ? (
@@ -52,11 +48,11 @@ export const ToastContainer: React.FC = () => {
                 )}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                <p className="text-sm font-semibold text-text">
                   {toast.title}
                 </p>
                 {toast.description && (
-                  <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+                  <p className="text-xs mt-0.5 leading-relaxed text-text-muted">
                     {toast.description}
                   </p>
                 )}
@@ -64,8 +60,7 @@ export const ToastContainer: React.FC = () => {
               <button
                 type="button"
                 onClick={() => removeToast(toast.id)}
-                className="p-1 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
-                style={{ color: "var(--color-text-muted)" }}
+                className="p-1 rounded-lg text-text-muted opacity-60 hover:opacity-100 transition-opacity"
                 aria-label="Fechar notificação"
               >
                 <XIcon size={15} />
@@ -78,15 +73,11 @@ export const ToastContainer: React.FC = () => {
       {/* Confirmation Dialog Modal */}
       {confirmDialog && (
         <div
-          className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-9998 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fade-in"
           onClick={() => closeConfirm(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl p-6 border shadow-2xl animate-slide-up"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              borderColor: "var(--color-border)",
-            }}
+            className="w-full max-w-md rounded-2xl p-6 border border-border bg-surface shadow-2xl animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3.5">
@@ -100,10 +91,10 @@ export const ToastContainer: React.FC = () => {
                 <AlertTriangleIcon size={22} />
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-bold" style={{ color: "var(--color-text)" }}>
+                <h3 className="text-base font-bold text-text">
                   {confirmDialog.title}
                 </h3>
-                <p className="text-sm mt-1.5 leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+                <p className="text-sm mt-1.5 leading-relaxed text-text-muted">
                   {confirmDialog.description}
                 </p>
               </div>

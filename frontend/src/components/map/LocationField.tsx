@@ -31,6 +31,7 @@ interface LocationFieldProps {
   value: LocationValue | null;
   onChange: (location: LocationValue) => void;
   onClear?: () => void;
+  onQueryChange?: (query: string) => void;
   initialQuery?: string;
   dotColor?: string;
   isPickingOnMap?: boolean;
@@ -47,6 +48,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   value,
   onChange,
   onClear,
+  onQueryChange,
   initialQuery,
   dotColor = "#10b981",
   isPickingOnMap = false,
@@ -66,6 +68,13 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Reset draft text when an external value is selected/updated (e.g. map click)
+  useEffect(() => {
+    if (value) {
+      setDraftText(null);
+    }
+  }, [value]);
 
   const displayedQuery = draftText !== null ? draftText : (value?.label ?? "");
   const mapAddress = value?.mapAddress;
@@ -93,7 +102,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
     const handleOutside = (e: MouseEvent) => {
       if (isOpen && containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
-        setDraftText(null);
       }
     };
     document.addEventListener("mousedown", handleOutside);
@@ -133,6 +141,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       lat: item.lat,
       lng: item.lng,
       campusId: item.campusId,
+      mapAddress: item.mapAddress,
     });
   };
 
@@ -159,7 +168,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   };
 
   const visibleSuggestions = suggestions?.query === displayedQuery.trim()
-    ? suggestions.items.filter((item) => showCampusShortcuts || !item.isCampus)
+    ? suggestions.items
     : [];
 
   return (
@@ -167,8 +176,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <label
           htmlFor={inputId}
-          className="text-xs font-bold uppercase tracking-wider flex items-center gap-2"
-          style={{ color: "var(--color-text-secondary)" }}
+          className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-text-secondary"
         >
           <span
             className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
@@ -183,12 +191,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
               type="button"
               onClick={handleUseGps}
               disabled={gpsLoading}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors hover:border-indigo-500/60"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-                color: "var(--color-text-secondary)",
-              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-border bg-surface-2 text-text-secondary transition-colors hover:border-indigo-500/60"
               title="Usar minha localização atual via GPS"
             >
               <CrosshairIcon
@@ -203,23 +206,23 @@ export const LocationField: React.FC<LocationFieldProps> = ({
             <button
               type="button"
               onClick={() => {
-                setDraftText(null);
                 setIsOpen(false);
                 onTogglePickOnMap();
               }}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors"
-              style={{
-                backgroundColor: isPickingOnMap
-                  ? "rgba(99, 102, 241, 0.18)"
-                  : "var(--color-surface-2)",
-                borderColor: isPickingOnMap ? "var(--color-primary)" : "var(--color-border)",
-                color: isPickingOnMap
-                  ? "var(--color-primary-light)"
-                  : "var(--color-text-secondary)",
-              }}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                isPickingOnMap
+                  ? "border-primary bg-indigo-500/18 text-primary-light"
+                  : "border-border bg-surface-2 text-text-secondary"
+              }`}
             >
               <MapPinIcon size={13} />
-              <span>{isPickingOnMap ? "Clicando no mapa..." : "Marcar no mapa"}</span>
+              <span>
+                {isPickingOnMap
+                  ? "Clicando no mapa..."
+                  : value
+                  ? "Ajustar no mapa"
+                  : "Marcar no mapa"}
+              </span>
             </button>
           )}
         </div>
@@ -227,10 +230,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
 
       {/* Main Search Input */}
       <div className="relative">
-        <span
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: "var(--color-text-muted)" }}
-        >
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
           <SearchIcon size={16} />
         </span>
         <input
@@ -242,47 +242,38 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           onKeyDown={(event) => {
             if (event.key === "Escape" && isOpen) {
               setIsOpen(false);
-              setDraftText(null);
             }
           }}
           onChange={(e) => {
             const nextVal = e.target.value;
             setDraftText(nextVal);
+            onQueryChange?.(nextVal);
             setIsOpen(true);
-            if (onClear) {
+            if (!nextVal.trim() && onClear) {
               onClear();
             } else if (value) {
               onChange({ ...value, label: nextVal });
             }
           }}
-          className="w-full pl-10 pr-4 py-3 rounded-xl text-sm border outline-none transition-all focus:ring-2 focus:ring-indigo-500/30"
-          style={{
-            backgroundColor: "var(--color-surface-2)",
-            borderColor: value ? "var(--color-border-strong)" : "var(--color-border)",
-            color: "var(--color-text)",
-          }}
+          className={`w-full pl-10 pr-4 py-3 rounded-xl text-sm border bg-surface-2 text-text outline-none transition-all focus:ring-2 focus:ring-indigo-500/30 ${
+            value ? "border-border-strong" : "border-border"
+          }`}
         />
         {isOpen && displayedQuery.trim().length >= 2 && searching && (
-          <span
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs animate-pulse"
-            style={{ color: "var(--color-text-muted)" }}
-          >
+          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-text-muted animate-pulse">
             Buscando...
           </span>
         )}
         {/* Autocomplete Suggestions Dropdown */}
         {isOpen && visibleSuggestions.length > 0 && (
-          <ul
-            className="absolute top-full left-0 right-0 z-50 rounded-xl border shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              borderColor: "var(--color-border-strong)",
-            }}
-          >
+          <ul className="absolute top-full left-0 right-0 z-50 rounded-xl border border-border-strong bg-surface shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
             {visibleSuggestions.map((item) => (
-              <li key={item.id} className="border-b border-[var(--color-border)] last:border-b-0">
-                <button type="button" onClick={() => handleSelectSuggestion(item)}
-                  className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-indigo-500/10">
+              <li key={item.id} className="border-b border-border last:border-b-0">
+                <button
+                  type="button"
+                  onClick={() => handleSelectSuggestion(item)}
+                  className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-indigo-500/10"
+                >
                   <span
                     className={`mt-0.5 shrink-0 ${
                       item.isCampus ? "text-indigo-400" : "text-emerald-400"
@@ -291,10 +282,10 @@ export const LocationField: React.FC<LocationFieldProps> = ({
                     <NavigationIcon size={15} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate" style={{ color: "var(--color-text)" }}>
+                    <p className="text-sm font-medium truncate text-text">
                       {item.label}
                     </p>
-                    <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>
+                    <p className="text-xs truncate text-text-muted">
                       {item.subtitle}
                     </p>
                   </div>
@@ -313,7 +304,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       {/* Saved Personal Addresses Quick Pills */}
       {showSavedAddresses && savedAddresses.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium mr-0.5" style={{ color: "var(--color-text-muted)" }}>
+          <span className="text-[11px] font-medium mr-0.5 text-text-muted">
             Salvos:
           </span>
           {savedAddresses.map((addr) => {
@@ -333,12 +324,11 @@ export const LocationField: React.FC<LocationFieldProps> = ({
                     addressId: addr.id,
                   });
                 }}
-                className="px-2.5 py-1 rounded-full text-xs font-semibold border transition-all inline-flex items-center gap-1"
-                style={{
-                  backgroundColor: active ? "#10b981" : "var(--color-surface-2)",
-                  borderColor: active ? "#10b981" : "var(--color-border)",
-                  color: active ? "#ffffff" : "var(--color-text-secondary)",
-                }}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all inline-flex items-center gap-1 ${
+                  active
+                    ? "bg-emerald-500 border-emerald-500 text-white"
+                    : "bg-surface-2 border-border text-text-secondary"
+                }`}
                 title={`${addr.street}, ${addr.number} — CEP ${addr.postal_code}`}
               >
                 <span>📍 {addr.label}</span>
@@ -351,7 +341,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       {/* UFRGS Campus Quick Pills */}
       {showCampusShortcuts && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium mr-0.5" style={{ color: "var(--color-text-muted)" }}>
+          <span className="text-[11px] font-medium mr-0.5 text-text-muted">
             Campi:
           </span>
           {UFRGS_CAMPUS.map((c) => {
@@ -363,12 +353,11 @@ export const LocationField: React.FC<LocationFieldProps> = ({
                 key={c.id}
                 type="button"
                 onClick={() => handleSelectCampus(c.id)}
-                className="px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
-                style={{
-                  backgroundColor: active ? "var(--color-primary)" : "var(--color-surface-2)",
-                  borderColor: active ? "var(--color-primary)" : "var(--color-border)",
-                  color: active ? "#ffffff" : "var(--color-text-secondary)",
-                }}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                  active
+                    ? "bg-primary border-primary text-white"
+                    : "bg-surface-2 border-border text-text-secondary"
+                }`}
               >
                 {c.shortName}
               </button>
@@ -379,22 +368,16 @@ export const LocationField: React.FC<LocationFieldProps> = ({
 
       {/* Selected Location Metadata / Privacy Region Indicator */}
       {value && (
-        <div
-          className="flex items-center justify-between text-[11px] px-1"
-          style={{ color: "var(--color-text-muted)" }}
-        >
+        <div className="flex items-center text-[11px] px-1 text-text-muted">
           <span>
             ✓ Região identificada:{" "}
-            <strong style={{ color: "var(--color-text-secondary)" }}>{value.region}</strong>
-          </span>
-          <span className="font-mono opacity-75">
-            {value.lat.toFixed(4)}, {value.lng.toFixed(4)}
+            <strong className="text-text-secondary">{value.region}</strong>
           </span>
         </div>
       )}
 
       {helperText && !gpsError && (
-        <p className="text-xs px-1" style={{ color: "var(--color-text-muted)" }}>
+        <p className="text-xs px-1 text-text-muted">
           {helperText}
         </p>
       )}

@@ -76,15 +76,18 @@ async def _resolve_pickup_address(
         return lat, lng, label, label, None, None, None, None, None, None
     if body.pickup_address_id is not None:
         addr = get_owned_address(db, body.pickup_address_id, passenger_id)
+        lat = body.pickup_lat if body.pickup_lat is not None else addr.lat
+        lng = body.pickup_lng if body.pickup_lng is not None else addr.lng
+        moved = abs(lat - addr.lat) > 0.0002 or abs(lng - addr.lng) > 0.0002
         return (
-            addr.lat,
-            addr.lng,
+            lat,
+            lng,
             body.pickup_label or addr.full_address,
             body.pickup_region or addr.neighborhood or addr.city,
-            addr.street,
-            addr.number,
-            addr.complement,
-            addr.postal_code,
+            None if moved else addr.street,
+            None if moved else addr.number,
+            None if moved else addr.complement,
+            None if moved else addr.postal_code,
             addr.neighborhood,
             addr.city,
         )
@@ -158,7 +161,9 @@ async def _build_match(
         dropoff_label = campus_label(body.dropoff_campus_id)
     elif body.dropoff_address_id is not None:
         address = get_owned_address(db, body.dropoff_address_id, passenger_id)
-        dropoff_lat, dropoff_lng, dropoff_label = address.lat, address.lng, body.dropoff_label or address.full_address
+        dropoff_lat = dropoff_lat if dropoff_lat is not None else address.lat
+        dropoff_lng = dropoff_lng if dropoff_lng is not None else address.lng
+        dropoff_label = body.dropoff_label or address.full_address
     if dropoff_lat is None or dropoff_lng is None:
         raise HTTPException(status_code=400, detail="Informe as coordenadas completas do destino.")
     if not (campus_at((pickup_lat, pickup_lng)) or campus_at((dropoff_lat, dropoff_lng))):
@@ -198,7 +203,7 @@ async def _build_match(
         detour_meters=candidate.detour_meters,
         detour_seconds=candidate.detour_seconds,
         desired_pickup_at=body.desired_pickup_at,
-        offered_pickup_at=candidate.estimated_pickup_at if body.desired_pickup_at else None,
+        offered_pickup_at=candidate.estimated_pickup_at,
         pickup_after=pickup_after,
         pickup_before=pickup_before,
     )
@@ -414,16 +419,17 @@ async def respond_to_match(
         if reason:
             raise HTTPException(409, reason)
         for passenger_match in confirmed:
-            if passenger_match.pickup_after is None or passenger_match.pickup_before is None:
-                continue
             point = to_shape(passenger_match.pickup_point)
             arrival = plan.arrival(ride, (point.y, point.x))
-            if not passenger_match.pickup_after <= arrival <= passenger_match.pickup_before:
-                raise HTTPException(409, "A nova parada alteraria o horário combinado com outro passageiro.")
+            if passenger_match.pickup_after is not None and passenger_match.pickup_before is not None:
+                if not passenger_match.pickup_after <= arrival <= passenger_match.pickup_before:
+                    raise HTTPException(409, "A nova parada alteraria o horário combinado com outro passageiro.")
+            passenger_match.offered_pickup_at = arrival
 
         save_route_plan(ride, plan)
         match.detour_meters = candidate.detour_meters
         match.detour_seconds = candidate.detour_seconds
+        match.offered_pickup_at = candidate.estimated_pickup_at
         match.status = MatchStatus.ACCEPTED
         match.responded_at = datetime.now(UTC)
         ride.available_seats -= 1
@@ -449,10 +455,15 @@ async def respond_to_match(
             pickup_label=match.pickup_label,
             dropoff_label=match.dropoff_label,
             pickup_region=match.pickup_region,
+            desired_pickup_at=match.desired_pickup_at,
+            offered_pickup_at=match.offered_pickup_at,
             created_at=match.created_at,
             responded_at=match.responded_at,
             # Full info revealed after acceptance
             driver_phone=current_user.phone,
+            driver_car_model=current_user.car_model,
+            driver_car_color=current_user.car_color,
+            driver_car_plate=current_user.car_plate,
             pickup_lat=pickup_shape.y,
             pickup_lng=pickup_shape.x,
             dropoff_lat=dropoff_shape.y,
@@ -533,6 +544,9 @@ def get_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> Match
             result.dropoff_lng = dropoff_shape.x
         result.passenger_phone = match.passenger.phone
         result.driver_phone = ride.driver.phone
+        result.driver_car_model = ride.driver.car_model
+        result.driver_car_color = ride.driver.car_color
+        result.driver_car_plate = ride.driver.car_plate
         result.pickup_street = match.pickup_street
         result.pickup_number = match.pickup_number
         result.pickup_complement = match.pickup_complement

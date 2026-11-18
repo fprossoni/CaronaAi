@@ -163,18 +163,9 @@ export const ProfilePage: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       {/* Main Social Header Card (LinkedIn / Instagram Inspired) */}
-      <div
-        className="rounded-3xl overflow-hidden border shadow-xl"
-        style={{
-          background: "var(--gradient-card)",
-          borderColor: "var(--color-border)",
-        }}
-      >
+      <div className="rounded-3xl overflow-hidden border border-border bg-gradient-card shadow-xl">
         {/* Cover Banner */}
-        <div
-          className="h-32 md:h-36 relative"
-          style={{ background: "var(--gradient-cover)" }}
-        >
+        <div className="h-32 md:h-36 relative bg-gradient-cover">
           <div className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/45 backdrop-blur-md text-emerald-300 text-xs font-semibold border border-emerald-400/30">
             <ShieldCheckIcon size={14} />
             <span>{affiliation.fullBadge}</span>
@@ -193,7 +184,7 @@ export const ProfilePage: React.FC = () => {
               />
               <div className="pb-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl md:text-2xl font-extrabold" style={{ color: "var(--color-text)" }}>
+                  <h1 className="text-xl md:text-2xl font-extrabold text-text">
                     {user.name}
                   </h1>
                   <span
@@ -206,10 +197,7 @@ export const ProfilePage: React.FC = () => {
                     {user.is_driver ? "Motorista & Passageiro" : "Passageiro"}
                   </span>
                 </div>
-                <p
-                  className="text-sm font-medium flex items-center gap-1.5 mt-0.5"
-                  style={{ color: "var(--color-text-secondary)" }}
-                >
+                <p className="text-sm font-medium flex items-center gap-1.5 mt-0.5 text-text-secondary">
                   <GraduationCapIcon size={16} className="text-indigo-400 shrink-0" />
                   <span>{user.course ?? "Curso não informado"}</span>
                 </p>
@@ -237,28 +225,22 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* Stats Strip */}
-          <div
-            className="grid grid-cols-3 gap-3 p-3.5 rounded-2xl border text-center"
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              borderColor: "var(--color-border)",
-            }}
-          >
+          <div className="grid grid-cols-3 gap-3 p-3.5 rounded-2xl border border-border bg-surface-2 text-center">
             <div>
               <div className="flex items-center justify-center gap-1 text-amber-400 font-extrabold text-lg">
                 <StarIcon size={18} filled />
                 <span>{user.avg_rating.toFixed(1)}</span>
               </div>
-              <span className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+              <span className="text-[11px] text-text-muted">
                 Avaliação Média
               </span>
             </div>
 
-            <div className="border-x" style={{ borderColor: "var(--color-border)" }}>
-              <span className="font-extrabold text-lg block" style={{ color: "var(--color-text)" }}>
+            <div className="border-x border-border">
+              <span className="font-extrabold text-lg block text-text">
                 {user.rating_count}
               </span>
-              <span className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+              <span className="text-[11px] text-text-muted">
                 Avaliações Recebidas
               </span>
             </div>
@@ -267,7 +249,7 @@ export const ProfilePage: React.FC = () => {
               <span className="font-extrabold text-sm md:text-base block text-indigo-400 truncate px-1">
                 {affiliation.shortBadge}
               </span>
-              <span className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+              <span className="text-[11px] text-text-muted">
                 Vínculo Institucional
               </span>
             </div>
@@ -279,30 +261,17 @@ export const ProfilePage: React.FC = () => {
       {!isEditing ? (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Left Column: Bio, Contact & Campuses */}
-          <div
-            className="md:col-span-7 rounded-3xl p-6 border space-y-5 shadow-md"
-            style={{
-              background: "var(--gradient-card)",
-              borderColor: "var(--color-border)",
-            }}
-          >
+          <div className="md:col-span-7 rounded-3xl p-6 border border-border bg-gradient-card space-y-5 shadow-md">
             <div>
-              <h2 className="text-xs font-extrabold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>
+              <h2 className="text-xs font-extrabold uppercase tracking-wider mb-2 text-text-muted">
                 Sobre mim / Bio
               </h2>
               {user.bio ? (
-                <p
-                  className="text-sm leading-relaxed p-3.5 rounded-2xl border"
-                  style={{
-                    backgroundColor: "var(--color-surface-2)",
-                    borderColor: "var(--color-border)",
-                    color: "var(--color-text-secondary)",
-                  }}
-                >
+                <p className="text-sm leading-relaxed p-3.5 rounded-2xl border border-border bg-surface-2 text-text-secondary">
                   “{user.bio}”
                 </p>
               ) : (
-                <p className="text-xs italic" style={{ color: "var(--color-text-muted)" }}>
+                <p className="text-xs italic text-text-muted">
                   Nenhuma apresentação cadastrada. Clique em "Editar Perfil" para contar um pouco
                   sobre seus horários e estilo de viagem.
                 </p>
@@ -311,7 +280,7 @@ export const ProfilePage: React.FC = () => {
 
             {/* Campi Frequentados */}
             <div>
-              <h2 className="text-xs font-extrabold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>
+              <h2 className="text-xs font-extrabold uppercase tracking-wider mb-2 text-text-muted">
                 Campi da UFRGS que frequenta
               </h2>
               {user.campuses && user.campuses.length > 0 ? (
@@ -321,12 +290,7 @@ export const ProfilePage: React.FC = () => {
                     return (
                       <span
                         key={cId}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
-                        style={{
-                          backgroundColor: "var(--color-surface-2)",
-                          borderColor: "var(--color-border)",
-                          color: "var(--color-text)",
-                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-border bg-surface-2 text-text"
                       >
                         <MapPinIcon size={13} className="text-indigo-400" />
                         {c.name}
@@ -335,68 +299,44 @@ export const ProfilePage: React.FC = () => {
                   })}
                 </div>
               ) : (
-                <p className="text-xs italic" style={{ color: "var(--color-text-muted)" }}>
+                <p className="text-xs italic text-text-muted">
                   Nenhum campus selecionado ainda.
                 </p>
               )}
             </div>
 
             {/* Contact & Personal Metadata */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
-              <div
-                className="p-3 rounded-2xl border"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                }}
-              >
-                <span className="text-[11px] block" style={{ color: "var(--color-text-muted)" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border">
+              <div className="p-3 rounded-2xl border border-border bg-surface-2">
+                <span className="text-[11px] block text-text-muted">
                   E-mail Institucional
                 </span>
-                <span className="text-xs font-bold truncate block mt-0.5" style={{ color: "var(--color-text)" }}>
+                <span className="text-xs font-bold truncate block mt-0.5 text-text">
                   {user.email}
                 </span>
               </div>
 
-              <div
-                className="p-3 rounded-2xl border"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                }}
-              >
-                <span className="text-[11px] block" style={{ color: "var(--color-text-muted)" }}>
+              <div className="p-3 rounded-2xl border border-border bg-surface-2">
+                <span className="text-[11px] block text-text-muted">
                   Telefone / WhatsApp
                 </span>
-                <span className="text-xs font-bold block mt-0.5" style={{ color: "var(--color-text)" }}>
+                <span className="text-xs font-bold block mt-0.5 text-text">
                   {user.phone || "Não informado"}
                 </span>
               </div>
 
-              <div
-                className="p-3 rounded-2xl border"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                }}
-              >
-                <span className="text-[11px] block" style={{ color: "var(--color-text-muted)" }}>
+              <div className="p-3 rounded-2xl border border-border bg-surface-2">
+                <span className="text-[11px] block text-text-muted">
                   Gênero & Idade
                 </span>
-                <span className="text-xs font-bold block mt-0.5" style={{ color: "var(--color-text)" }}>
+                <span className="text-xs font-bold block mt-0.5 text-text">
                   {getGenderLabel(user.gender)}
                   {user.age != null ? ` • ${user.age} anos` : ""}
                 </span>
               </div>
 
-              <div
-                className="p-3 rounded-2xl border"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                }}
-              >
-                <span className="text-[11px] block" style={{ color: "var(--color-text-muted)" }}>
+              <div className="p-3 rounded-2xl border border-border bg-surface-2">
+                <span className="text-[11px] block text-text-muted">
                   Instagram / Rede Social
                 </span>
                 {displaySocial ? (
@@ -410,7 +350,7 @@ export const ProfilePage: React.FC = () => {
                     <span>{displaySocial}</span>
                   </a>
                 ) : (
-                  <span className="text-xs font-bold block mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                  <span className="text-xs font-bold block mt-0.5 text-text-muted">
                     Não informada
                   </span>
                 )}
@@ -419,16 +359,10 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* Right Column: Vehicle & Driver Card */}
-          <div
-            className="md:col-span-5 rounded-3xl p-6 border flex flex-col justify-between space-y-5 shadow-md"
-            style={{
-              background: "var(--gradient-card)",
-              borderColor: "var(--color-border)",
-            }}
-          >
+          <div className="md:col-span-5 rounded-3xl p-6 border border-border bg-gradient-card flex flex-col justify-between space-y-5 shadow-md">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--color-text-muted)" }}>
+                <h2 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 text-text-muted">
                   <CarIcon size={15} className="text-indigo-400" />
                   Meu Veículo
                 </h2>
@@ -446,7 +380,7 @@ export const ProfilePage: React.FC = () => {
               {user.is_driver ? (
                 <div className="space-y-4">
                   {/* Brazilian Mercosul Plate Visual */}
-                  <div className="rounded-2xl overflow-hidden border-2 border-slate-700 bg-white text-slate-900 shadow-md max-w-[230px] mx-auto">
+                  <div className="rounded-2xl overflow-hidden border-2 border-slate-700 bg-white text-slate-900 shadow-md max-w-57.5 mx-auto">
                     <div className="bg-blue-700 text-white text-[10px] font-extrabold px-3 py-1 flex items-center justify-between tracking-widest">
                       <span>MERCOSUL</span>
                       <span>BRASIL 🇧🇷</span>
@@ -456,36 +390,23 @@ export const ProfilePage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div
-                    className="p-3.5 rounded-2xl border space-y-1.5 text-xs"
-                    style={{
-                      backgroundColor: "var(--color-surface-2)",
-                      borderColor: "var(--color-border)",
-                    }}
-                  >
+                  <div className="p-3.5 rounded-2xl border border-border bg-surface-2 space-y-1.5 text-xs">
                     <div className="flex justify-between">
-                      <span style={{ color: "var(--color-text-muted)" }}>Modelo:</span>
-                      <strong style={{ color: "var(--color-text)" }}>
+                      <span className="text-text-muted">Modelo:</span>
+                      <strong className="text-text">
                         {user.car_model || "Não informado"}
                       </strong>
                     </div>
                     <div className="flex justify-between">
-                      <span style={{ color: "var(--color-text-muted)" }}>Cor:</span>
-                      <strong style={{ color: "var(--color-text)" }}>
+                      <span className="text-text-muted">Cor:</span>
+                      <strong className="text-text">
                         {user.car_color || "Não informada"}
                       </strong>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div
-                  className="p-4 rounded-2xl border text-xs leading-relaxed"
-                  style={{
-                    backgroundColor: "var(--color-surface-2)",
-                    borderColor: "var(--color-border)",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
+                <div className="p-4 rounded-2xl border border-border bg-surface-2 text-xs text-text-muted leading-relaxed">
                   Você está cadastrado apenas como passageiro. Caso queira oferecer caronas no
                   futuro, clique em <strong>Editar Perfil</strong> e habilite a opção de motorista.
                 </div>
@@ -502,18 +423,14 @@ export const ProfilePage: React.FC = () => {
         /* Full Edit Mode Form */
         <form
           onSubmit={handleSaveProfile}
-          className="rounded-3xl p-6 md:p-8 border space-y-6 shadow-xl animate-fade-in"
-          style={{
-            background: "var(--gradient-card)",
-            borderColor: "var(--color-border)",
-          }}
+          className="rounded-3xl p-6 md:p-8 border border-border bg-gradient-card space-y-6 shadow-xl animate-fade-in"
         >
-          <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: "var(--color-border)" }}>
+          <div className="flex items-center justify-between border-b border-border pb-4">
             <div>
-              <h2 className="text-lg font-extrabold" style={{ color: "var(--color-text)" }}>
+              <h2 className="text-lg font-extrabold text-text">
                 Editar Meu Perfil
               </h2>
-              <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              <p className="text-xs text-text-muted">
                 Mantenha seus dados atualizados para facilitar o match com outros estudantes.
               </p>
             </div>
@@ -562,7 +479,7 @@ export const ProfilePage: React.FC = () => {
 
           {/* Bio */}
           <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--color-text-secondary)" }}>
+            <label className="block text-xs font-semibold mb-1.5 text-text-secondary">
               Bio / Apresentação curta ({bio.length}/250)
             </label>
             <textarea
@@ -571,19 +488,14 @@ export const ProfilePage: React.FC = () => {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Conte seus horários habituais, estilo musical no carro, etc."
-              className="w-full p-3 rounded-xl text-sm border outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-                color: "var(--color-text)",
-              }}
+              className="w-full p-3 rounded-xl text-sm border border-border bg-surface-2 text-text outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
             />
           </div>
 
           {/* Gender & Role Preference */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold mb-2" style={{ color: "var(--color-text-secondary)" }}>
+              <label className="block text-xs font-semibold mb-2 text-text-secondary">
                 Gênero
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -592,16 +504,11 @@ export const ProfilePage: React.FC = () => {
                     key={opt.value}
                     type="button"
                     onClick={() => setGender(opt.value)}
-                    className="px-3 py-2 rounded-xl text-xs font-semibold border text-left transition-all"
-                    style={{
-                      backgroundColor:
-                        gender === opt.value
-                          ? "rgba(99, 102, 241, 0.16)"
-                          : "var(--color-surface-2)",
-                      borderColor:
-                        gender === opt.value ? "var(--color-primary)" : "var(--color-border)",
-                      color: "var(--color-text)",
-                    }}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border text-text text-left transition-all ${
+                      gender === opt.value
+                        ? "border-primary bg-indigo-500/16"
+                        : "border-border bg-surface-2"
+                    }`}
                   >
                     {opt.label}
                   </button>
@@ -610,24 +517,21 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-2" style={{ color: "var(--color-text-secondary)" }}>
+              <label className="block text-xs font-semibold mb-2 text-text-secondary">
                 Modo de Uso na Plataforma
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setIsDriver(false)}
-                  className="p-2.5 rounded-xl text-xs font-semibold border text-left transition-all"
-                  style={{
-                    backgroundColor: !isDriver
-                      ? "rgba(16, 185, 129, 0.16)"
-                      : "var(--color-surface-2)",
-                    borderColor: !isDriver ? "var(--color-secondary)" : "var(--color-border)",
-                    color: "var(--color-text)",
-                  }}
+                  className={`p-2.5 rounded-xl text-xs font-semibold border text-text text-left transition-all ${
+                    !isDriver
+                      ? "border-secondary bg-emerald-500/16"
+                      : "border-border bg-surface-2"
+                  }`}
                 >
                   <span className="block font-bold">Só Passageiro</span>
-                  <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>
+                  <span className="text-[10px] text-text-muted">
                     Apenas pedir caronas
                   </span>
                 </button>
@@ -635,17 +539,14 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsDriver(true)}
-                  className="p-2.5 rounded-xl text-xs font-semibold border text-left transition-all"
-                  style={{
-                    backgroundColor: isDriver
-                      ? "rgba(99, 102, 241, 0.16)"
-                      : "var(--color-surface-2)",
-                    borderColor: isDriver ? "var(--color-primary)" : "var(--color-border)",
-                    color: "var(--color-text)",
-                  }}
+                  className={`p-2.5 rounded-xl text-xs font-semibold border text-text text-left transition-all ${
+                    isDriver
+                      ? "border-primary bg-indigo-500/16"
+                      : "border-border bg-surface-2"
+                  }`}
                 >
                   <span className="block font-bold">Motorista & Passageiro</span>
-                  <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>
+                  <span className="text-[10px] text-text-muted">
                     Oferecer e pedir
                   </span>
                 </button>
@@ -655,7 +556,7 @@ export const ProfilePage: React.FC = () => {
 
           {/* Campuses */}
           <div>
-            <label className="block text-xs font-semibold mb-2" style={{ color: "var(--color-text-secondary)" }}>
+            <label className="block text-xs font-semibold mb-2 text-text-secondary">
               Campi da UFRGS que você frequenta
             </label>
             <div className="flex flex-wrap gap-2">
@@ -666,12 +567,11 @@ export const ProfilePage: React.FC = () => {
                     key={c.id}
                     type="button"
                     onClick={() => handleToggleCampus(c.id)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
-                    style={{
-                      backgroundColor: selected ? "var(--color-primary)" : "var(--color-surface-2)",
-                      borderColor: selected ? "var(--color-primary)" : "var(--color-border)",
-                      color: selected ? "#ffffff" : "var(--color-text-secondary)",
-                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      selected
+                        ? "bg-primary border-primary text-white"
+                        : "bg-surface-2 border-border text-text-secondary"
+                    }`}
                   >
                     {c.name}
                   </button>
@@ -682,13 +582,7 @@ export const ProfilePage: React.FC = () => {
 
           {/* Vehicle Details (when Driver mode is enabled) */}
           {isDriver && (
-            <div
-              className="p-4 rounded-2xl border space-y-3"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-              }}
-            >
+            <div className="p-4 rounded-2xl border border-border bg-surface-2 space-y-3">
               <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
                 <CarIcon size={15} /> Dados do Veículo
               </span>

@@ -156,251 +156,279 @@ export const ProfileCompletePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-start justify-center p-4 sm:p-6 pt-8 pb-16">
-      <div
-        className="w-full max-w-lg rounded-3xl p-6 sm:p-8 border shadow-2xl animate-fade-in"
-        style={{
-          background: "var(--gradient-card)",
-          borderColor: "var(--color-border)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
-        <div className="text-center mb-6">
-          <h1
-            className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent"
-            style={{ backgroundImage: "var(--gradient-primary)" }}
-          >
+    <div className="min-h-screen flex items-start justify-center px-4 sm:px-6 pt-20 sm:pt-14 pb-20">
+      <div className="w-full max-w-2xl rounded-3xl p-6 sm:p-10 border border-border bg-gradient-card shadow-lg animate-fade-in">
+        {/* Header */}
+        <div className="text-center space-y-2 mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-primary bg-clip-text text-transparent">
             Complete seu perfil
           </h1>
-          <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>
-            Só mais algumas informações para terminar seu cadastro.
+          <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
+            Configure suas informações acadêmicas e preferências de viagem para começar a usar o Carona Aí.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div
-            className="flex items-center gap-4 p-4 rounded-2xl border"
-            style={{ borderColor: "var(--color-border)", background: "var(--color-surface-2)" }}
-          >
-            <div className="shrink-0">
-              <Avatar name={user.name} photoUrl={form.photoUrl.trim() || null} size="lg" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <Input
-                label="Foto de perfil (opcional)"
-                placeholder="https://exemplo.com/sua-foto.jpg"
-                value={form.photoUrl}
-                onChange={(e) => setField("photoUrl", e.target.value)}
-                hint="Link direto para uma foto sua"
-              />
-            </div>
-          </div>
-
-          <Input label="Nome" value={user.name ?? ""} disabled />
-          <Input label="E-mail institucional" value={user.email} disabled />
-
-          <CourseAutocomplete
-            value={form.course}
-            onChange={(val) => setField("course", val)}
-            error={errors.course}
-            required
-          />
-
-          <Input
-            label="Data de nascimento"
-            type="date"
-            value={form.birthDate}
-            onChange={(e) => setField("birthDate", e.target.value)}
-            error={errors.birthDate}
-            hint="Apenas sua idade aproximada é exibida nos perfis; a data exata permanece privada."
-            required
-          />
-
-          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
-            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
-              Campi que você frequenta (opcional)
-            </legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {CAMPUS_LIST.map((c) => (
-                <label
-                  key={c.id}
-                  className="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer select-none transition"
-                  style={{
-                    background: "var(--color-surface-2)",
-                    borderColor: form.campuses.includes(c.id) ? "var(--color-primary)" : "var(--color-border)",
-                    boxShadow: form.campuses.includes(c.id) ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    className="accent-indigo-500 w-4 h-4 rounded"
-                    checked={form.campuses.includes(c.id)}
-                    onChange={() => handleToggleCampus(c.id)}
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Section 1: Identity & Avatar */}
+          <section className="p-5 rounded-2xl border border-border bg-surface-2 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+              <div className="shrink-0 flex justify-center">
+                <Avatar name={user.name} photoUrl={form.photoUrl.trim() || null} size="xl" ring />
+              </div>
+              <div className="flex-1 min-w-0 space-y-1.5 text-center sm:text-left">
+                <p className="text-base font-extrabold text-text truncate">
+                  {user.name || "Estudante UFRGS"}
+                </p>
+                <p className="text-xs font-medium text-indigo-400 truncate">
+                  {user.email}
+                </p>
+                <div className="pt-2">
+                  <Input
+                    label="URL da foto de perfil (opcional)"
+                    placeholder="https://exemplo.com/sua-foto.jpg"
+                    value={form.photoUrl}
+                    onChange={(e) => setField("photoUrl", e.target.value)}
+                    hint="Cole o link direto de uma imagem para personalizar seu avatar"
                   />
-                  <span className="text-sm font-medium" style={{ color: "var(--color-text)" }}>{c.shortName}</span>
-                </label>
-              ))}
+                </div>
+              </div>
             </div>
-            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Você pode selecionar mais de um campus.</p>
-          </fieldset>
+          </section>
 
-          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
-            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
-              Gênero <span className="text-red-500">*</span>
-            </legend>
-            <div className="grid grid-cols-2 gap-2">
-              {GENDER_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition text-sm"
-                  style={{
-                    background: "var(--color-surface-2)",
-                    borderColor: form.gender === opt.value ? "var(--color-primary)" : "var(--color-border)",
-                    boxShadow: form.gender === opt.value ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
-                    color: "var(--color-text)",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="gender"
-                    className="accent-indigo-500 w-4 h-4"
-                    value={opt.value}
-                    checked={form.gender === opt.value}
-                    onChange={() => setField("gender", opt.value)}
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
+          {/* Section 2: Academic & Personal Info */}
+          <section className="space-y-5">
+            <div className="border-b border-border pb-2">
+              <h2 className="text-sm font-extrabold uppercase tracking-wider text-text">
+                1. Vínculo Acadêmico e Dados Pessoais
+              </h2>
             </div>
-            {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
-          </fieldset>
 
-          <fieldset className="border-0 p-0 m-0 flex flex-col gap-2">
-            <legend className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--color-text-muted)" }}>
-              Preferência inicial <span className="text-red-500">*</span>
-            </legend>
-            <div className="flex flex-col gap-2">
-              {PREFERENCE_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition"
-                  style={{
-                    background: "var(--color-surface-2)",
-                    borderColor: form.preference === opt.value ? "var(--color-primary)" : "var(--color-border)",
-                    boxShadow: form.preference === opt.value ? "0 0 0 2px rgba(99, 102, 241, 0.2)" : "none",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="preference"
-                    className="accent-indigo-500 w-4 h-4 mt-1"
-                    value={opt.value}
-                    checked={form.preference === opt.value}
-                    onChange={() => setField("preference", opt.value)}
-                  />
-                  <span className="flex flex-col">
-                    <span className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{opt.label}</span>
-                    <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{opt.description}</span>
-                  </span>
-                </label>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-5">
+              <div className="sm:col-span-3">
+                <CourseAutocomplete
+                  value={form.course}
+                  onChange={(val) => setField("course", val)}
+                  error={errors.course}
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <Input
+                  label="Data de nascimento *"
+                  type="date"
+                  value={form.birthDate}
+                  onChange={(e) => setField("birthDate", e.target.value)}
+                  error={errors.birthDate}
+                  hint="Apenas sua idade aproximada é exibida."
+                  required
+                />
+              </div>
             </div>
-            {errors.preference && <p className="text-xs text-red-500">{errors.preference}</p>}
-            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-              Você poderá alterar sua preferência (motorista / passageiro) a qualquer momento no seu perfil.
-            </p>
-          </fieldset>
 
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="bio" className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
-                Bio / Apresentação curta (opcional)
-              </label>
-              <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{form.bio.length}/250</span>
+            <div className="space-y-2.5 pt-1">
+              <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Gênero <span className="text-red-500">*</span>
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {GENDER_OPTIONS.map((opt) => {
+                  const selected = form.gender === opt.value;
+                  return (
+                    <label
+                      key={opt.value}
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-surface-2 text-text cursor-pointer transition text-sm ${
+                        selected
+                          ? "border-primary ring-2 ring-indigo-500/20"
+                          : "border-border hover:border-border-strong"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="gender"
+                        className="accent-indigo-500 w-4 h-4 shrink-0"
+                        value={opt.value}
+                        checked={selected}
+                        onChange={() => setField("gender", opt.value)}
+                      />
+                      <span className="font-medium">{opt.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
             </div>
-            <textarea
-              id="bio"
-              rows={3}
-              maxLength={250}
-              placeholder="Conte um pouco sobre você (ex.: horários frequentes no campus do Vale, estilo de viagem, música favorita...)"
-              value={form.bio}
-              onChange={(e) => setField("bio", e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition resize-none focus:ring-2 focus:ring-indigo-500/30"
-              style={{
-                background: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-                color: "var(--color-text)",
-              }}
-            />
-          </div>
 
-          <Input
-            label="Instagram (opcional)"
-            placeholder="@seu_usuario"
-            value={form.instagram}
-            onChange={(e) => setField("instagram", e.target.value)}
-            onBlur={() => {
-              if (form.instagram.trim()) {
-                setField("instagram", formatSocialHandle(form.instagram));
-              }
-            }}
-            hint="Digite seu @usuario ou link do Instagram"
-          />
-          <Input
-            label="Telefone / WhatsApp (opcional)"
-            placeholder="(51) 99999-9999"
-            type="tel"
-            value={form.phone}
-            onChange={(e) => setField("phone", formatPhone(e.target.value))}
-          />
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  Campi que você frequenta (opcional)
+                </span>
+                <span className="text-xs text-text-muted">
+                  Selecione um ou mais campi
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {CAMPUS_LIST.map((c) => {
+                  const selected = form.campuses.includes(c.id);
+                  return (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-surface-2 cursor-pointer select-none transition ${
+                        selected
+                          ? "border-primary ring-2 ring-indigo-500/20"
+                          : "border-border hover:border-border-strong"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-indigo-500 w-4 h-4 rounded shrink-0"
+                        checked={selected}
+                        onChange={() => handleToggleCampus(c.id)}
+                      />
+                      <span className="text-sm font-medium text-text">{c.shortName}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
 
-          {isDriver && (
-            <div
-              className="rounded-2xl border border-dashed p-4 flex flex-col gap-3"
-              style={{
-                borderColor: "var(--color-border)",
-                background: "rgba(99, 102, 241, 0.05)",
-              }}
-            >
-              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--color-text)" }}>
-                Dados do seu veículo (opcional)
+          {/* Section 3: Ride Preferences & Vehicle */}
+          <section className="space-y-5">
+            <div className="border-b border-border pb-2">
+              <h2 className="text-sm font-extrabold uppercase tracking-wider text-text">
+                2. Como você pretende usar o aplicativo?
+              </h2>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {PREFERENCE_OPTIONS.map((opt) => {
+                  const selected = form.preference === opt.value;
+                  return (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 p-4 rounded-xl border bg-surface-2 cursor-pointer transition ${
+                        selected
+                          ? "border-primary ring-2 ring-indigo-500/20"
+                          : "border-border hover:border-border-strong"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="preference"
+                        className="accent-indigo-500 w-4 h-4 mt-0.5 shrink-0"
+                        value={opt.value}
+                        checked={selected}
+                        onChange={() => setField("preference", opt.value)}
+                      />
+                      <span className="flex flex-col gap-0.5">
+                        <span className="text-sm font-bold text-text">{opt.label}</span>
+                        <span className="text-xs text-text-muted leading-snug">{opt.description}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {errors.preference && <p className="text-xs text-red-500">{errors.preference}</p>}
+              <p className="text-xs text-text-muted">
+                Você poderá alternar entre motorista e passageiro a qualquer momento no seu perfil.
               </p>
+            </div>
+
+            {isDriver && (
+              <div className="rounded-2xl border border-dashed border-border-strong bg-indigo-500/5 p-5 space-y-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                  Dados do seu veículo (opcional)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Input
+                    label="Modelo"
+                    placeholder="Ex.: VW Gol 2022"
+                    value={form.carModel}
+                    onChange={(e) => setField("carModel", e.target.value)}
+                  />
+                  <Input
+                    label="Cor"
+                    placeholder="Ex.: Prata, Preto..."
+                    value={form.carColor}
+                    onChange={(e) => setField("carColor", e.target.value)}
+                  />
+                  <Input
+                    label="Placa"
+                    placeholder="ABC1234 ou ABC1C34"
+                    maxLength={7}
+                    value={form.carPlate}
+                    onChange={(e) => setField("carPlate", formatCarPlate(e.target.value))}
+                    error={errors.carPlate}
+                    hint="Padrão antigo ou Mercosul"
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Section 4: Contact & Bio */}
+          <section className="space-y-5">
+            <div className="border-b border-border pb-2">
+              <h2 className="text-sm font-extrabold uppercase tracking-wider text-text">
+                3. Contato e Apresentação (Opcional)
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Modelo"
-                placeholder="Ex.: Volkswagen Gol 2022"
-                value={form.carModel}
-                onChange={(e) => setField("carModel", e.target.value)}
+                label="Telefone / WhatsApp"
+                placeholder="(51) 99999-9999"
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setField("phone", formatPhone(e.target.value))}
+                hint="Compartilhado apenas em caronas confirmadas"
               />
               <Input
-                label="Cor"
-                placeholder="Ex.: Prata, Preto, Branco..."
-                value={form.carColor}
-                onChange={(e) => setField("carColor", e.target.value)}
-              />
-              <Input
-                label="Placa"
-                placeholder="Ex.: ABC1234 ou ABC1C34"
-                maxLength={7}
-                value={form.carPlate}
-                onChange={(e) => setField("carPlate", formatCarPlate(e.target.value))}
-                error={errors.carPlate}
-                hint="Formatos: ABC1234 ou ABC1C34 (letras A a J)"
+                label="Instagram"
+                placeholder="@seu_usuario"
+                value={form.instagram}
+                onChange={(e) => setField("instagram", e.target.value)}
+                onBlur={() => {
+                  if (form.instagram.trim()) {
+                    setField("instagram", formatSocialHandle(form.instagram));
+                  }
+                }}
+                hint="Exibido no seu perfil acadêmico"
               />
             </div>
-          )}
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="bio" className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  Bio / Apresentação curta
+                </label>
+                <span className="text-xs text-text-muted">{form.bio.length}/250</span>
+              </div>
+              <textarea
+                id="bio"
+                rows={3}
+                maxLength={250}
+                placeholder="Conte um pouco sobre você (ex.: horários frequentes no campus do Vale, estilo de viagem, música favorita...)"
+                value={form.bio}
+                onChange={(e) => setField("bio", e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-border bg-surface-2 text-text text-sm outline-none transition resize-none focus:border-primary focus:ring-3 focus:ring-indigo-500/20"
+              />
+            </div>
+          </section>
 
           {error && (
-            <div
-              className="p-3 rounded-xl text-xs text-center border"
-              style={{ background: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.25)", color: "var(--color-danger)" }}
-            >
+            <div className="p-3.5 rounded-xl text-xs text-center border border-red-500/25 bg-red-500/10 text-danger">
               {error}
             </div>
           )}
 
-          <Button type="submit" fullWidth loading={loading} size="lg">
-            Concluir cadastro
-          </Button>
+          <div className="pt-2">
+            <Button type="submit" fullWidth loading={loading} size="lg">
+              Concluir cadastro
+            </Button>
+          </div>
         </form>
       </div>
     </div>

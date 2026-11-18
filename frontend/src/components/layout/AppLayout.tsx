@@ -66,12 +66,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           <button
             type="button"
             onClick={toggleTheme}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold border shadow-md backdrop-blur-md transition-transform hover:scale-105"
-            style={{
-              backgroundColor: "var(--glass-bg)",
-              borderColor: "var(--color-border)",
-              color: "var(--color-text)",
-            }}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold border border-border bg-glass text-text shadow-md backdrop-blur-md transition-transform hover:scale-105"
             title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
           >
             {theme === "dark" ? (
@@ -110,39 +105,26 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-8">
       {/* Top Sticky Header */}
-      <header
-        className="sticky top-0 z-40 border-b backdrop-blur-xl transition-colors"
-        style={{
-          backgroundColor: "var(--glass-bg)",
-          borderColor: "var(--color-border)",
-        }}
-      >
+      <header className="sticky top-0 z-40 border-b border-border bg-glass backdrop-blur-xl transition-colors">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-2.5 no-underline group">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105"
-              style={{ background: "var(--gradient-primary)" }}
-            >
-              <CarIcon size={20} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-primary text-white shadow-md transition-transform group-hover:scale-105">
+              <CarIcon size={24} />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight" style={{ color: "var(--color-text)" }}>
-                  Carona Aí
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
-                  {affiliation.shortBadge}
-                </span>
-              </div>
-              <p className="text-[11px] hidden sm:block leading-none" style={{ color: "var(--color-text-muted)" }}>
-                Mobilidade Acadêmica Colaborativa
-              </p>
+
+            <div className="flex flex-col items-baseline">
+              <span className="font-extrabold text-base tracking-tight text-text">
+                Carona Aí
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                {affiliation.shortBadge}
+              </span>
             </div>
           </Link>
 
           {/* Desktop Navigation Pills */}
-          <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl border" style={{ backgroundColor: "var(--color-surface-2)", borderColor: "var(--color-border)" }}>
+          <nav className="hidden lg:flex items-center gap-1 p-1 rounded-xl border border-border bg-surface-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isPathActive(item.path);
@@ -150,11 +132,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold no-underline transition-all"
-                  style={{
-                    backgroundColor: active ? "var(--color-primary)" : "transparent",
-                    color: active ? "#ffffff" : "var(--color-text-secondary)",
-                  }}
+                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold no-underline transition-all ${
+                    active ? "bg-primary text-white" : "text-text-secondary hover:text-text"
+                  }`}
                 >
                   <Icon size={16} />
                   <span>{item.label}</span>
@@ -183,12 +163,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl border transition-colors hover:border-indigo-500/50"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-                color: "var(--color-text)",
-              }}
+              className="p-2.5 rounded-xl border border-border bg-surface-2 text-text transition-colors hover:border-indigo-500/50"
               title={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
               aria-label="Alternar tema"
             >
@@ -202,21 +177,17 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             {isAuthenticated && user ? (
               <Link
                 to="/profile"
-                className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border no-underline transition-colors hover:border-indigo-500/50"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                }}
+                className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-border bg-surface-2 no-underline transition-colors hover:border-indigo-500/50"
               >
                 <Avatar name={user.name} photoUrl={user.photo_url} size="sm" ring />
                 <div className="hidden sm:block text-left">
                   <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold leading-none" style={{ color: "var(--color-text)" }}>
+                    <span className="text-xs font-bold leading-none text-text">
                       {user.name?.split(" ")[0] ?? "Estudante"}
                     </span>
                     <ShieldCheckIcon size={12} className="text-emerald-400" />
                   </div>
-                  <span className="text-[10px] block truncate max-w-[110px]" style={{ color: "var(--color-text-muted)" }}>
+                  <span className="text-[10px] block truncate max-w-27.5 text-text-muted">
                     {user.course ?? affiliation.domain}
                   </span>
                 </div>
@@ -225,19 +196,13 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
               <div className="flex items-center gap-2">
                 <Link
                   to="/login"
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold border no-underline transition-colors hover:border-indigo-500/50"
-                  style={{
-                    backgroundColor: "var(--color-surface-2)",
-                    borderColor: "var(--color-border)",
-                    color: "var(--color-text)",
-                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold border border-border bg-surface-2 text-text no-underline transition-colors hover:border-indigo-500/50"
                 >
                   Entrar
                 </Link>
                 <Link
                   to="/register"
-                  className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-xs font-bold text-white no-underline shadow-md transition-transform hover:scale-[1.02]"
-                  style={{ background: "var(--gradient-primary)" }}
+                  className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-primary text-white no-underline shadow-md transition-transform hover:scale-[1.02]"
                 >
                   Criar conta
                 </Link>
@@ -251,21 +216,18 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6">{children}</main>
 
       {isAuthenticated && location.pathname !== "/messages" && (
-        <Link to="/messages" aria-label="Abrir mensagens ativas"
-          className="fixed right-4 bottom-20 md:bottom-6 z-40 inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold text-white shadow-lg no-underline"
-          style={{ background: "var(--gradient-primary)", marginBottom: "env(safe-area-inset-bottom)" }}>
+        <Link
+          to="/messages"
+          aria-label="Abrir mensagens ativas"
+          className="fixed right-4 bottom-20 md:bottom-6 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-primary px-5 py-3.5 text-sm font-bold text-white shadow-lg no-underline"
+          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+        >
           <MessageIcon size={22} /> Mensagens
         </Link>
       )}
 
       {/* Mobile Bottom Navigation */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-xl flex items-center justify-around py-1.5 px-2"
-        style={{
-          backgroundColor: "var(--glass-bg)",
-          borderColor: "var(--color-border)",
-        }}
-      >
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-glass backdrop-blur-xl flex items-center justify-around py-1.5 px-2">
         {mobileNavList.map((item) => {
           const Icon = item.icon;
           const active = isPathActive(item.path);
@@ -273,10 +235,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <Link
               key={item.path}
               to={item.path}
-              className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl no-underline transition-all"
-              style={{
-                color: active ? "var(--color-primary-light)" : "var(--color-text-muted)",
-              }}
+              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl no-underline transition-all ${
+                active ? "text-primary-light" : "text-text-muted"
+              }`}
             >
               <div
                 className={`p-1.5 rounded-xl transition-colors ${

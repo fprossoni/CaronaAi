@@ -13,6 +13,8 @@ export interface MatchPublic {
   pickup_label: string;
   dropoff_label: string | null;
   pickup_region: string;
+  desired_pickup_at?: string | null;
+  offered_pickup_at?: string | null;
   created_at: string;
   responded_at: string | null;
 }
@@ -25,6 +27,8 @@ export interface MatchForDriver {
   pickup_region: string;
   detour_meters: number;
   detour_seconds: number;
+  desired_pickup_at?: string | null;
+  offered_pickup_at?: string | null;
   created_at: string;
   // Revealed only after acceptance
   pickup_street?: string | null;
@@ -39,6 +43,9 @@ export interface MatchForDriver {
 export interface MatchConfirmed extends MatchPublic {
   // Revealed after acceptance
   driver_phone?: string | null;
+  driver_car_model?: string | null;
+  driver_car_color?: string | null;
+  driver_car_plate?: string | null;
   pickup_lat?: number | null;
   pickup_lng?: number | null;
   dropoff_lat?: number | null;

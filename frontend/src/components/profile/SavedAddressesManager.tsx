@@ -59,13 +59,7 @@ export const SavedAddressesManager: React.FC = () => {
   };
 
   return (
-    <div
-      className="rounded-3xl border p-6 space-y-4"
-      style={{
-        background: "var(--gradient-card)",
-        borderColor: "var(--color-border)",
-      }}
-    >
+    <div className="rounded-3xl border border-border bg-gradient-card p-6 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
@@ -73,10 +67,10 @@ export const SavedAddressesManager: React.FC = () => {
             <MapPinIcon size={20} />
           </div>
           <div>
-            <h3 className="text-base font-extrabold" style={{ color: "var(--color-text)" }}>
+            <h3 className="text-base font-extrabold text-text">
               Meus Endereços Salvos
             </h3>
-            <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+            <p className="text-xs mt-0.5 text-text-muted">
               Cadastre Casa, Trabalho ou República por CEP para pedir e oferecer caronas com 1 clique.
             </p>
           </div>
@@ -90,7 +84,7 @@ export const SavedAddressesManager: React.FC = () => {
       </div>
 
       {showAddForm && (
-        <div className="p-4 rounded-2xl border border-[var(--color-border)]">
+        <div className="p-4 rounded-2xl border border-border">
           <SavedAddressForm
             onCancel={() => setShowAddForm(false)}
             onSaved={(address) => {
@@ -103,15 +97,12 @@ export const SavedAddressesManager: React.FC = () => {
 
       {/* Saved List */}
       {loading ? (
-        <p className="text-xs py-4 text-center animate-pulse" style={{ color: "var(--color-text-muted)" }}>
+        <p className="text-xs py-4 text-center text-text-muted animate-pulse">
           Carregando endereços salvos...
         </p>
       ) : addresses.length === 0 ? (
-        <div
-          className="p-4 rounded-2xl border border-dashed text-center"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+        <div className="p-4 rounded-2xl border border-dashed border-border text-center">
+          <p className="text-xs text-text-muted">
             Você ainda não possui endereços salvos. Adicione sua casa ou trabalho para agilizar suas próximas caronas!
           </p>
         </div>
@@ -120,24 +111,20 @@ export const SavedAddressesManager: React.FC = () => {
           {addresses.map((addr) => (
             <div
               key={addr.id}
-              className="p-3.5 rounded-2xl border flex items-start justify-between gap-3 transition hover:border-indigo-500/40"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-              }}
+              className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-start justify-between gap-3 transition hover:border-indigo-500/40"
             >
               <div className="min-w-0 space-y-0.5">
                 <div className="flex items-center gap-1.5">
                   <NavigationIcon size={13} className="text-emerald-400 shrink-0" />
-                  <span className="text-sm font-bold truncate" style={{ color: "var(--color-text)" }}>
+                  <span className="text-sm font-bold truncate text-text">
                     {addr.label}
                   </span>
                 </div>
-                <p className="text-xs truncate" style={{ color: "var(--color-text-secondary)" }}>
+                <p className="text-xs truncate text-text-secondary">
                   {addr.street}, {addr.number}
                   {addr.complement ? ` (${addr.complement})` : ""}
                 </p>
-                <p className="text-[11px] truncate" style={{ color: "var(--color-text-muted)" }}>
+                <p className="text-[11px] truncate text-text-muted">
                   {addr.neighborhood ? `${addr.neighborhood} • ` : ""}
                   {addr.city}/{addr.state} • CEP {addr.postal_code}
                 </p>

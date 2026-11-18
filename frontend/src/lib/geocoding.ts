@@ -104,7 +104,7 @@ function parseNominatimAddress(item: NominatimItem, fallbackLat: number, fallbac
   const label = mapAddress ? formatMapAddress(mapAddress) : item.display_name;
 
   return {
-    label: label || `Ponto no mapa (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+    label: label || "Ponto marcado no mapa",
     region,
     lat,
     lng,
@@ -177,6 +177,7 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
           region: parsed.region,
           lat: parsed.lat,
           lng: parsed.lng,
+          mapAddress: parsed.mapAddress,
         };
       });
 
@@ -217,7 +218,7 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
       return { ...parseNominatimAddress(item, lat, lng), lat, lng };
     } catch {
       return {
-        label: `Local selecionado (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+        label: "Local selecionado no mapa",
         region: "Porto Alegre, RS",
         lat,
         lng,

@@ -1,5 +1,4 @@
 import React from "react";
-import styles from "./Avatar.module.css";
 
 interface AvatarProps {
   name?: string | null;
@@ -48,37 +47,37 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <div
-      className={[
-        styles.wrapper,
-        onClick ? "cursor-pointer transition-transform hover:scale-105" : "",
-      ].join(" ")}
+      className={`relative shrink-0 ${
+        onClick ? "cursor-pointer transition-transform hover:scale-105" : ""
+      }`}
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
       <div
-        className={`rounded-full p-[2px] ${
-          ring ? "bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500" : ""
+        className={`rounded-full p-0.5 ${
+          ring ? "bg-linear-to-tr from-indigo-500 via-purple-500 to-pink-500" : ""
         }`}
       >
         {photoUrl ? (
           <img
             src={photoUrl}
             alt={name ?? "Usuário"}
-            className={`${sizeClasses} rounded-full object-cover block border-2`}
-            style={{ borderColor: "var(--color-surface)" }}
+            className={`${sizeClasses} rounded-full object-cover block border-2 border-surface`}
           />
         ) : (
           <div
-            className={`${sizeClasses} rounded-full flex items-center justify-center font-bold text-white select-none border-2`}
-            style={{ background: bg, borderColor: "var(--color-surface)" }}
+            className={`${sizeClasses} rounded-full flex items-center justify-center font-bold text-white select-none border-2 border-surface`}
+            style={{ backgroundColor: bg }}
           >
             {initials}
           </div>
         )}
       </div>
       {rating !== undefined && (
-        <span className={styles.badge}>★ {rating.toFixed(1)}</span>
+        <span className="absolute -bottom-1 -right-1 rounded-full border border-border bg-surface px-1.5 py-px text-[10px] font-semibold whitespace-nowrap text-text">
+          ★ {rating.toFixed(1)}
+        </span>
       )}
     </div>
   );

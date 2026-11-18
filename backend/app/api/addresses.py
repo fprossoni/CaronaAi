@@ -72,18 +72,26 @@ async def create_address(
     current_user: VerifiedUser,
     db: DbSession,
 ) -> UserAddress:
-    """Save a personal address for the user, computing coordinates via Nominatim."""
-    try:
-        lat, lng, neighborhood, _ = await geocode_address(
-            street=body.street,
-            number=body.number,
-            city=body.city,
-            state=body.state,
-            country=body.country,
-            postal_code=body.postal_code,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    """Save a personal address for the user, using provided coordinates or computing via Nominatim."""
+    lat = body.lat
+    lng = body.lng
+    neighborhood = body.neighborhood
+
+    if lat is None or lng is None:
+        try:
+            geocoded_lat, geocoded_lng, geocoded_neighborhood, _ = await geocode_address(
+                street=body.street,
+                number=body.number,
+                city=body.city,
+                state=body.state,
+                country=body.country,
+                postal_code=body.postal_code,
+            )
+            lat = geocoded_lat
+            lng = geocoded_lng
+            neighborhood = neighborhood or geocoded_neighborhood
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     addr = UserAddress(
         user_id=current_user.id,
@@ -91,7 +99,7 @@ async def create_address(
         street=body.street,
         number=body.number,
         complement=body.complement,
-        neighborhood=body.neighborhood or neighborhood,
+        neighborhood=neighborhood,
         postal_code=body.postal_code,
         city=body.city,
         state=body.state,

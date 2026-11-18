@@ -55,19 +55,13 @@ export const ReportsManager: React.FC = () => {
   }, []);
 
   return (
-    <div
-      className="rounded-3xl border p-6 space-y-4"
-      style={{
-        background: "var(--gradient-card)",
-        borderColor: "var(--color-border)",
-      }}
-    >
+    <div className="rounded-3xl border border-border bg-gradient-card p-6 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold" style={{ color: "var(--color-text)" }}>
+          <h2 className="text-base font-bold text-text">
             Denúncias enviadas
           </h2>
-          <p className="mt-1 text-xs" style={{ color: "var(--color-text-muted)" }}>
+          <p className="mt-1 text-xs text-text-muted">
             Acompanhe as ocorrências registradas e o status da análise.
           </p>
         </div>
@@ -77,11 +71,11 @@ export const ReportsManager: React.FC = () => {
       </div>
 
       {loading ? (
-        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+        <p className="text-sm text-text-muted">
           Carregando denúncias...
         </p>
       ) : reports.length === 0 ? (
-        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+        <p className="text-sm text-text-muted">
           Você ainda não registrou nenhuma denúncia.
         </p>
       ) : (
@@ -89,18 +83,14 @@ export const ReportsManager: React.FC = () => {
           {reports.map((report) => (
             <li
               key={report.id}
-              className="rounded-2xl border p-4 space-y-2"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-              }}
+              className="rounded-2xl border border-border bg-surface-2 p-4 space-y-2"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text)" }}>
+                  <p className="text-sm font-semibold truncate text-text">
                     {report.reported_name ?? `Usuário #${report.reported_id}`}
                   </p>
-                  <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                  <p className="text-xs text-text-muted">
                     {formatReportDate(report.created_at)}
                     {report.ride_id ? ` • Carona #${report.ride_id}` : ""}
                   </p>
@@ -109,11 +99,11 @@ export const ReportsManager: React.FC = () => {
                   {STATUS_LABEL[report.status]}
                 </span>
               </div>
-              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              <p className="text-sm text-text-secondary">
                 {report.reason}
               </p>
               {report.details && (
-                <p className="text-xs whitespace-pre-line" style={{ color: "var(--color-text-muted)" }}>
+                <p className="text-xs whitespace-pre-line text-text-muted">
                   {report.details}
                 </p>
               )}

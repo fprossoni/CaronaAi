@@ -162,21 +162,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   return (
     <div
-      className={`relative rounded-2xl overflow-hidden border ${className}`}
-      style={{
-        height,
-        borderColor: interactivePickMode ? "var(--color-primary)" : "var(--color-border)",
-      }}
+      className={`relative rounded-2xl overflow-hidden border ${
+        interactivePickMode ? "border-primary" : "border-border"
+      } ${className}`}
+      style={{ height }}
     >
       {interactivePickMode && (
-        <div
-          className="absolute top-3 left-3 right-3 z-[500] px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between shadow-lg backdrop-blur-md"
-          style={{
-            backgroundColor: "var(--glass-bg)",
-            border: "1px solid var(--color-primary)",
-            color: "var(--color-text)",
-          }}
-        >
+        <div className="absolute top-3 right-3 z-500 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between border border-primary bg-glass text-text shadow-lg backdrop-blur-md">
           <span>
             📍 Toque em qualquer ponto do mapa para definir{" "}
             {interactivePickMode === "destination" ? "o destino" : "a origem"}

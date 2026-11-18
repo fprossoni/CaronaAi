@@ -76,7 +76,7 @@ export const HistoryPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="py-16 text-center text-sm animate-pulse" style={{ color: "var(--color-text-muted)" }}>
+      <div className="py-16 text-center text-sm text-text-muted animate-pulse">
         Carregando histórico de viagens...
       </div>
     );
@@ -98,22 +98,16 @@ export const HistoryPage: React.FC = () => {
           >
             ← Voltar para Caronas Ativas
           </button>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-text">
             Histórico e Avaliações
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+          <p className="text-sm mt-0.5 text-text-muted">
             Avalie seus colegas de viagem com 1 a 5 estrelas para fortalecer a confiança na comunidade UFRGS.
           </p>
         </div>
 
         {/* Role Filter Pills */}
-        <div
-          className="inline-flex p-1 rounded-2xl border"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor: "var(--color-border)",
-          }}
-        >
+        <div className="inline-flex p-1 rounded-2xl border border-border bg-surface">
           {(
             [
               { id: "all", label: "Todas" },
@@ -125,12 +119,9 @@ export const HistoryPage: React.FC = () => {
               key={tab.id}
               type="button"
               onClick={() => setRoleFilter(tab.id)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-              style={{
-                backgroundColor:
-                  roleFilter === tab.id ? "var(--color-primary)" : "transparent",
-                color: roleFilter === tab.id ? "#ffffff" : "var(--color-text-secondary)",
-              }}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                roleFilter === tab.id ? "bg-primary text-white" : "text-text-secondary"
+              }`}
             >
               {tab.label}
             </button>
@@ -145,20 +136,14 @@ export const HistoryPage: React.FC = () => {
       )}
 
       {filteredTrips.length === 0 ? (
-        <div
-          className="rounded-3xl p-10 border text-center space-y-2"
-          style={{
-            background: "var(--gradient-card)",
-            borderColor: "var(--color-border)",
-          }}
-        >
+        <div className="rounded-3xl p-10 border border-border bg-gradient-card text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mx-auto mb-2">
             <HistoryIcon size={24} />
           </div>
-          <p className="text-base font-bold" style={{ color: "var(--color-text)" }}>
+          <p className="text-base font-bold text-text">
             Nenhuma viagem encontrada neste filtro
           </p>
-          <p className="text-xs max-w-md mx-auto" style={{ color: "var(--color-text-muted)" }}>
+          <p className="text-xs max-w-md mx-auto text-text-muted">
             Assim que suas caronas forem concluídas, elas aparecerão aqui para avaliação.
           </p>
         </div>
@@ -169,11 +154,7 @@ export const HistoryPage: React.FC = () => {
             return (
               <div
                 key={`${trip.role}-${trip.ride_id}`}
-                className="rounded-3xl p-5 md:p-6 border space-y-4 shadow-md"
-                style={{
-                  background: "var(--gradient-card)",
-                  borderColor: "var(--color-border)",
-                }}
+                className="rounded-3xl p-5 md:p-6 border border-border bg-gradient-card space-y-4 shadow-md"
               >
                 {/* Trip Header */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -187,35 +168,22 @@ export const HistoryPage: React.FC = () => {
                     >
                       {isCompleted ? "✓ Concluída" : "✕ Cancelada"}
                     </span>
-                    <span
-                      className="px-2.5 py-1 rounded-full text-xs font-semibold border"
-                      style={{
-                        backgroundColor: "var(--color-surface-2)",
-                        borderColor: "var(--color-border)",
-                        color: "var(--color-text-secondary)",
-                      }}
-                    >
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold border border-border bg-surface-2 text-text-secondary">
                       Você foi {trip.role === "driver" ? "Motorista" : "Passageiro"}
                     </span>
                   </div>
 
-                  <span className="text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>
+                  <span className="text-xs font-semibold text-text-muted">
                     {formatDate(trip.departure_at)}
                   </span>
                 </div>
 
                 {/* Route Summary */}
-                <div
-                  className="p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                  style={{
-                    backgroundColor: "var(--color-surface-2)",
-                    borderColor: "var(--color-border)",
-                  }}
-                >
-                  <div className="flex items-center gap-2.5 text-sm font-semibold" style={{ color: "var(--color-text)" }}>
+                <div className="p-3.5 rounded-2xl border border-border bg-surface-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 text-sm font-semibold text-text">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
                     <span>{trip.origin_label}</span>
-                    <span style={{ color: "var(--color-text-muted)" }}>→</span>
+                    <span className="text-text-muted">→</span>
                     <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 shrink-0" />
                     <span>{trip.destination_label}</span>
                   </div>
@@ -223,12 +191,12 @@ export const HistoryPage: React.FC = () => {
 
                 {/* Participants & Rating Actions */}
                 <div className="space-y-2.5">
-                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+                  <p className="text-xs font-bold uppercase tracking-wider text-text-muted">
                     Participantes desta viagem
                   </p>
 
                   {trip.participants.length === 0 ? (
-                    <p className="text-xs italic" style={{ color: "var(--color-text-muted)" }}>
+                    <p className="text-xs italic text-text-muted">
                       Nenhum outro participante confirmado nesta viagem.
                     </p>
                   ) : (
@@ -236,11 +204,7 @@ export const HistoryPage: React.FC = () => {
                       {trip.participants.map((p) => (
                         <div
                           key={p.id}
-                          className="p-3.5 rounded-2xl border flex items-center justify-between gap-3"
-                          style={{
-                            backgroundColor: "var(--color-surface-2)",
-                            borderColor: "var(--color-border)",
-                          }}
+                          className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-center justify-between gap-3"
                         >
                           <div
                             className="flex items-center gap-3 cursor-pointer group min-w-0"
@@ -273,10 +237,7 @@ export const HistoryPage: React.FC = () => {
                             />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className="text-sm font-bold truncate group-hover:text-indigo-400"
-                                  style={{ color: "var(--color-text)" }}
-                                >
+                                <span className="text-sm font-bold truncate text-text group-hover:text-indigo-400">
                                   {p.name ?? "Estudante UFRGS"}
                                 </span>
                                 <span
@@ -289,10 +250,7 @@ export const HistoryPage: React.FC = () => {
                                   {p.role === "driver" ? "Motorista" : "Passageiro"}
                                 </span>
                               </div>
-                              <p
-                                className="text-xs truncate flex items-center gap-1 mt-0.5"
-                                style={{ color: "var(--color-text-muted)" }}
-                              >
+                              <p className="text-xs truncate flex items-center gap-1 mt-0.5 text-text-muted">
                                 <GraduationCapIcon size={12} className="shrink-0" />
                                 {p.course ?? "Curso não informado"}
                               </p>
@@ -331,8 +289,7 @@ export const HistoryPage: React.FC = () => {
                                   participant: p,
                                 })
                               }
-                              className="p-2 rounded-xl border text-red-400 hover:bg-red-500/10 transition-colors"
-                              style={{ borderColor: "var(--color-border)" }}
+                              className="p-2 rounded-xl border border-border text-red-400 hover:bg-red-500/10 transition-colors"
                               title="Reportar ou bloquear usuário"
                               aria-label="Reportar usuário"
                             >

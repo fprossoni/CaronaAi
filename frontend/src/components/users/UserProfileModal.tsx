@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { UserPublic } from "@/types/user";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
@@ -39,17 +40,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   onBlockedChange,
 }) => {
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, isUserBlocked, setUserBlocked } = useAuthStore();
   const toast = useToastStore();
   const [profile, setProfile] = useState<UserPublic>(initialUser);
   const [blocking, setBlocking] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(() => isUserBlocked(initialUser.id));
 
   const isSelf = currentUser?.id === profile.id;
   const affiliation = extractUfrgsAffiliation(profile.email);
   const socialHandle = profile.instagram || profile.social_link;
 
   useEffect(() => {
+    setIsBlocked(isUserBlocked(initialUser.id));
     let active = true;
     usersApi
       .getUser(initialUser.id)
@@ -62,7 +64,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     return () => {
       active = false;
     };
-  }, [initialUser.id]);
+  }, [initialUser.id, isUserBlocked]);
 
   const handleToggleBlock = async () => {
     if (isSelf) return;
@@ -83,10 +85,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       if (isBlocked) {
         await usersApi.unblockUser(profile.id);
         setIsBlocked(false);
+        setUserBlocked(profile.id, false);
         toast.info("Usuário desbloqueado.");
       } else {
         await usersApi.blockUser(profile.id);
         setIsBlocked(true);
+        setUserBlocked(profile.id, true);
         toast.success(
           "Usuário bloqueado",
           "As caronas deste perfil não aparecerão mais para você."
@@ -100,24 +104,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-3xl overflow-hidden border shadow-2xl animate-slide-up"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderColor: "var(--color-border)",
-        }}
+        className="w-full max-w-md rounded-3xl overflow-hidden border border-border bg-surface shadow-2xl animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* LinkedIn-style Cover Banner */}
-        <div
-          className="h-28 relative"
-          style={{ background: "var(--gradient-cover)" }}
-        >
+        <div className="h-28 relative bg-gradient-cover">
           <button
             type="button"
             onClick={onClose}
@@ -143,28 +140,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               ring
             />
 
-            <div
-              className="flex items-center gap-3 px-3.5 py-2 rounded-2xl border"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-              }}
-            >
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl border border-border bg-surface-2">
               <div className="text-center">
                 <div className="flex items-center gap-1 text-amber-400 font-bold text-sm">
                   <StarIcon size={15} filled />
                   <span>{profile.avg_rating.toFixed(1)}</span>
                 </div>
-                <span className="text-[10px] block" style={{ color: "var(--color-text-muted)" }}>
+                <span className="text-[10px] block text-text-muted">
                   Nota média
                 </span>
               </div>
-              <div className="w-px h-6" style={{ backgroundColor: "var(--color-border)" }} />
+              <div className="w-px h-6 bg-border" />
               <div className="text-center">
-                <span className="font-bold text-sm block" style={{ color: "var(--color-text)" }}>
+                <span className="font-bold text-sm block text-text">
                   {profile.rating_count}
                 </span>
-                <span className="text-[10px] block" style={{ color: "var(--color-text-muted)" }}>
+                <span className="text-[10px] block text-text-muted">
                   Avaliações
                 </span>
               </div>
@@ -174,11 +165,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           {/* Name & Academic Course */}
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
+              <h3 className="text-xl font-bold text-text">
                 {profile.name ?? "Estudante UFRGS"}
               </h3>
               {profile.age != null && (
-                <span className="text-xs font-semibold" style={{ color: "var(--color-text-muted)" }}>
+                <span className="text-xs font-semibold text-text-muted">
                   • {profile.age} anos
                 </span>
               )}
@@ -193,10 +184,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </span>
             </div>
 
-            <p
-              className="text-sm mt-1 flex items-center gap-1.5 font-medium"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
+            <p className="text-sm mt-1 flex items-center gap-1.5 font-medium text-text-secondary">
               <GraduationCapIcon size={16} className="text-indigo-400 shrink-0" />
               <span>{profile.course ?? "Curso não informado"}</span>
             </p>
@@ -204,18 +192,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           {/* Bio Section */}
           {profile.bio ? (
-            <div
-              className="mt-4 p-3.5 rounded-2xl text-sm leading-relaxed border"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-                color: "var(--color-text-secondary)",
-              }}
-            >
+            <div className="mt-4 p-3.5 rounded-2xl text-sm leading-relaxed border border-border bg-surface-2 text-text-secondary">
               “{profile.bio}”
             </div>
           ) : (
-            <p className="mt-3 text-xs italic" style={{ color: "var(--color-text-muted)" }}>
+            <p className="mt-3 text-xs italic text-text-muted">
               Este estudante ainda não adicionou uma bio.
             </p>
           )}
@@ -224,10 +205,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <div className="mt-4 space-y-3">
             {profile.campuses && profile.campuses.length > 0 && (
               <div>
-                <span
-                  className="text-[11px] font-bold uppercase tracking-wider block mb-1.5"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
+                <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5 text-text-muted">
                   Campi que frequenta
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -236,12 +214,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     return (
                       <span
                         key={cId}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border"
-                        style={{
-                          backgroundColor: "var(--color-surface-2)",
-                          borderColor: "var(--color-border)",
-                          color: "var(--color-text-secondary)",
-                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-border bg-surface-2 text-text-secondary"
                       >
                         <MapPinIcon size={12} className="text-indigo-400" />
                         {c.shortName}
@@ -253,22 +226,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             )}
 
             {profile.is_driver && (profile.car_model || profile.car_color) && (
-              <div
-                className="flex items-center gap-3 p-3 rounded-2xl border"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                }}
-              >
+              <div className="flex items-center gap-3 p-3 rounded-2xl border border-border bg-surface-2">
                 <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-400">
                   <CarIcon size={18} />
                 </div>
                 <div className="text-xs">
-                  <span className="block font-semibold" style={{ color: "var(--color-text)" }}>
+                  <span className="block font-semibold text-text">
                     {profile.car_model ?? "Veículo cadastrado"}
                   </span>
                   {profile.car_color && (
-                    <span style={{ color: "var(--color-text-muted)" }}>
+                    <span className="text-text-muted">
                       Cor: {profile.car_color}
                     </span>
                   )}
@@ -281,12 +248,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 href={buildSocialUrl(socialHandle)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all hover:scale-[1.01]"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border-strong)",
-                  color: "var(--color-primary-light)",
-                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border border-border-strong bg-surface-2 text-primary-light transition-all hover:scale-[1.01]"
               >
                 <InstagramIcon size={15} className="text-pink-400" />
                 <span>Instagram: {socialHandle}</span>
@@ -295,7 +257,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
 
           {/* Actions Footer */}
-          <div className="mt-6 pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: "var(--color-border)" }}>
+          <div className="mt-6 pt-4 border-t border-border flex items-center justify-between gap-3">
             {!isSelf ? (
               <button
                 type="button"
@@ -313,7 +275,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </span>
               </button>
             ) : (
-              <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              <span className="text-xs text-text-muted">
                 Visualização pública do seu perfil
               </span>
             )}
@@ -324,6 +286,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

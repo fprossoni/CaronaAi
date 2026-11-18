@@ -33,7 +33,7 @@ def _allowed(db, ride, user_id, passenger_id=None):
     return True
 
 
-def _public(conversation):
+def _public(conversation, viewer_id: int | None = None):
     ride = conversation.ride
     passengers = _participants(ride)
     members = [ride.driver]
@@ -41,12 +41,28 @@ def _public(conversation):
         members.extend(passengers.values())
     else:
         members.append(passengers[conversation.passenger_id])
+
+    origin_label = ride.origin_label
+    destination_label = ride.destination_label
+    departure_at = ride.departure_at
+    if viewer_id is not None and viewer_id != ride.driver_id:
+        passenger_match = next(
+            (m for m in ride.matches if m.passenger_id == viewer_id and m.status == MatchStatus.ACCEPTED),
+            None,
+        )
+        if passenger_match is not None:
+            origin_label = passenger_match.pickup_label
+            if passenger_match.dropoff_label:
+                destination_label = passenger_match.dropoff_label
+            if passenger_match.offered_pickup_at:
+                departure_at = passenger_match.offered_pickup_at
+
     return ConversationPublic(
         id=conversation.id, ride_id=ride.id,
         kind="group" if conversation.passenger_id is None else "private",
         driver_id=ride.driver_id, passenger_id=conversation.passenger_id,
-        origin_label=ride.origin_label, destination_label=ride.destination_label,
-        departure_at=ride.departure_at, participants=members,
+        origin_label=origin_label, destination_label=destination_label,
+        departure_at=departure_at, participants=members,
     )
 
 
@@ -79,7 +95,7 @@ def list_conversations(db: DbSession, current_user: VerifiedUser):
             joinedload(Conversation.ride).selectinload(Ride.matches).joinedload(Match.passenger),
         ).order_by(Conversation.id.desc())
     ).all()
-    return [_public(c) for c in conversations if _allowed(db, c.ride, current_user.id, c.passenger_id)]
+    return [_public(c, current_user.id) for c in conversations if _allowed(db, c.ride, current_user.id, c.passenger_id)]
 
 
 @router.post("", response_model=ConversationPublic)
@@ -99,7 +115,7 @@ def open_conversation(body: ConversationCreate, db: DbSession, current_user: Ver
         conversation = Conversation(ride_id=ride.id, scope=scope, passenger_id=body.passenger_id)
         db.add(conversation)
         db.flush()
-    result = _public(conversation)
+    result = _public(conversation, current_user.id)
     db.commit()
     return result
 

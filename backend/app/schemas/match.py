@@ -46,6 +46,8 @@ class MatchPublic(BaseModel):
     pickup_label: str
     dropoff_label: str | None
     pickup_region: str
+    desired_pickup_at: datetime | None = None
+    offered_pickup_at: datetime | None = None
     created_at: datetime
     responded_at: datetime | None
 
@@ -65,6 +67,8 @@ class MatchForDriver(BaseModel):
     pickup_region: str       # e.g. "Bairro Petrópolis"
     detour_meters: float
     detour_seconds: float
+    desired_pickup_at: datetime | None = None
+    offered_pickup_at: datetime | None = None
     created_at: datetime
 
     # Revealed only after acceptance
@@ -86,6 +90,9 @@ class MatchConfirmed(MatchPublic):
     """
     # Driver info (for passenger)
     driver_phone: str | None = None
+    driver_car_model: str | None = None
+    driver_car_color: str | None = None
+    driver_car_plate: str | None = None
     # Passenger exact pickup & address (revealed to driver only after acceptance)
     pickup_lat: float | None = None
     pickup_lng: float | None = None

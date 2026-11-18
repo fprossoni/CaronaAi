@@ -9,6 +9,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { RideDetail } from "@/types/ride";
 import type { MatchConfirmed, MatchForDriver } from "@/types/match";
 import type { UserPublic } from "@/types/user";
@@ -127,35 +128,30 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
   const accepted = requests.filter((m) => m.status === "accepted");
   const noSeats = ride.available_seats <= 0;
 
-  return (
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[950] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 z-950 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-3xl p-6 border shadow-2xl animate-slide-up"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor: "var(--color-border)",
-          }}
+          className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-3xl p-6 border border-border bg-surface shadow-2xl animate-slide-up"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between gap-3 pb-4 border-b" style={{ borderColor: "var(--color-border)" }}>
+          <div className="flex items-start justify-between gap-3 pb-4 border-b border-border">
             <div>
-              <h3 className="text-lg font-bold" style={{ color: "var(--color-text)" }}>
+              <h3 className="text-lg font-bold text-text">
                 Passageiros & Solicitações
               </h3>
-              <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+              <p className="text-xs mt-0.5 text-text-muted">
                 {ride.origin_label} → {ride.destination_label} • {ride.available_seats}/{ride.total_seats} vagas livres
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
-              style={{ color: "var(--color-text-muted)" }}
+              className="p-1.5 rounded-full text-text-muted hover:bg-white/10 transition-colors"
               aria-label="Fechar"
             >
               <XIcon size={18} />
@@ -169,17 +165,17 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
           )}
 
           {loading && (
-            <div className="py-10 text-center text-sm animate-pulse" style={{ color: "var(--color-text-muted)" }}>
+            <div className="py-10 text-center text-sm text-text-muted animate-pulse">
               Carregando solicitações...
             </div>
           )}
 
           {!loading && requests.length === 0 && (
             <div className="py-10 text-center">
-              <p className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
+              <p className="text-sm font-medium text-text-secondary">
                 Nenhuma solicitação recebida para esta carona ainda.
               </p>
-              <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+              <p className="text-xs mt-1 text-text-muted">
                 Quando colegas solicitarem vaga, eles aparecerão aqui com o desvio calculado.
               </p>
             </div>
@@ -192,7 +188,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
                   Aguardando sua resposta ({pending.length})
                 </span>
-                <span className="text-[11px] flex items-center gap-1" style={{ color: "var(--color-text-muted)" }}>
+                <span className="text-[11px] flex items-center gap-1 text-text-muted">
                   <ShieldCheckIcon size={12} className="text-indigo-400" />
                   Endereço exato oculto até aceitar
                 </span>
@@ -201,11 +197,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
               {pending.map((m) => (
                 <div
                   key={m.id}
-                  className="p-4 rounded-2xl border space-y-3"
-                  style={{
-                    backgroundColor: "var(--color-surface-2)",
-                    borderColor: "var(--color-border)",
-                  }}
+                  className="p-4 rounded-2xl border border-border bg-surface-2 space-y-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div
@@ -220,10 +212,10 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                         ring
                       />
                       <div>
-                        <p className="font-bold text-sm group-hover:text-indigo-400 transition-colors" style={{ color: "var(--color-text)" }}>
+                        <p className="font-bold text-sm text-text group-hover:text-indigo-400 transition-colors">
                           {m.passenger.name ?? "Passageiro UFRGS"}
                         </p>
-                        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                        <p className="text-xs text-text-muted">
                           {[
                             m.passenger.course ?? "Curso não informado",
                             m.passenger.gender ? getGenderLabel(m.passenger.gender) : null,
@@ -232,7 +224,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                             .filter(Boolean)
                             .join(" • ")}
                         </p>
-                        <p className="text-[11px] mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                        <p className="text-[11px] mt-0.5 text-text-muted">
                           Solicitado às {formatTime(m.created_at)} • Toque para ver perfil
                         </p>
                       </div>
@@ -243,18 +235,18 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                     </span>
                   </div>
 
-                  <div
-                    className="p-2.5 rounded-xl border text-xs flex items-center gap-2"
-                    style={{
-                      backgroundColor: "var(--color-surface)",
-                      borderColor: "var(--color-border)",
-                      color: "var(--color-text-secondary)",
-                    }}
-                  >
-                    <MapPinIcon size={14} className="text-amber-400 shrink-0" />
-                    <span>
-                      Região aproximada de origem: <strong>{m.pickup_region}</strong>
+                  <div className="p-2.5 rounded-xl border border-border bg-surface text-xs text-text-secondary flex items-center justify-between gap-2 flex-wrap">
+                    <span className="flex items-center gap-2">
+                      <MapPinIcon size={14} className="text-amber-400 shrink-0" />
+                      <span>
+                        Região aproximada de origem: <strong>{m.pickup_region}</strong>
+                      </span>
                     </span>
+                    {m.offered_pickup_at && (
+                      <span className="text-[11px] font-semibold text-indigo-400">
+                        Previsão no embarque: {formatTime(m.offered_pickup_at)}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-1">
@@ -310,15 +302,12 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                 const exactLabel = structuredAddress ?? detail?.pickup_label ?? m.pickup_region;
                 const passengerPhone =
                   detail?.passenger_phone ?? m.passenger_phone ?? m.passenger.phone;
+                const pickupEta = detail?.offered_pickup_at ?? m.offered_pickup_at;
 
                 return (
                   <div
                     key={m.id}
-                    className="p-4 rounded-2xl border space-y-3"
-                    style={{
-                      backgroundColor: "var(--color-surface-2)",
-                      borderColor: "rgba(16, 185, 129, 0.4)",
-                    }}
+                    className="p-4 rounded-2xl border border-emerald-500/40 bg-surface-2 space-y-3"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div
@@ -334,14 +323,14 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                         />
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-sm group-hover:text-indigo-400" style={{ color: "var(--color-text)" }}>
+                            <p className="font-bold text-sm text-text group-hover:text-indigo-400">
                               {m.passenger.name ?? "Passageiro"}
                             </p>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
                               <CheckCircleIcon size={11} /> Confirmado
                             </span>
                           </div>
-                          <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                          <p className="text-xs text-text-muted">
                             {m.passenger.course ?? "Estudante UFRGS"}
                           </p>
                         </div>
@@ -351,7 +340,9 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                         <a
                           href={buildWhatsAppUrl(
                             passengerPhone,
-                            `Olá ${m.passenger.name ?? ""}! Confirmamos nossa carona no Carona Aí (${ride.origin_label} → ${ride.destination_label}).`
+                            `Olá ${m.passenger.name ?? ""}! Confirmamos nossa carona no Carona Aí (ponto de encontro: ${exactLabel}${
+                              pickupEta ? ` às ${formatTime(pickupEta)}` : ""
+                            }).`
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -361,35 +352,32 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                           <span>WhatsApp</span>
                         </a>
                       ) : (
-                        <span className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
+                        <span className="text-[11px] text-text-muted">
                           Sem telefone cadastrado
                         </span>
                       )}
                     </div>
 
                     {/* Exact Pickup Point Revealed */}
-                    <div
-                      className="p-3 rounded-xl border text-xs space-y-1"
-                      style={{
-                        backgroundColor: "var(--color-surface)",
-                        borderColor: "var(--color-border)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between text-emerald-400 font-semibold">
+                    <div className="p-3 rounded-xl border border-border bg-surface text-xs space-y-1">
+                      <div className="flex items-center justify-between text-emerald-400 font-semibold flex-wrap gap-2">
                         <span className="flex items-center gap-1.5">
                           <NavigationIcon size={13} />
-                          Endereço de origem confirmado
+                          Ponto de encontro confirmado
                         </span>
-                        <span>+{formatDistance(m.detour_meters)}</span>
+                        <span>
+                          {pickupEta ? `Chegada prevista: ${formatTime(pickupEta)} · ` : ""}
+                          +{formatDistance(m.detour_meters)}
+                        </span>
                       </div>
-                      <p className="font-medium text-sm" style={{ color: "var(--color-text)" }}>
+                      <p className="font-medium text-sm text-text">
                         {exactLabel}
                       </p>
                       {detail?.dropoff_label && (
-                        <p style={{ color: "var(--color-text)" }}><strong>Destino:</strong> {detail.dropoff_label}</p>
+                        <p className="text-text"><strong>Destino:</strong> {detail.dropoff_label}</p>
                       )}
                       {passengerPhone && (
-                        <p style={{ color: "var(--color-text-muted)" }}>
+                        <p className="text-text-muted">
                           Telefone: <strong>{passengerPhone}</strong>
                         </p>
                       )}
@@ -430,6 +418,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
           onClose={() => setSelectedUser(null)}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 };

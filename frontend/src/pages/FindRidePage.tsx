@@ -219,7 +219,7 @@ export const FindRidePage: React.FC = () => {
   };
 
   const results = loading ? (
-    <p role="status" className="text-sm text-[var(--color-text-muted)]">Buscando caronas compatíveis…</p>
+    <p role="status" className="text-sm text-text-muted">Buscando caronas compatíveis…</p>
   ) : searchError !== null ? (
     <div className="space-y-2">
       <p role="alert" className="text-sm text-red-400">{searchError}</p>
@@ -231,7 +231,7 @@ export const FindRidePage: React.FC = () => {
   ) : searched ? (
     <section className="space-y-4 pt-2 animate-fade-in" aria-label="Resultados da busca">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-lg font-extrabold flex items-center gap-2" style={{ color: "var(--color-text)" }}>
+        <h2 className="text-lg font-extrabold flex items-center gap-2 text-text">
           <span>
             {rides.length === 0
               ? "Nenhuma carona disponível para esse trajeto e horário"
@@ -241,26 +241,23 @@ export const FindRidePage: React.FC = () => {
           </span>
         </h2>
         {rides.length > 1 && (
-          <p className="text-xs text-[var(--color-text-muted)]">Ordenadas por relevância</p>
+          <p className="text-xs text-text-muted">Ordenadas por relevância</p>
         )}
       </div>
 
       {/* Multi-Matching Batch Bar (shown when 2+ eligible rides exist) */}
       {(eligibleBatchRides.length >= 2 || selectedRideIds.length > 0) && (
         <div
-          className="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor:
-              selectedRideIds.length > 0 ? "var(--color-primary)" : "var(--color-border)",
-          }}
+          className={`p-4 rounded-2xl border bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            selectedRideIds.length > 0 ? "border-primary" : "border-border"
+          }`}
         >
           <div className="space-y-0.5">
-            <div className="flex items-center gap-2 text-xs font-extrabold" style={{ color: "var(--color-text)" }}>
+            <div className="flex items-center gap-2 text-xs font-extrabold text-text">
               <CheckCircleIcon size={15} className="text-indigo-400 shrink-0" />
               <span>Solicitar várias caronas</span>
             </div>
-            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+            <p className="text-xs text-text-muted">
               As outras solicitações são encerradas quando um motorista aceita.
             </p>
           </div>
@@ -314,10 +311,10 @@ export const FindRidePage: React.FC = () => {
 
   return (
     <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
-      <h1 className="text-2xl font-extrabold text-[var(--color-text)]">Pedir carona</h1>
+      <h1 className="text-2xl font-extrabold text-text">Pedir carona</h1>
       {submittedSearch && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <dl className="min-w-0 space-y-1 text-xs text-[var(--color-text-secondary)] wrap-anywhere">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4">
+          <dl className="min-w-0 space-y-1 text-xs text-text-secondary wrap-anywhere">
             <div><dt className="inline font-bold">Origem</dt>{" · "}<dd className="inline">{submittedSearch.pickup.label}</dd></div>
             <div><dt className="inline font-bold">Destino</dt>{" · "}<dd className="inline">{submittedSearch.dropoff.label}</dd></div>
           </dl>
@@ -337,26 +334,32 @@ export const FindRidePage: React.FC = () => {
           onChange={setRoute}
           onSubmit={handleSearch}
           disabled={batchRequesting || requestingId !== null}
+          showRoutePreview={false}
+          allowMeetingPoint
           initialQueries={{
             origin: prefill?.originQuery ?? (prefill?.direction !== "from_campus" ? prefill?.addressQuery : undefined),
             destination: prefill?.destinationQuery ?? (prefill?.direction === "from_campus" ? prefill.addressQuery : undefined),
           }}
         >
-          <fieldset className="min-w-0 space-y-3">
-            <legend className="mb-2 text-sm font-bold text-[var(--color-text)]">Quando você quer embarcar?</legend>
+          <div className="space-y-3">
+            <p className="text-sm font-bold text-text">Quando você quer embarcar?</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Input label="Data" type="date" value={date} onChange={(event) => setSchedule({ date: event.target.value, startTime })} required />
               <Input label="Horário desejado" type="time" value={startTime} onChange={(event) => setSchedule({ date, startTime: event.target.value })} required />
             </div>
-          </fieldset>
+          </div>
           {canSearchWomenOnly && (
-            <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">
+            <label className="flex items-start gap-2 text-sm text-text">
               <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
               Mostrar apenas caronas exclusivas para mulheres
             </label>
           )}
-          <p className="text-xs text-[var(--color-text-muted)]">O endereço exato da origem só é compartilhado após o aceite.</p>
-          <Button type="submit" disabled={!canSearch}>Procurar caronas</Button>
+          <p className="text-xs text-text-muted">
+            🔒 Apenas sua região aproximada (bairro) é visível antes do aceite. Caso queira ocultar seu endereço exato, você pode editar a origem acima e marcar um ponto de encontro próximo.
+          </p>
+          <Button type="submit" fullWidth size="lg" disabled={!canSearch}>
+            Procurar caronas
+          </Button>
         </TripRouteFields>
       </div>
       {results}

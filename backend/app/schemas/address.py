@@ -26,7 +26,8 @@ class AddressBase(BaseModel):
 
 
 class AddressCreate(AddressBase):
-    pass
+    lat: float | None = None
+    lng: float | None = None
 
 
 class AddressPublic(AddressBase):

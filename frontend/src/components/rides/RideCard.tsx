@@ -74,38 +74,35 @@ export const RideCard: React.FC<RideCardProps> = ({
   return (
     <>
       <div
-        className="rounded-3xl border p-5 transition-all hover:shadow-xl animate-fade-in"
-        style={{
-          background: "var(--gradient-card)",
-          borderColor: selected ? "var(--color-primary)" : "var(--color-border)",
-          boxShadow: selected
-            ? "0 0 0 2px rgba(99, 102, 241, 0.35), var(--shadow-sm)"
-            : "var(--shadow-sm)",
-        }}
+        className={`rounded-3xl border bg-gradient-card p-5 transition-all hover:shadow-xl animate-fade-in ${
+          selected
+            ? "border-primary shadow-[0_0_0_2px_rgba(99,102,241,0.35),var(--shadow-sm)]"
+            : "border-border shadow-sm"
+        }`}
       >
-        <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 sm:p-4">
+        <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface-2 p-3 sm:p-4">
           {[
-            { label: "Chegada prevista à sua origem", estimate: ride.estimated_pickup_at, color: "bg-emerald-400" },
-            { label: "Chegada prevista ao seu destino", estimate: ride.estimated_dropoff_at, color: "bg-indigo-400" },
+            { label: "Previsão no seu ponto de encontro", estimate: ride.estimated_pickup_at, color: "bg-emerald-400" },
+            { label: "Previsão de chegada ao destino", estimate: ride.estimated_dropoff_at, color: "bg-indigo-400" },
           ].map(({ label, estimate, color }) => (
             <div key={label} className="min-w-0 space-y-1">
-              <dt className="flex items-start gap-2 text-xs font-semibold text-[var(--color-text-secondary)]">
+              <dt className="flex items-start gap-2 text-xs font-semibold text-text-secondary">
                 <span aria-hidden="true" className={`mt-1 size-2 shrink-0 rounded-full ${color}`} />
                 {label}
               </dt>
               <dd className="pl-4">
                 {estimate ? (
                   <time dateTime={estimate} className="block tabular-nums">
-                    <span className="block text-2xl font-extrabold text-[var(--color-text)]">{formatTime(estimate)}</span>
-                    <span className="block text-xs text-[var(--color-text-muted)]">{formatDateShort(estimate)}</span>
+                    <span className="block text-2xl font-extrabold text-text">{formatTime(estimate)}</span>
+                    <span className="block text-xs text-text-muted">{formatDateShort(estimate)}</span>
                   </time>
-                ) : <span className="text-xs text-[var(--color-text-muted)]">Sem previsão</span>}
+                ) : <span className="text-xs text-text-muted">Sem previsão</span>}
               </dd>
             </div>
           ))}
         </dl>
 
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-muted)]">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
           {ride.pickup_difference_seconds != null && <span>{formatPickupDifference(ride.pickup_difference_seconds)}</span>}
           {ride.detour_meters != null && (
             <span>Desvio do motorista · {(ride.detour_meters / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} km</span>
@@ -121,20 +118,24 @@ export const RideCard: React.FC<RideCardProps> = ({
               ring
             />
             <div className="min-w-0 space-y-1">
-              <h3 className="break-words text-sm font-bold text-[var(--color-text)]">{driverName}</h3>
-              <p className="flex items-start gap-1 text-xs text-[var(--color-text-muted)]">
+              <h3 className="break-words text-sm font-bold text-text">{driverName}</h3>
+              <p className="flex items-start gap-1 text-xs text-text-muted">
                 <GraduationCapIcon size={13} className="text-indigo-400 shrink-0" />
                 <span className="break-words">{ride.driver.course || "Curso não informado"}</span>
               </p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-text-secondary)]">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
                 <span className="inline-flex items-center gap-1" title={`${ride.driver.rating_count} avaliações`}>
                   <StarIcon size={13} filled className="text-amber-400" />
                   {ride.driver.rating_count ? `Nota ${rating} de 5` : "Sem avaliações"}
                 </span>
                 <span>{completedRides} {completedRides === 1 ? "viagem concluída" : "viagens concluídas"}</span>
               </div>
-              <button type="button" onClick={() => setShowDriverProfile(true)}
-                aria-label={`Ver perfil de ${driverName}`} className="text-xs font-semibold text-[var(--color-primary-light)] hover:underline">
+              <button
+                type="button"
+                onClick={() => setShowDriverProfile(true)}
+                aria-label={`Ver perfil de ${driverName}`}
+                className="text-xs font-semibold text-primary-light hover:underline"
+              >
                 Ver perfil
               </button>
             </div>
@@ -147,7 +148,7 @@ export const RideCard: React.FC<RideCardProps> = ({
           )}
         </div>
 
-        <div className="mt-3.5 flex items-center justify-between gap-2 flex-wrap text-xs" style={{ color: "var(--color-text-secondary)" }}>
+        <div className="mt-3.5 flex items-center justify-between gap-2 flex-wrap text-xs text-text-secondary">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="inline-flex items-center gap-1.5">
               <UsersIcon size={14} className="text-emerald-400" />
@@ -155,7 +156,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             </span>
 
             {ride.driver.car_model && (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border" style={{ borderColor: "var(--color-border)" }}>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border border-border">
                 <CarIcon size={13} className="text-indigo-400" />
                 <span>
                   {ride.driver.car_model}
@@ -164,12 +165,11 @@ export const RideCard: React.FC<RideCardProps> = ({
               </span>
             )}
           </div>
-
         </div>
 
         {/* Action Button / Existing Match Status / Multi-Match Selection */}
         {onRequestMatch && (
-          <div className="mt-4 pt-3.5 border-t flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: "var(--color-border)" }}>
+          <div className="mt-4 pt-3.5 border-t border-border flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
               {canSelectForBatch && (
                 <button
@@ -178,23 +178,13 @@ export const RideCard: React.FC<RideCardProps> = ({
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all ${
                     selected
                       ? "bg-indigo-500 text-white border-indigo-500"
-                      : "hover:border-indigo-500/50"
+                      : "bg-surface-2 border-border text-text-secondary hover:border-indigo-500/50"
                   }`}
-                  style={
-                    selected
-                      ? undefined
-                      : {
-                          backgroundColor: "var(--color-surface-2)",
-                          borderColor: "var(--color-border)",
-                          color: "var(--color-text-secondary)",
-                        }
-                  }
                   title="Selecionar carona para enviar pedido em lote (Multi-Matching)"
                 >
                   <span>{selected ? "✓ No lote" : "+ Lote"}</span>
                 </button>
               )}
-
             </div>
 
             {resolvedMatchStatus === "accepted" ? (

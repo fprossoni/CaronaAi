@@ -119,18 +119,12 @@ export const OfferRidePage: React.FC = () => {
   if (user && !user.is_driver) {
     return (
       <div className="max-w-xl mx-auto py-6 animate-fade-in">
-        <div
-          className="rounded-3xl p-6 md:p-8 border shadow-xl space-y-5"
-          style={{
-            background: "var(--gradient-card)",
-            borderColor: "var(--color-border)",
-          }}
-        >
+        <div className="rounded-3xl p-6 md:p-8 border border-border bg-gradient-card shadow-xl space-y-5">
           <div>
-            <h2 className="text-xl font-extrabold" style={{ color: "var(--color-text)" }}>
+            <h2 className="text-xl font-extrabold text-text">
               Ative seu Perfil de Motorista
             </h2>
-            <p className="text-sm mt-1 leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+            <p className="text-sm mt-1 leading-relaxed text-text-muted">
               No momento sua conta está configurada apenas como <strong>Passageiro</strong>.
               Ative o modo motorista abaixo (e opcionalmente informe seu veículo) para oferecer
               caronas.
@@ -171,7 +165,7 @@ export const OfferRidePage: React.FC = () => {
 
   return (
     <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
-      <h1 className="text-2xl font-extrabold text-[var(--color-text)]">Oferecer carona</h1>
+      <h1 className="text-2xl font-extrabold text-text">Oferecer carona</h1>
       <TripRouteFields
         route={route}
         onChange={(update) => { setRoute(update); setError(""); }}
@@ -192,7 +186,7 @@ export const OfferRidePage: React.FC = () => {
         />
         <Input label="Vagas disponíveis" type="number" min={1} max={6} value={totalSeats} onChange={(event) => setTotalSeats(Number(event.target.value))} required />
         {canOfferWomenOnly && (
-          <label className="flex items-start gap-2 text-sm text-[var(--color-text)]">
+          <label className="flex items-start gap-2 text-sm text-text">
             <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
             Carona exclusiva para mulheres
           </label>

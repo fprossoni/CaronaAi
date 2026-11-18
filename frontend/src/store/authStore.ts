@@ -15,10 +15,13 @@ let sessionVersion = 0;
 interface AuthState {
   user: UserPrivate | null;
   isAuthenticated: boolean;
+  blockedByUser: Record<number, number[]>;
   setTokens: (access: string, refresh: string, user?: UserPrivate) => void;
   setUser: (user: UserPrivate) => void;
   fetchUser: () => Promise<UserPrivate | null>;
   logout: () => void;
+  isUserBlocked: (targetUserId: number) => boolean;
+  setUserBlocked: (targetUserId: number, blocked: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -26,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: !!localStorage.getItem("access_token"),
+      blockedByUser: {},
 
       setTokens: (access, refresh, user) => {
         sessionVersion++;
@@ -56,10 +60,36 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem("refresh_token");
         set({ user: null, isAuthenticated: false });
       },
+
+      isUserBlocked: (targetUserId: number): boolean => {
+        const currentUserId = get().user?.id;
+        if (!currentUserId) return false;
+        return (get().blockedByUser[currentUserId] ?? []).includes(targetUserId);
+      },
+
+      setUserBlocked: (targetUserId: number, blocked: boolean) => {
+        const currentUserId = get().user?.id;
+        if (!currentUserId) return;
+        set((state) => {
+          const currentList = state.blockedByUser[currentUserId] ?? [];
+          const nextList = blocked
+            ? Array.from(new Set([...currentList, targetUserId]))
+            : currentList.filter((id) => id !== targetUserId);
+          return {
+            blockedByUser: {
+              ...state.blockedByUser,
+              [currentUserId]: nextList,
+            },
+          };
+        });
+      },
     }),
     {
       name: "auth-storage",
-      partialize: (state) => ({ user: state.user }),
+      partialize: (state) => ({
+        user: state.user,
+        blockedByUser: state.blockedByUser,
+      }),
     }
   )
 );

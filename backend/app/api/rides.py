@@ -63,7 +63,7 @@ async def _route_between(origin: tuple[float, float], destination: tuple[float, 
 
 
 @router.post("/preview", response_model=RoutePreview)
-async def preview_route(body: RoutePreviewRequest, current_user: DriverUser) -> RoutePreview:
+async def preview_route(body: RoutePreviewRequest, current_user: VerifiedUser) -> RoutePreview:
     origin = (body.origin.lat, body.origin.lng)
     destination = (body.destination.lat, body.destination.lng)
     if not (campus_at(origin) or campus_at(destination)):
@@ -93,13 +93,17 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
         origin_label = campus_label(body.origin_campus_id)
     elif body.origin_address_id is not None:
         address = get_owned_address(db, body.origin_address_id, current_user.id)
-        origin_lat, origin_lng, origin_label = address.lat, address.lng, address.full_address
+        if origin_lat is None or origin_lng is None:
+            origin_lat, origin_lng = address.lat, address.lng
+        origin_label = origin_label or address.full_address
     if body.destination_campus_id is not None:
         destination_lat, destination_lng = CAMPUS_COORDS[body.destination_campus_id]
         destination_label = campus_label(body.destination_campus_id)
     elif body.destination_address_id is not None:
         address = get_owned_address(db, body.destination_address_id, current_user.id)
-        destination_lat, destination_lng, destination_label = address.lat, address.lng, address.full_address
+        if destination_lat is None or destination_lng is None:
+            destination_lat, destination_lng = address.lat, address.lng
+        destination_label = destination_label or address.full_address
 
     # Support the original campus and address payload.
     if (
@@ -243,12 +247,14 @@ async def search_rides(
         pickup = CAMPUS_COORDS[search.pickup_campus_id]
     elif pickup_address_id is not None:
         address = get_owned_address(db, pickup_address_id, current_user.id)
-        pickup = (address.lat, address.lng)
+        if None in pickup:
+            pickup = (address.lat, address.lng)
     if search.dropoff_campus_id is not None:
         dropoff = CAMPUS_COORDS[search.dropoff_campus_id]
     elif dropoff_address_id is not None:
         address = get_owned_address(db, dropoff_address_id, current_user.id)
-        dropoff = (address.lat, address.lng)
+        if None in dropoff:
+            dropoff = (address.lat, address.lng)
     if None in (*pickup, *dropoff):
         raise HTTPException(status_code=400, detail="Informe os pontos de origem e destino.")
     if not (campus_at(pickup) or campus_at(dropoff)):
@@ -406,13 +412,16 @@ def get_history(current_user: VerifiedUser, db: DbSession) -> list[TripHistory]:
             continue
         # A cancelled participation is "cancelled" regardless of the ride status
         participation_status = "cancelled" if match.status == MatchStatus.CANCELLED else ride_status(ride)
+        passenger_dest = match.dropoff_label or (
+            campus_label(ride.campus_point) if ride.campus_point else ride.destination_label
+        )
         results.append(TripHistory(
             ride_id=ride.id,
             role="passenger",
             status=participation_status,
-            departure_at=ride.departure_at,
-            origin_label=ride.origin_label,
-            destination_label=ride.destination_label,
+            departure_at=match.offered_pickup_at or ride.departure_at,
+            origin_label=match.pickup_label,
+            destination_label=passenger_dest,
             participants=build_participants(
                 ride,
                 current_user.id,

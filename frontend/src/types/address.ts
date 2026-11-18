@@ -10,7 +10,10 @@ export interface AddressBase {
   country: string;
 }
 
-export type AddressCreate = AddressBase;
+export interface AddressCreate extends AddressBase {
+  lat?: number | null;
+  lng?: number | null;
+}
 
 export interface AddressPublic extends AddressBase {
   id: number;

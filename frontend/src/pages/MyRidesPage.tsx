@@ -236,7 +236,7 @@ export const MyRidesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="py-16 text-center text-sm animate-pulse" style={{ color: "var(--color-text-muted)" }}>
+      <div className="py-16 text-center text-sm text-text-muted animate-pulse">
         Carregando seu painel de caronas...
       </div>
     );
@@ -261,10 +261,10 @@ export const MyRidesPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-text">
             Minhas Caronas Ativas
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+          <p className="text-sm mt-0.5 text-text-muted">
             Acompanhe aprovações, pontos de encontro no mapa e contatos de WhatsApp.
           </p>
         </div>
@@ -272,12 +272,7 @@ export const MyRidesPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate("/rides/history")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all hover:border-indigo-500/50"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor: "var(--color-border)",
-            color: "var(--color-text)",
-          }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold border border-border bg-surface text-text transition-all hover:border-indigo-500/50"
         >
           <HistoryIcon size={15} className="text-indigo-400" />
           <span>Ver Histórico & Avaliações</span>
@@ -292,21 +287,15 @@ export const MyRidesPage: React.FC = () => {
 
       {/* Empty State */}
       {!hasAnyActive && (
-        <div
-          className="rounded-3xl p-10 border text-center space-y-4"
-          style={{
-            background: "var(--gradient-card)",
-            borderColor: "var(--color-border)",
-          }}
-        >
+        <div className="rounded-3xl p-10 border border-border bg-gradient-card text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mx-auto">
             <CarIcon size={28} />
           </div>
           <div className="space-y-1">
-            <h2 className="text-lg font-bold" style={{ color: "var(--color-text)" }}>
+            <h2 className="text-lg font-bold text-text">
               Você não tem viagens ativas no momento
             </h2>
-            <p className="text-xs max-w-md mx-auto" style={{ color: "var(--color-text-muted)" }}>
+            <p className="text-xs max-w-md mx-auto text-text-muted">
               Busque um motorista que passe perto de você ou ofereça os assentos livres do seu
               carro rumo à UFRGS.
             </p>
@@ -345,12 +334,9 @@ export const MyRidesPage: React.FC = () => {
               return (
                 <div
                   key={ride.id}
-                  className="rounded-3xl p-5 border flex flex-col justify-between gap-4 shadow-md"
-                  style={{
-                    background: "var(--gradient-card)",
-                    borderColor:
-                      counts.pending > 0 ? "var(--color-primary)" : "var(--color-border)",
-                  }}
+                  className={`rounded-3xl p-5 border bg-gradient-card flex flex-col justify-between gap-4 shadow-md ${
+                    counts.pending > 0 ? "border-primary" : "border-border"
+                  }`}
                 >
                   <div className="space-y-3.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -369,39 +355,26 @@ export const MyRidesPage: React.FC = () => {
                             : "Ativa"}
                         </span>
                         {campus && (
-                          <span
-                            className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                            style={{
-                              backgroundColor: "var(--color-surface-2)",
-                              borderColor: "var(--color-border)",
-                              color: "var(--color-text-secondary)",
-                            }}
-                          >
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-border bg-surface-2 text-text-secondary">
                             {campus.shortName}
                           </span>
                         )}
                       </div>
 
-                      <span className="text-xs font-bold" style={{ color: "var(--color-text)" }}>
+                      <span className="text-xs font-bold text-text">
                         {formatDate(ride.departure_at)}
                       </span>
                     </div>
 
                     {/* Route Timeline */}
-                    <div
-                      className="p-3.5 rounded-2xl border space-y-2.5"
-                      style={{
-                        backgroundColor: "var(--color-surface-2)",
-                        borderColor: "var(--color-border)",
-                      }}
-                    >
+                    <div className="p-3.5 rounded-2xl border border-border bg-surface-2 space-y-2.5">
                       <div className="flex items-start gap-2.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase block" style={{ color: "var(--color-text-muted)" }}>
+                          <span className="text-[10px] font-bold uppercase block text-text-muted">
                             Saída
                           </span>
-                          <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text)" }}>
+                          <p className="text-sm font-semibold truncate text-text">
                             {ride.origin_label}
                           </p>
                         </div>
@@ -409,10 +382,10 @@ export const MyRidesPage: React.FC = () => {
                       <div className="flex items-start gap-2.5">
                         <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase block" style={{ color: "var(--color-text-muted)" }}>
+                          <span className="text-[10px] font-bold uppercase block text-text-muted">
                             Destino
                           </span>
-                          <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text)" }}>
+                          <p className="text-sm font-semibold truncate text-text">
                             {ride.destination_label}
                           </p>
                         </div>
@@ -420,7 +393,7 @@ export const MyRidesPage: React.FC = () => {
                     </div>
 
                     {/* Stats Row */}
-                    <div className="flex items-center justify-between text-xs flex-wrap gap-2" style={{ color: "var(--color-text-secondary)" }}>
+                    <div className="flex items-center justify-between text-xs text-text-secondary flex-wrap gap-2">
                       <span className="inline-flex items-center gap-1.5">
                         <UsersIcon size={14} className="text-emerald-400" />
                         <strong>{ride.available_seats}</strong>/{ride.total_seats} livres
@@ -472,18 +445,15 @@ export const MyRidesPage: React.FC = () => {
                       {ride.status === "in_progress" ? "Concluir carona" : "Iniciar carona"}
                     </Button>
                   </div>
-                  <div className="pt-3 border-t flex items-center justify-between gap-2" style={{ borderColor: "var(--color-border)" }}>
+                  <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => setModalRide(ride)}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all"
-                      style={{
-                        background:
-                          counts.pending > 0 ? "var(--gradient-primary)" : "var(--color-surface-2)",
-                        color: counts.pending > 0 ? "#ffffff" : "var(--color-text)",
-                        border:
-                          counts.pending > 0 ? "none" : "1px solid var(--color-border-strong)",
-                      }}
+                      className={`flex-1 inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        counts.pending > 0
+                          ? "bg-gradient-primary text-white"
+                          : "bg-surface-2 text-text border border-border-strong"
+                      }`}
                     >
                       <UsersIcon size={15} />
                       <span>
@@ -516,14 +486,7 @@ export const MyRidesPage: React.FC = () => {
               Como Passageiro ({activeMatches.length})
             </span>
             {supersededCount > 0 && (
-              <span
-                className="px-3 py-1 rounded-full text-[11px] font-medium border"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-text-muted)",
-                }}
-              >
+              <span className="px-3 py-1 rounded-full text-[11px] font-medium border border-border bg-surface-2 text-text-muted">
                 {supersededCount}{" "}
                 {supersededCount === 1
                   ? "solicitação em lote encerrada automaticamente após confirmação"
@@ -536,28 +499,43 @@ export const MyRidesPage: React.FC = () => {
             {activeMatches.map((match) => {
               const confirmed = confirmedByMatchId[match.id];
               const isAccepted = match.status === "accepted";
+              const isRideInProgress = match.ride.status === "in_progress";
               const driver = match.ride.driver;
               const driverPhone = confirmed?.driver_phone;
-              const mapKey = `passenger-${match.id}`;
-              const isMapOpen = expandedMapId === mapKey || isAccepted;
+              const carModel = confirmed?.driver_car_model ?? driver.car_model;
+              const carColor = confirmed?.driver_car_color ?? driver.car_color;
+              const carPlate = confirmed?.driver_car_plate;
+              const campus = match.ride.campus_point ? getCampusInfo(match.ride.campus_point) : null;
+              const estimatedPickupIso =
+                confirmed?.offered_pickup_at ??
+                match.offered_pickup_at ??
+                match.desired_pickup_at ??
+                match.ride.departure_at;
+              const estimatedPickupTime = format(new Date(estimatedPickupIso), "HH:mm", {
+                locale: ptBR,
+              });
+              const estimatedPickupDate = format(
+                new Date(estimatedPickupIso),
+                "dd 'de' MMM",
+                { locale: ptBR }
+              );
+              const passengerDestinationLabel =
+                match.dropoff_label || campus?.name || "Campus UFRGS";
 
               return (
                 <div
                   key={match.id}
-                  className="rounded-3xl p-5 border flex flex-col justify-between gap-4 shadow-md"
-                  style={{
-                    background: "var(--gradient-card)",
-                    borderColor: isAccepted
-                      ? "rgba(16, 185, 129, 0.5)"
-                      : "var(--color-border)",
-                  }}
+                  className={`rounded-3xl p-5 border bg-gradient-card flex flex-col justify-between gap-4 shadow-md ${
+                    isAccepted ? "border-emerald-500/50" : "border-border"
+                  }`}
                 >
                   <div className="space-y-3.5">
-                    {/* Status & Departure */}
-                    <div className="flex items-center justify-between gap-2">
+                    {/* Status Badge */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       {isAccepted ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          <CheckCircleIcon size={13} /> Carona Confirmada!
+                          <CheckCircleIcon size={13} />{" "}
+                          {isRideInProgress ? "Carona em andamento!" : "Carona Confirmada!"}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
@@ -565,21 +543,41 @@ export const MyRidesPage: React.FC = () => {
                         </span>
                       )}
 
-                      <span className="text-xs font-bold" style={{ color: "var(--color-text)" }}>
-                        {formatDate(match.ride.departure_at)}
-                      </span>
+                      {campus && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-border bg-surface-2 text-text-secondary">
+                          {campus.shortName}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Driver Profile Row + Direct WhatsApp Button */}
-                    <div
-                      className="p-3 rounded-2xl border flex items-center justify-between gap-3"
-                      style={{
-                        backgroundColor: "var(--color-surface-2)",
-                        borderColor: "var(--color-border)",
-                      }}
-                    >
+                    {/* Highlighted ETA at Meeting Point */}
+                    <div className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block">
+                          Previsão no ponto de encontro
+                        </span>
+                        <p className="text-xs text-text-muted">
+                          {isRideInProgress
+                            ? "O motorista iniciou a viagem — fique atento às mensagens"
+                            : isAccepted
+                            ? "Horário estimado para o motorista chegar ao seu embarque"
+                            : "Previsão calculada para o seu ponto de encontro"}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-2xl font-extrabold tabular-nums text-text block leading-none">
+                          {estimatedPickupTime}
+                        </span>
+                        <span className="text-[11px] font-semibold text-text-muted block mt-1">
+                          {estimatedPickupDate}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Driver Profile Row + Vehicle Identification */}
+                    <div className="p-3 rounded-2xl border border-border bg-surface-2 flex items-center justify-between gap-3 flex-wrap">
                       <div
-                        className="flex items-center gap-3 cursor-pointer group"
+                        className="flex items-center gap-3 cursor-pointer group min-w-0"
                         onClick={() => setSelectedUser(driver)}
                       >
                         <Avatar
@@ -589,120 +587,121 @@ export const MyRidesPage: React.FC = () => {
                           size="md"
                           ring
                         />
-                        <div>
-                          <p className="font-bold text-sm group-hover:text-indigo-400" style={{ color: "var(--color-text)" }}>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-text group-hover:text-indigo-400 truncate">
                             {driver.name ?? "Motorista UFRGS"}
                           </p>
-                          <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                          <p className="text-xs text-text-muted truncate">
                             {driver.course ?? "Estudante UFRGS"}
                           </p>
-                          {driver.car_model && (
-                            <p className="text-[11px] font-medium text-indigo-400 mt-0.5 flex items-center gap-1">
+                          {(carModel || carColor) && (
+                            <p className="text-[11px] font-medium text-indigo-400 mt-0.5 flex items-center gap-1 flex-wrap">
                               <CarIcon size={12} />
-                              {driver.car_model}
-                              {driver.car_color ? ` • ${driver.car_color}` : ""}
+                              <span>
+                                {carModel ?? "Veículo"}
+                                {carColor ? ` • ${carColor}` : ""}
+                              </span>
                             </p>
                           )}
                         </div>
                       </div>
 
-                      {isAccepted && driverPhone && (
-                        <a
-                          href={buildWhatsAppUrl(
-                            driverPhone,
-                            `Olá ${driver.name ?? ""}! Tudo certo para a nossa carona no Carona Aí (${match.ride.origin_label} → ${match.ride.destination_label})?`
-                          )}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md shrink-0"
-                        >
-                          <WhatsAppIcon size={15} />
-                          <span>WhatsApp</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Route & Pickup Point Summary */}
-                    <div
-                      className="p-3.5 rounded-2xl border space-y-2 text-xs"
-                      style={{
-                        backgroundColor: "var(--color-surface-2)",
-                        borderColor: "var(--color-border)",
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                        <span className="truncate" style={{ color: "var(--color-text)" }}>
-                          <strong>Rota do motorista:</strong> {match.ride.origin_label} →{" "}
-                          {match.ride.destination_label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPinIcon size={14} className="text-amber-400 shrink-0" />
-                        <span className="truncate" style={{ color: "var(--color-text)" }}>
-                          <strong>Seu ponto de encontro:</strong> {match.pickup_label}
-                        </span>
-                      </div>
-                      {match.dropoff_label && (
-                        <p className="text-[var(--color-text)]"><strong>Seu destino:</strong> {match.dropoff_label}</p>
-                      )}
-                      <div className="flex items-center justify-between pt-1" style={{ color: "var(--color-text-muted)" }}>
-                        <span>
-                          Desvio calculado: <strong>+{formatDistance(match.detour_meters)}</strong>
-                        </span>
-                        {isAccepted && driverPhone && (
-                          <span>
-                            Tel. Motorista: <strong>{driverPhone}</strong>
+                      {isAccepted && carPlate && (
+                        <div className="px-2.5 py-1 rounded-lg border border-border-strong bg-surface text-right shrink-0">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted block">
+                            Placa
                           </span>
-                        )}
+                          <span className="font-mono text-xs font-extrabold tracking-widest text-text">
+                            {carPlate}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Passenger's Own Pickup & Dropoff Summary (Driver's origin is never exposed) */}
+                    <div className="p-3.5 rounded-2xl border border-border bg-surface-2 space-y-2.5 text-xs">
+                      <div className="flex items-start gap-2.5">
+                        <MapPinIcon size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-bold uppercase block text-text-muted">
+                            Seu ponto de encontro (Embarque)
+                          </span>
+                          <p className="text-sm font-semibold text-text wrap-anywhere">
+                            {match.pickup_label}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2.5">
+                        <NavigationIcon size={15} className="text-indigo-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-bold uppercase block text-text-muted">
+                            Seu destino (Desembarque)
+                          </span>
+                          <p className="text-sm font-semibold text-text wrap-anywhere">
+                            {passengerDestinationLabel}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Map showing exact pickup point once confirmed */}
-                    {isMapOpen && confirmed?.pickup_lat != null && confirmed?.pickup_lng != null && (
-                      <InteractiveMap
-                        height="190px"
-                        origin={
-                          match.ride.origin_lat != null && match.ride.origin_lng != null
-                            ? {
-                                lat: match.ride.origin_lat,
-                                lng: match.ride.origin_lng,
-                                label: match.ride.origin_label,
-                              }
-                            : null
-                        }
-                        destination={
-                          match.ride.destination_lat != null && match.ride.destination_lng != null
-                            ? {
-                                lat: match.ride.destination_lat,
-                                lng: match.ride.destination_lng,
-                                label: match.ride.destination_label,
-                              }
-                            : null
-                        }
-                        pickup={{
-                          lat: confirmed.pickup_lat,
-                          lng: confirmed.pickup_lng,
-                          label: match.pickup_label,
-                        }}
-                        dropoff={confirmed.dropoff_lat != null && confirmed.dropoff_lng != null
-                          ? { lat: confirmed.dropoff_lat, lng: confirmed.dropoff_lng, label: match.dropoff_label ?? undefined }
-                          : null}
-                        pickupIsApproximate={false}
-                        routeGeoJson={match.ride.route_geojson}
-                      />
+                    {/* Communication & Messages Panel (Replaces Map View) */}
+                    {isAccepted ? (
+                      <div className="p-3.5 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-text flex items-center gap-1.5">
+                            <MessageIcon size={15} className="text-indigo-400 shrink-0" />
+                            Combine o embarque com o motorista
+                          </span>
+                          {driverPhone && (
+                            <span className="text-[11px] text-text-muted">
+                              Tel.: <strong className="text-text-secondary">{driverPhone}</strong>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-text-secondary leading-relaxed">
+                          Por privacidade, a rota e o endereço de origem do motorista não são exibidos. Use o chat da carona para combinar detalhes do ponto de encontro.
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={openingChat === match.ride.id}
+                            onClick={() => openChat(match.ride.id)}
+                          >
+                            <MessageIcon size={15} />
+                            <span>Abrir Mensagens da Carona</span>
+                          </Button>
+
+                          {driverPhone && (
+                            <a
+                              href={buildWhatsAppUrl(
+                                driverPhone,
+                                `Olá ${driver.name ?? ""}! Tudo certo para o nosso encontro em "${match.pickup_label}" às ${estimatedPickupTime} pelo Carona Aí?`
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md no-underline"
+                            >
+                              <WhatsAppIcon size={14} />
+                              <span>WhatsApp</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-2xl border border-border bg-surface-2 text-xs text-text-muted leading-relaxed">
+                        🔒 O chat de mensagens da carona, a placa do veículo e o contato do motorista serão liberados assim que sua solicitação for aceita.
+                      </div>
                     )}
                   </div>
 
-                  {/* Passenger Actions */}
-                  {isAccepted && <Button variant="secondary" size="sm" loading={openingChat === match.ride.id}
-                    onClick={() => openChat(match.ride.id)}><MessageIcon size={16} /> Mensagens</Button>}
-                  <div className="pt-3 border-t flex items-center justify-between gap-2" style={{ borderColor: "var(--color-border)" }}>
+                  {/* Passenger Footer Actions */}
+                  <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedUser(driver)}
-                      className="text-xs font-semibold hover:underline"
-                      style={{ color: "var(--color-text-muted)" }}
+                      className="text-xs font-semibold text-text-muted hover:underline"
                     >
                       Ver perfil do motorista
                     </button>

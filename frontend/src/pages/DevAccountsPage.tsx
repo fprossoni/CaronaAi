@@ -66,19 +66,19 @@ export function DevAccountsPage() {
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-extrabold text-[var(--color-text)]">Contas de teste</h1>
-        <p className="text-sm text-[var(--color-text-secondary)]">
+        <h1 className="text-2xl font-extrabold text-text">Contas de teste</h1>
+        <p className="text-sm text-text-secondary">
           Crie perfis e troque entre eles neste navegador. As ações são salvas no banco da API.
         </p>
         {user && (
-          <Link to={returnTo} className="inline-block text-sm font-semibold text-[var(--color-primary-light)]">
+          <Link to={returnTo} className="inline-block text-sm font-semibold text-primary-light">
             Continuar como {user.name ?? user.email}
           </Link>
         )}
       </header>
 
       {listError ? (
-        <div className="space-y-3 rounded-2xl border border-[var(--color-border)] p-4">
+        <div className="space-y-3 rounded-2xl border border-border p-4">
           <p role="alert" className="text-sm text-red-400">{listError}</p>
           <Button type="button" size="sm" variant="secondary" onClick={() => {
             setListError("");
@@ -86,16 +86,16 @@ export function DevAccountsPage() {
           }}>Tentar novamente</Button>
         </div>
       ) : accounts === null ? (
-        <p role="status" className="text-sm text-[var(--color-text-muted)]">Carregando contas de teste…</p>
+        <p role="status" className="text-sm text-text-muted">Carregando contas de teste…</p>
       ) : (
         <div className="grid items-start gap-4 md:grid-cols-2">
-          <form onSubmit={createAccount} className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-            <h2 className="text-base font-bold text-[var(--color-text)]">Criar conta</h2>
+          <form onSubmit={createAccount} className="space-y-4 rounded-2xl border border-border bg-surface p-5">
+            <h2 className="text-base font-bold text-text">Criar conta</h2>
             <Input label="Nome" value={name} onChange={(event) => setName(event.target.value)} maxLength={100} required />
             <div className="space-y-1.5">
-              <label htmlFor={genderId} className="block text-sm font-semibold text-[var(--color-text)]">Sexo</label>
+              <label htmlFor={genderId} className="block text-sm font-semibold text-text">Sexo</label>
               <select id={genderId} value={gender} onChange={(event) => setGender(event.target.value as Gender | "")}
-                required className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 text-sm text-[var(--color-text)]">
+                required className="w-full rounded-xl border border-border bg-surface-2 p-3 text-sm text-text">
                 <option value="" disabled>Selecione</option>
                 {Object.entries(genderLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
@@ -105,23 +105,23 @@ export function DevAccountsPage() {
             </Button>
           </form>
 
-          <section className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-            <h2 className="text-base font-bold text-[var(--color-text)]">Trocar de conta</h2>
+          <section className="space-y-3 rounded-2xl border border-border bg-surface p-5">
+            <h2 className="text-base font-bold text-text">Trocar de conta</h2>
             {accounts.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-muted)]">Nenhuma conta de teste neste navegador.</p>
+              <p className="text-sm text-text-muted">Nenhuma conta de teste neste navegador.</p>
             ) : (
-              <ul className="divide-y divide-[var(--color-border)]">
+              <ul className="divide-y divide-border">
                 {accounts.map((account) => (
                   <li key={account.id} className="flex items-center gap-3 py-3">
                     <Avatar name={account.name} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="break-words text-sm font-semibold text-[var(--color-text)]">{account.name}</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">
+                      <p className="break-words text-sm font-semibold text-text">{account.name}</p>
+                      <p className="text-xs text-text-muted">
                         {account.gender ? genderLabels[account.gender] : "Sexo não informado"} · {account.is_driver ? "Motorista" : "Passageiro"}
                       </p>
                     </div>
                     {user?.id === account.id ? (
-                      <span className="text-xs text-[var(--color-text-muted)]">Sessão atual</span>
+                      <span className="text-xs text-text-muted">Sessão atual</span>
                     ) : (
                       <Button type="button" size="sm" variant="secondary" disabled={pending !== null}
                         loading={pending === account.id} onClick={() => void openSession(() => devAccountsApi.signIn(account.id), account.id)}

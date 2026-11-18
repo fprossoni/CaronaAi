@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { ratingsApi } from "@/api/ratings";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
@@ -71,28 +72,23 @@ export const RatingModal: React.FC<RatingModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-3xl p-6 border shadow-2xl animate-slide-up"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderColor: "var(--color-border)",
-        }}
+        className="w-full max-w-md rounded-3xl p-6 border border-border bg-surface shadow-2xl animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold" style={{ color: "var(--color-text)" }}>
+          <h3 className="text-lg font-bold text-text">
             Avaliar Carona
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
-            style={{ color: "var(--color-text-muted)" }}
+            className="p-1.5 rounded-full text-text-muted hover:bg-white/10 transition-colors"
           >
             <XIcon size={18} />
           </button>
@@ -100,19 +96,13 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Participant Info */}
-          <div
-            className="flex items-center gap-3.5 p-3.5 rounded-2xl border"
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              borderColor: "var(--color-border)",
-            }}
-          >
+          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-border bg-surface-2">
             <Avatar name={ratedUser.name} photoUrl={ratedUser.photo_url} size="md" ring />
             <div>
-              <p className="font-bold text-sm" style={{ color: "var(--color-text)" }}>
+              <p className="font-bold text-sm text-text">
                 {ratedUser.name ?? "Estudante UFRGS"}
               </p>
-              <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              <p className="text-xs text-text-muted">
                 {ratedUser.role === "driver" ? "Motorista da viagem" : "Passageiro(a) da viagem"}
                 {ratedUser.course ? ` • ${ratedUser.course}` : ""}
               </p>
@@ -121,7 +111,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
           {/* Interactive 1–5 Star Selector */}
           <div className="text-center py-2">
-            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--color-text-muted)" }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-3 text-text-muted">
               Como foi viajar com {ratedUser.name?.split(" ")[0] ?? "este colega"}?
             </p>
             <div className="flex items-center justify-center gap-2">
@@ -154,10 +144,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
           {/* Optional Comment */}
           <div>
-            <label
-              className="block text-xs font-semibold mb-1.5"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
+            <label className="block text-xs font-semibold mb-1.5 text-text-secondary">
               Comentário ou elogio (opcional)
             </label>
             <textarea
@@ -166,12 +153,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
               placeholder="Ex.: Muito pontual, direção super tranquila, ótimo papo até o Campus do Vale!"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full p-3 rounded-xl text-sm border outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-                color: "var(--color-text)",
-              }}
+              className="w-full p-3 rounded-xl text-sm border border-border bg-surface-2 text-text outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
             />
           </div>
 
@@ -185,6 +167,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

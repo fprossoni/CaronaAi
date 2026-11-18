@@ -51,42 +51,32 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div
-        className="w-full max-w-md rounded-3xl p-8 border shadow-2xl animate-fade-in"
-        style={{
-          background: "var(--gradient-card)",
-          borderColor: "var(--color-border)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
-        <div className="flex flex-col items-center text-center mb-6">
+    <div className="min-h-screen flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md rounded-3xl p-8 sm:p-10 border border-border bg-gradient-card shadow-lg animate-fade-in">
+        <div className="flex flex-col items-center text-center mb-8">
           <Link to="/" className="no-underline flex flex-col items-center group">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg mb-3 transition-transform group-hover:scale-105"
-              style={{ background: "var(--gradient-primary)" }}
-            >
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-primary text-white shadow-lg mb-4 transition-transform group-hover:scale-105">
               <CarIcon size={28} />
             </div>
           </Link>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 mb-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 mb-3">
             <ShieldCheckIcon size={14} /> Rede Universitária Verificada
           </span>
-          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text">
             Carona Aí
           </h1>
-          <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+          <p className="text-xs sm:text-sm mt-1.5 text-text-muted">
             Compartilhe rotas com colegas dos campi da UFRGS
           </p>
         </div>
 
         {navState?.message && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-indigo-300 font-medium leading-relaxed">
+          <div className="mb-6 p-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-indigo-300 font-medium leading-relaxed">
             {navState.message}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <Input
             label="E-mail institucional"
             type="email"
@@ -105,17 +95,19 @@ export const LoginPage: React.FC = () => {
           />
 
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-medium">
+            <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-medium">
               {error}
             </div>
           )}
 
-          <Button type="submit" fullWidth loading={loading}>
-            Entrar
-          </Button>
+          <div className="pt-2">
+            <Button type="submit" fullWidth loading={loading} size="lg">
+              Entrar
+            </Button>
+          </div>
         </form>
 
-        <div className="mt-6 space-y-2 text-center text-xs" style={{ color: "var(--color-text-muted)" }}>
+        <div className="mt-8 pt-6 border-t border-border space-y-3 text-center text-xs text-text-muted">
           <p>
             Ainda não tem conta?{" "}
             <Link to="/register" className="font-bold text-indigo-400 hover:underline">
@@ -123,7 +115,7 @@ export const LoginPage: React.FC = () => {
             </Link>
           </p>
           <p>
-            <Link to="/" className="font-semibold hover:underline" style={{ color: "var(--color-text-secondary)" }}>
+            <Link to="/" className="font-semibold text-text-secondary hover:underline">
               ← Voltar para a página inicial
             </Link>
           </p>

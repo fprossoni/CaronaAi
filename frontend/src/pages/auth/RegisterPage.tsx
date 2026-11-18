@@ -72,35 +72,25 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div
-        className="w-full max-w-md rounded-3xl p-8 border shadow-2xl animate-fade-in"
-        style={{
-          background: "var(--gradient-card)",
-          borderColor: "var(--color-border)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
-        <div className="flex flex-col items-center text-center mb-6">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg mb-3"
-            style={{ background: "var(--gradient-primary)" }}
-          >
+    <div className="min-h-screen flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md rounded-3xl p-8 sm:p-10 border border-border bg-gradient-card shadow-lg animate-fade-in">
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-primary text-white shadow-lg mb-4">
             <CarIcon size={28} />
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mb-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mb-3">
             <ShieldCheckIcon size={14} /> Comunidade Exclusiva UFRGS
           </span>
-          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text">
             Criar conta no Carona Aí
           </h1>
-          <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+          <p className="text-xs sm:text-sm mt-1.5 text-text-muted">
             Aceita <code className="text-indigo-400">@ufrgs.br</code> e subdomínios de institutos como{" "}
             <code className="text-indigo-400">@inf.ufrgs.br</code>
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <Input
             label="Nome completo"
             type="text"
@@ -110,7 +100,7 @@ export const RegisterPage: React.FC = () => {
             required
           />
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Input
               label="E-mail institucional UFRGS"
               type="email"
@@ -120,7 +110,7 @@ export const RegisterPage: React.FC = () => {
               required
             />
             {affiliation && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+              <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
                 <ShieldCheckIcon size={14} className="shrink-0" />
                 <span>Vínculo reconhecido: {affiliation.fullBadge}</span>
               </div>
@@ -146,22 +136,25 @@ export const RegisterPage: React.FC = () => {
           />
 
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-medium">
+            <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-medium">
               {error}
             </div>
           )}
 
-          <Button type="submit" fullWidth loading={loading}>
-            Continuar com e-mail UFRGS
-          </Button>
+          <div className="pt-2">
+            <Button type="submit" fullWidth loading={loading} size="lg">
+              Continuar com e-mail UFRGS
+            </Button>
+          </div>
         </form>
 
-        <p className="text-center text-xs mt-6" style={{ color: "var(--color-text-muted)" }}>
+        <div className="mt-8 pt-6 border-t border-border text-center text-xs text-text-muted">
           Já faz parte da comunidade?{" "}
+          <Link to="/register" className="hidden" />
           <Link to="/login" className="font-bold text-indigo-400 hover:underline">
             Entrar na conta
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

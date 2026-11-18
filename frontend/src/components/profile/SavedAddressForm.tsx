@@ -1,8 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { addressesApi } from "@/api/addresses";
 import type { AddressCreate, AddressPublic } from "@/types/address";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
+import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
@@ -29,16 +30,70 @@ function formatCepInput(raw: string): string {
 interface SavedAddressFormProps {
   onSaved: (address: AddressPublic) => void;
   onCancel: () => void;
+  initialValues?: Partial<AddressCreate>;
 }
 
-export function SavedAddressForm({ onSaved, onCancel }: SavedAddressFormProps) {
+export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddressFormProps) {
   const toast = useToastStore();
   const [submitting, setSubmitting] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepHint, setCepHint] = useState("");
   const [error, setError] = useState("");
-  const [form, setForm] = useState<AddressCreate>(EMPTY_FORM);
+  const [form, setForm] = useState<AddressCreate>(() => ({
+    ...EMPTY_FORM,
+    ...initialValues,
+  }));
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(() =>
+    initialValues?.lat != null && initialValues?.lng != null
+      ? { lat: initialValues.lat, lng: initialValues.lng }
+      : null
+  );
+  const [manualOverride, setManualOverride] = useState<boolean>(
+    () => initialValues?.lat != null && initialValues?.lng != null
+  );
+  const [geocoding, setGeocoding] = useState(false);
   const latestCep = useRef("");
+
+  useEffect(() => {
+    if (manualOverride) return;
+    const street = form.street.trim();
+    const number = form.number.trim();
+    const city = form.city.trim();
+    if (!street || !number || !city) {
+      setCoords(null);
+      return;
+    }
+
+    let active = true;
+    const timer = setTimeout(async () => {
+      setGeocoding(true);
+      try {
+        const { data } = await addressesApi.geocode({
+          street,
+          number,
+          city,
+          state: form.state,
+          country: form.country,
+          postal_code: form.postal_code,
+        });
+        if (active) {
+          setCoords({ lat: data.lat, lng: data.lng });
+          if (!form.neighborhood?.trim() && data.neighborhood) {
+            setForm((prev) => ({ ...prev, neighborhood: prev.neighborhood || data.neighborhood }));
+          }
+        }
+      } catch {
+        // Ignore preview geocode error; user can still click on the map to position the pin
+      } finally {
+        if (active) setGeocoding(false);
+      }
+    }, 500);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [form.street, form.number, form.city, form.state, form.country, form.postal_code, manualOverride]);
 
   const handleCepLookup = async (cepValue: string) => {
     const cleanCep = cepValue.replace(/\D/g, "");
@@ -58,6 +113,7 @@ export function SavedAddressForm({ onSaved, onCancel }: SavedAddressFormProps) {
         city: data.city || prev.city,
         state: data.state || prev.state,
       }));
+      setManualOverride(false);
       setCepHint("Endereço preenchido automaticamente pelo CEP.");
     } catch {
       if (latestCep.current !== cleanCep) return;
@@ -81,10 +137,14 @@ export function SavedAddressForm({ onSaved, onCancel }: SavedAddressFormProps) {
       const { data: created } = await addressesApi.create({
         ...form,
         label: form.label.trim() || "Casa",
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
       });
       onSaved(created);
       toast.success("Endereço salvo!", `${created.label} já pode ser usado nas caronas.`);
       setForm(EMPTY_FORM);
+      setCoords(null);
+      setManualOverride(false);
       setCepHint("");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Não foi possível salvar o endereço."));
@@ -159,6 +219,42 @@ export function SavedAddressForm({ onSaved, onCancel }: SavedAddressFormProps) {
         />
       </div>
 
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-text-secondary">
+            Localização no mapa {geocoding ? "(buscando localização...)" : "(clique no mapa para ajustar o pino, se necessário)"}
+          </span>
+          {manualOverride && (
+            <button
+              type="button"
+              onClick={() => setManualOverride(false)}
+              className="text-xs font-semibold text-indigo-400 hover:underline"
+            >
+              Recalcular pelo endereço escrito
+            </button>
+          )}
+        </div>
+        <InteractiveMap
+          height="220px"
+          origin={
+            coords
+              ? {
+                  lat: coords.lat,
+                  lng: coords.lng,
+                  label: form.street.trim()
+                    ? `${form.street}${form.number.trim() ? `, ${form.number}` : ""}`
+                    : form.label || "Endereço",
+                }
+              : null
+          }
+          interactivePickMode="origin"
+          onMapClick={(lat, lng) => {
+            setManualOverride(true);
+            setCoords({ lat, lng });
+          }}
+        />
+      </div>
 
       {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       <div className="flex justify-end gap-2">

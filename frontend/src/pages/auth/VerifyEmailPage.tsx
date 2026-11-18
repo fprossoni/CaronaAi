@@ -85,23 +85,16 @@ export const VerifyEmailPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div
-        className="w-full max-w-md rounded-3xl p-8 border shadow-2xl animate-fade-in"
-        style={{
-          background: "var(--gradient-card)",
-          borderColor: "var(--color-border)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      >
-        <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-3">
+    <div className="min-h-screen flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md rounded-3xl p-8 sm:p-10 border border-border bg-gradient-card shadow-lg animate-fade-in">
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-4">
             <ShieldCheckIcon size={28} />
           </div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "var(--color-text)" }}>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-text">
             Confirme seu vínculo UFRGS
           </h1>
-          <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+          <p className="text-xs sm:text-sm mt-2 leading-relaxed text-text-muted">
             Enviamos um código de 6 dígitos para
             <br />
             <strong className="text-indigo-400">{email || "seu e-mail institucional"}</strong>
@@ -109,14 +102,14 @@ export const VerifyEmailPage: React.FC = () => {
         </div>
 
         {devToken && (
-          <div className="mb-5 p-3 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-center" style={{ color: "var(--color-text)" }}>
+          <div className="mb-6 p-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-center text-text">
             🛠️ <strong>Ambiente de Desenvolvimento:</strong> Código preenchido automaticamente (
             <code className="font-mono font-bold text-indigo-400">{devToken}</code>)
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="flex items-center justify-center gap-2" onPaste={handlePaste}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex items-center justify-center gap-2.5" onPaste={handlePaste}>
             {digits.map((d, i) => (
               <input
                 key={i}
@@ -130,28 +123,27 @@ export const VerifyEmailPage: React.FC = () => {
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 autoFocus={i === 0}
-                className="w-12 h-14 rounded-2xl text-center text-xl font-extrabold border outline-none transition-all focus:ring-2 focus:ring-indigo-500"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  borderColor: d ? "var(--color-primary)" : "var(--color-border)",
-                  color: "var(--color-text)",
-                }}
+                className={`w-12 h-14 rounded-2xl text-center text-xl font-extrabold border bg-surface-2 text-text outline-none transition-all focus:ring-2 focus:ring-indigo-500 ${
+                  d ? "border-primary" : "border-border"
+                }`}
               />
             ))}
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 text-center">
+            <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 text-center">
               {error}
             </div>
           )}
 
-          <Button type="submit" fullWidth loading={loading} disabled={token.length < 6}>
-            Confirmar Código
-          </Button>
+          <div className="pt-1">
+            <Button type="submit" fullWidth loading={loading} disabled={token.length < 6} size="lg">
+              Confirmar Código
+            </Button>
+          </div>
         </form>
 
-        <p className="text-center text-xs mt-6" style={{ color: "var(--color-text-muted)" }}>
+        <div className="mt-8 pt-6 border-t border-border text-center text-xs text-text-muted">
           Não recebeu o código?{" "}
           <button
             type="button"
@@ -161,7 +153,7 @@ export const VerifyEmailPage: React.FC = () => {
           >
             {resending ? "Reenviando..." : "Reenviar código"}
           </button>
-        </p>
+        </div>
       </div>
     </div>
   );

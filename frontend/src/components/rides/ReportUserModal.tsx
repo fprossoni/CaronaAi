@@ -9,6 +9,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usersApi } from "@/api/auth";
+import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +39,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
   onClose,
 }) => {
   const toast = useToastStore();
+  const setUserBlocked = useAuthStore((state) => state.setUserBlocked);
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const detailsId = useId();
@@ -60,6 +62,9 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
         ride_id: rideId,
         block: alsoBlock,
       });
+      if (alsoBlock) {
+        setUserBlocked(targetUser.id, true);
+      }
       toast.success(
         "Relato registrado com sucesso",
         alsoBlock
@@ -82,7 +87,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
-      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-xl backdrop:bg-black/70"
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface text-text shadow-xl backdrop:bg-black/70"
     >
       <div className="p-4 sm:p-6">
         <div className="mb-4 flex items-start justify-between gap-2">
@@ -94,7 +99,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
               <h3 id={titleId} className="text-base font-bold">
                 Reportar Ocorrência
               </h3>
-              <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              <p className="text-xs text-text-muted">
                 Contra {targetUser.name ?? "Participante"} • Viagem #{rideId}
               </p>
             </div>
@@ -103,8 +108,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
             type="button"
             aria-label="Fechar denúncia"
             onClick={onClose}
-            className="shrink-0 p-1.5 rounded-full hover:bg-white/10 transition-colors"
-            style={{ color: "var(--color-text-muted)" }}
+            className="shrink-0 p-1.5 rounded-full text-text-muted hover:bg-white/10 transition-colors"
           >
             <XIcon size={18} />
           </button>
@@ -112,24 +116,18 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              className="block text-xs font-semibold mb-2"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
+            <label className="block text-xs font-semibold mb-2 text-text-secondary">
               Motivo principal
             </label>
             <div className="space-y-1.5">
               {REPORT_REASONS.map((item) => (
                 <label
                   key={item}
-                  className="flex items-start gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition-colors"
-                  style={{
-                    backgroundColor:
-                      reason === item ? "rgba(239, 68, 68, 0.1)" : "var(--color-surface-2)",
-                    borderColor:
-                      reason === item ? "var(--color-danger)" : "var(--color-border)",
-                    color: "var(--color-text)",
-                  }}
+                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-xs text-text cursor-pointer transition-colors ${
+                    reason === item
+                      ? "border-danger bg-red-500/10"
+                      : "border-border bg-surface-2"
+                  }`}
                 >
                   <input
                     type="radio"
@@ -147,8 +145,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
           <div>
             <label
               htmlFor={detailsId}
-              className="block text-xs font-semibold mb-1.5"
-              style={{ color: "var(--color-text-secondary)" }}
+              className="block text-xs font-semibold mb-1.5 text-text-secondary"
             >
               Detalhes adicionais (opcional)
             </label>
@@ -159,23 +156,11 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
               placeholder="Descreva brevemente o que aconteceu..."
               value={details}
               onChange={(e) => setDetails(e.target.value)}
-              className="w-full p-3 rounded-xl text-sm border outline-none focus:ring-2 focus:ring-red-500/30 resize-none"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                borderColor: "var(--color-border)",
-                color: "var(--color-text)",
-              }}
+              className="w-full p-3 rounded-xl text-sm border border-border bg-surface-2 text-text outline-none focus:ring-2 focus:ring-red-500/30 resize-none"
             />
           </div>
 
-          <label
-            className="flex items-start gap-2.5 p-3 rounded-xl border text-xs cursor-pointer"
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              borderColor: "var(--color-border)",
-              color: "var(--color-text-secondary)",
-            }}
-          >
+          <label className="flex items-start gap-2.5 p-3 rounded-xl border border-border bg-surface-2 text-xs text-text-secondary cursor-pointer">
             <input
               type="checkbox"
               checked={alsoBlock}

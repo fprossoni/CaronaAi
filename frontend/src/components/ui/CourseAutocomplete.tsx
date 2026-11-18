@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { filterCourses, findCanonicalCourseName } from "@/data/ufrgsCourses";
-import styles from "./CourseAutocomplete.module.css";
 
 interface CourseAutocompleteProps {
   value: string;
@@ -103,19 +102,26 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
   };
 
   return (
-    <div className={styles.wrapper} ref={containerRef}>
+    <div className="relative flex flex-col gap-1.5" ref={containerRef}>
       {label && (
-        <label className={styles.label} htmlFor={inputId}>
-          {label} {required && <span className={styles.req}>*</span>}
+        <label
+          className="text-[13px] font-medium tracking-[0.02em] text-text-muted"
+          htmlFor={inputId}
+        >
+          {label} {required && <span className="text-danger">*</span>}
         </label>
       )}
 
-      <div className={[styles.inputWrap, error ? styles.hasError : ""].join(" ")}>
+      <div className="relative flex items-center">
         <input
           id={inputId}
           ref={inputRef}
           type="text"
-          className={styles.input}
+          className={`w-full rounded-xl border bg-surface-2 px-4 py-3 text-[15px] text-text placeholder:text-text-muted outline-none transition-all duration-150 ${
+            error
+              ? "border-danger focus:ring-3 focus:ring-red-500/20"
+              : "border-border focus:border-primary focus:ring-3 focus:ring-indigo-500/20"
+          }`}
           placeholder={placeholder}
           value={value}
           onChange={handleInputChange}
@@ -127,7 +133,10 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
       </div>
 
       {isOpen && (
-        <ul className={styles.dropdown} role="listbox">
+        <ul
+          className="absolute top-[calc(100%+4px)] left-0 right-0 z-60 m-0 max-h-55 list-none overflow-y-auto rounded-xl border border-border bg-surface py-1 shadow-md"
+          role="listbox"
+        >
           {matches.map((course, idx) => {
             const isSelected = course.toLowerCase() === value.trim().toLowerCase();
             const isActive = idx === activeIndex;
@@ -136,11 +145,9 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
                 key={course}
                 role="option"
                 aria-selected={isSelected}
-                className={[
-                  styles.item,
-                  isActive ? styles.itemActive : "",
-                  isSelected ? styles.itemSelected : "",
-                ].join(" ")}
+                className={`flex cursor-pointer items-center justify-between px-3.5 py-2.5 text-sm transition-colors duration-150 hover:bg-indigo-500/15 ${
+                  isActive ? "bg-indigo-500/15" : ""
+                } ${isSelected ? "font-semibold text-primary" : "text-text"}`}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   handleSelectCourse(course);
@@ -153,7 +160,7 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
           })}
 
           {matches.length === 0 && (
-            <li className={styles.empty}>
+            <li className="px-3.5 py-3 text-center text-[13px] text-text-muted">
               Nenhum curso oficial encontrado com esse nome.
             </li>
           )}
@@ -161,11 +168,9 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
           <li
             role="option"
             aria-selected={activeIndex === matches.length}
-            className={[
-              styles.item,
-              styles.otherItem,
-              activeIndex === matches.length ? styles.itemActive : "",
-            ].join(" ")}
+            className={`mt-1 flex cursor-pointer items-center justify-between border-t border-border px-3.5 py-2.5 text-sm font-medium text-primary transition-colors duration-150 hover:bg-indigo-500/25 ${
+              activeIndex === matches.length ? "bg-indigo-500/15" : ""
+            }`}
             onMouseDown={(e) => {
               e.preventDefault();
               handleSelectOther();
@@ -176,8 +181,8 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
         </ul>
       )}
 
-      {error && <p className={styles.error}>{error}</p>}
-      {hint && !error && <p className={styles.hint}>{hint}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
+      {hint && !error && <p className="text-xs text-text-muted">{hint}</p>}
     </div>
   );
 };
