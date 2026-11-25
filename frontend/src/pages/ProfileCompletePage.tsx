@@ -21,6 +21,7 @@ import type { Gender, ProfileUpdate } from "@/types/user";
 type Preference = "passenger" | "driver" | "both";
 
 interface FormState {
+  name: string;
   course: string;
   birthDate: string;
   gender: Gender | "";
@@ -30,6 +31,7 @@ interface FormState {
   photoUrl: string;
   bio: string;
   campuses: string[];
+  carBrand: string;
   carModel: string;
   carPlate: string;
   carColor: string;
@@ -58,6 +60,7 @@ export const ProfileCompletePage: React.FC = () => {
   const { user, setUser } = useAuthStore();
 
   const [form, setForm] = useState<FormState>(() => ({
+    name: user?.name ?? "",
     course: user?.course ?? "",
     birthDate: user?.birth_date ?? "",
     gender: user?.gender ?? "",
@@ -67,12 +70,13 @@ export const ProfileCompletePage: React.FC = () => {
     photoUrl: user?.photo_url ?? "",
     bio: user?.bio ?? "",
     campuses: user?.campuses ?? [],
+    carBrand: user?.car_brand ?? "",
     carModel: user?.car_model ?? "",
     carPlate: user?.car_plate ?? "",
     carColor: user?.car_color ?? "",
   }));
   const [errors, setErrors] = useState<
-    Partial<Record<"course" | "birthDate" | "gender" | "preference" | "carPlate", string>>
+    Partial<Record<keyof FormState, string>>
   >({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -108,12 +112,18 @@ export const ProfileCompletePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors: typeof errors = {};
+    if (!form.name.trim()) nextErrors.name = "Informe seu nome.";
     if (!form.course.trim()) nextErrors.course = "Informe seu curso.";
     const birthDateErr = validateBirthDate(form.birthDate);
     if (birthDateErr) nextErrors.birthDate = birthDateErr;
     if (!form.gender) nextErrors.gender = "Selecione seu gênero.";
     if (!form.preference) nextErrors.preference = "Selecione uma modalidade.";
-    if (isDriver && form.carPlate.trim()) {
+    if (!form.phone.trim()) nextErrors.phone = "Informe seu telefone com DDD.";
+    if (isDriver) {
+      if (!form.carBrand.trim()) nextErrors.carBrand = "Informe a marca.";
+      if (!form.carModel.trim()) nextErrors.carModel = "Informe o modelo.";
+      if (!form.carColor.trim()) nextErrors.carColor = "Informe a cor.";
+      if (!form.carPlate.trim()) nextErrors.carPlate = "Informe a placa.";
       if (!isValidCarPlate(form.carPlate)) {
         nextErrors.carPlate = "Formato inválido (ABC1234 ou ABC1C34).";
       }
@@ -127,6 +137,7 @@ export const ProfileCompletePage: React.FC = () => {
       const formattedInsta = form.instagram.trim() ? formatSocialHandle(form.instagram) : undefined;
       const formattedPhone = form.phone.trim() ? formatPhone(form.phone) : undefined;
       const payload: ProfileUpdate = {
+        name: form.name.trim(),
         course: form.course.trim(),
         birth_date: form.birthDate.trim(),
         gender: form.gender as Gender,
@@ -139,6 +150,7 @@ export const ProfileCompletePage: React.FC = () => {
         is_driver: form.preference !== "passenger",
       };
       if (payload.is_driver) {
+        payload.car_brand = form.carBrand.trim();
         payload.car_model = form.carModel.trim() || undefined;
         payload.car_plate = form.carPlate.trim() ? formatCarPlate(form.carPlate) : undefined;
         payload.car_color = form.carColor.trim() || undefined;
@@ -169,6 +181,7 @@ export const ProfileCompletePage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-7">
+          <Input label="Nome completo" value={form.name} onChange={(e) => setField("name", e.target.value)} error={errors.name} required />
           {/* Identity & Avatar */}
           <section className="p-4 rounded-md border border-border bg-surface-2">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -329,22 +342,28 @@ export const ProfileCompletePage: React.FC = () => {
             {isDriver && (
               <div className="rounded-md border border-dashed border-border-strong bg-surface-2 p-4 space-y-3">
                 <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-accent-text">
-                  Veículo (opcional)
+                  Veículo (obrigatório para motoristas)
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input label="Marca" placeholder="Volkswagen" value={form.carBrand} onChange={(e) => setField("carBrand", e.target.value)} error={errors.carBrand} required />
                   <Input
+                    required
+                    error={errors.carModel}
                     label="Modelo"
-                    placeholder="VW Gol 2022"
+                    placeholder="Gol 2022"
                     value={form.carModel}
                     onChange={(e) => setField("carModel", e.target.value)}
                   />
                   <Input
+                    required
+                    error={errors.carColor}
                     label="Cor"
                     placeholder="Prata"
                     value={form.carColor}
                     onChange={(e) => setField("carColor", e.target.value)}
                   />
                   <Input
+                    required
                     label="Placa"
                     placeholder="ABC1C34"
                     maxLength={7}
@@ -361,12 +380,15 @@ export const ProfileCompletePage: React.FC = () => {
           <section className="space-y-4">
             <div className="border-b border-border pb-2">
               <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-accent-text">
-                03 · CONTATO (OPCIONAL)
+                03 · CONTATO
               </h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Input
+                required
+                error={errors.phone}
+                hint="Compartilhado apenas após a confirmação da carona."
                 label="WhatsApp"
                 placeholder="(51) 99999-9999"
                 type="tel"

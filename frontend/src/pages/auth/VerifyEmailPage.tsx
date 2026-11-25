@@ -15,7 +15,7 @@ export const VerifyEmailPage: React.FC = () => {
   const { setTokens, fetchUser } = useAuthStore();
   const state = location.state as { email?: string; devToken?: string } | null;
   const email = state?.email ?? "";
-  const devToken = state?.devToken ?? "";
+  const [devToken, setDevToken] = useState(state?.devToken ?? "");
 
   const [digits, setDigits] = useState<string[]>(() => {
     if (devToken && devToken.length === 6) {
@@ -76,8 +76,10 @@ export const VerifyEmailPage: React.FC = () => {
   const handleResend = async () => {
     setResending(true);
     try {
-      await authApi.resendVerification();
-      toast.info("Código reenviado", "Verifique sua caixa de entrada.");
+      const { data } = await authApi.resendVerification(email);
+      setDevToken(data.dev_token ?? "");
+      if (data.dev_token) setDigits(data.dev_token.split(""));
+      toast.info("Código reenviado", data.dev_token ? "Modo de desenvolvimento: envio simulado." : "Verifique sua caixa de entrada.");
     } catch (err: unknown) {
       toast.error("Erro ao reenviar", getErrorMessage(err));
     } finally {

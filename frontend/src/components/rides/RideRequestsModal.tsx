@@ -94,6 +94,27 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
     };
   }, [load]);
 
+  useEffect(() => {
+    if (loading || actingId !== null) return;
+    let active = true;
+    let timer: number;
+    async function refreshRequests() {
+      try {
+        const { data } = await matchesApi.getRideMatches(ride.id);
+        if (active) setRequests(data);
+      } catch {
+        // Preserve the list until it can be refreshed again.
+      } finally {
+        if (active) timer = window.setTimeout(refreshRequests, 5000);
+      }
+    }
+    timer = window.setTimeout(refreshRequests, 5000);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [ride.id, loading, actingId]);
+
   const handleRespond = async (matchId: number, action: "accept" | "reject") => {
     setActingId(matchId);
 
@@ -282,7 +303,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                   : null;
                 const exactLabel = structuredAddress ?? detail?.pickup_label ?? m.pickup_region;
                 const passengerPhone =
-                  detail?.passenger_phone ?? m.passenger_phone ?? m.passenger.phone;
+                  detail?.passenger_phone ?? m.passenger_phone;
                 const pickupEta = detail?.offered_pickup_at ?? m.offered_pickup_at;
 
                 return (

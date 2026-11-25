@@ -503,7 +503,7 @@ export const MyRidesPage: React.FC = () => {
             </span>
             {supersededCount > 0 && (
               <span className="px-2 py-0.5 rounded-[2px] font-mono text-[11px] border border-border bg-surface-2 text-text-muted">
-                {supersededCount} encerrada(s) no lote
+                {supersededCount} solicitação(ões) substituída(s)
               </span>
             )}
           </div>
@@ -515,8 +515,8 @@ export const MyRidesPage: React.FC = () => {
               const isRideInProgress = match.ride.status === "in_progress";
               const driver = match.ride.driver;
               const driverPhone = confirmed?.driver_phone;
-              const carModel = confirmed?.driver_car_model ?? driver.car_model;
-              const carColor = confirmed?.driver_car_color ?? driver.car_color;
+              const carModel = [confirmed?.driver_car_brand ?? driver.car_brand, confirmed?.driver_car_model ?? driver.car_model].filter(Boolean).join(" ");
+              const carColor = isAccepted ? confirmed?.driver_car_color : undefined;
               const carPlate = confirmed?.driver_car_plate;
               const campus = match.ride.campus_point ? getCampusInfo(match.ride.campus_point) : null;
               const estimatedPickupIso =

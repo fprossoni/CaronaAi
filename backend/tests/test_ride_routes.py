@@ -1,7 +1,7 @@
 """PostGIS integration checks for campus matching and ride requests."""
 
 import unittest
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -49,6 +49,17 @@ class RideRoutesTest(unittest.TestCase):
                  is_active=True, is_verified=True),
         ])
         self.db.flush()
+        for user_id in (1, 2, 3):
+            user = self.db.get(User, user_id)
+            user.course = "Computação"
+            user.gender = "female"
+            user.birth_date = date(2000, 1, 1)
+            user.phone = "(51) 99999-9999"
+        driver = self.db.get(User, 1)
+        driver.car_brand = "Volkswagen"
+        driver.car_model = "Gol"
+        driver.car_color = "Prata"
+        driver.car_plate = "ABC1C34"
         self.db.add_all([
             UserAddress(id=1, user_id=2, label="Casa", street="Rua A", number="10",
                         postal_code="90000-001", lat=-30.034, lng=-51.219),
@@ -82,6 +93,34 @@ class RideRoutesTest(unittest.TestCase):
             "pickup_after": self.departure.isoformat(),
             "pickup_before": (self.departure + timedelta(minutes=10)).isoformat(),
         }
+
+    def test_individual_requests_share_a_search_batch_across_departure_times(self):
+        first = self.create_ride()
+        later = self.departure + timedelta(minutes=90)
+        second = self.create_ride(departure_at=later.isoformat())
+        third = self.create_ride(departure_at=later.isoformat())
+        batch_id = str(uuid4())
+        self.user_id = 2
+        trip = {
+            "pickup_address_id": 1, "dropoff_campus_id": "campus_saude",
+            "batch_id": batch_id, "desired_pickup_at": self.departure.isoformat(),
+        }
+        for ride_id in (first, second):
+            response = self.client.post("/matches/", json={**trip, "ride_id": ride_id})
+            self.assertEqual(response.status_code, 201, response.text)
+            self.assertEqual(response.json()["batch_id"], batch_id)
+            if ride_id == first:
+                first_match = response.json()["id"]
+        self.user_id = 1
+        response = self.client.patch(f"/matches/{first_match}/respond", json={"action": "accept"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.client.get(f"/matches/ride/{second}").json(), [])
+        self.user_id = 2
+        matches = {m["ride_id"]: m["status"] for m in self.client.get("/matches/my").json()}
+        self.assertEqual(matches, {first: "accepted", second: "superseded"})
+        response = self.client.post("/matches/", json={**trip, "ride_id": third})
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["detail"], "Uma carona desta busca já foi confirmada")
 
     def test_matching_campus_destination_search_and_request(self):
         ride_id = self.create_ride()
@@ -299,7 +338,7 @@ class RideRoutesTest(unittest.TestCase):
         self.assertEqual(datetime.fromisoformat(ride["estimated_dropoff_at"]), self.departure + timedelta(minutes=3))
         self.assertIsNone(ride["detour_geojson"])
 
-    def test_search_prioritizes_smaller_estimated_detour_over_earlier_pickup(self):
+    def test_search_ranks_legacy_windows_by_distance_and_desired_time_by_cost(self):
         first_origin = (-30.033, -51.221)
         second_origin = (-30.034, -51.222)
         pickup = (-30.034, -51.219)
@@ -325,16 +364,16 @@ class RideRoutesTest(unittest.TestCase):
         self.table.assert_awaited_once()
         self.route.assert_not_called()
 
-        # A punctual ride with a larger detour loses to a slightly later one.
+        # With a desired time, punctuality can outweigh the shorter detour.
         response = self.client.get("/rides/search", params={
             "pickup_address_id": 1, "dropoff_campus_id": "campus_saude",
             "desired_pickup_at": (self.departure + timedelta(minutes=2)).isoformat(),
         })
         self.assertEqual(response.status_code, 200, response.text)
-        smaller, punctual = response.json()
-        self.assertEqual((smaller["id"], punctual["id"]), (smaller_id, earlier_id))
+        punctual, smaller = response.json()
+        self.assertEqual((punctual["id"], smaller["id"]), (earlier_id, smaller_id))
         self.assertEqual(punctual["pickup_difference_seconds"], 0)
-        self.assertLess(smaller["match_cost"], punctual["match_cost"])
+        self.assertLess(punctual["match_cost"], smaller["match_cost"])
 
     def test_search_allows_estimated_detours_below_ten_kilometers(self):
         first_origin = (-30.033, -51.221)

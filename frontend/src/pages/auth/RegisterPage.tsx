@@ -55,7 +55,9 @@ export const RegisterPage: React.FC = () => {
       });
       toast.success(
         "Conta criada",
-        "Enviamos um código de verificação para seu e-mail UFRGS."
+        res.data.dev_token
+          ? "Modo de desenvolvimento: código disponível na próxima tela, sem envio de e-mail."
+          : "Enviamos um código de verificação para seu e-mail UFRGS."
       );
       navigate("/verify-email", {
         state: {

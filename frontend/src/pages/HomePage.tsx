@@ -87,9 +87,9 @@ export const HomePage: React.FC = () => {
             desc: "Acesso restrito a e-mails @ufrgs.br e institutos.",
           },
           {
-            code: "02 · MULTI-MATCHING",
+            code: "02 · OPÇÕES DE CARONA",
             icon: <NavigationIcon size={18} />,
-            desc: "Peça várias caronas; o primeiro aceite encerra as demais.",
+            desc: "Compare os horários e escolha a carona que funciona para você.",
           },
           {
             code: "03 · ENDEREÇO OCULTO",

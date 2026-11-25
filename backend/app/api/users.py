@@ -9,6 +9,7 @@ from app.models.report import Report
 from app.models.user import User
 from app.schemas.report import ReportCreate, ReportPublic
 from app.schemas.user import ProfileUpdate, UserPrivate, UserPublic
+from app.services.match_rules import is_blocked_between
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -40,6 +41,8 @@ def get_user(user_id: int, db: DbSession, current_user: VerifiedUser) -> User:
     """Get public profile of another user."""
     user = db.get(User, user_id)
     if not user or not user.is_active:
+        raise HTTPException(status_code=404, detail="User not found")
+    if is_blocked_between(db, current_user.id, user_id):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 

@@ -112,3 +112,45 @@ npm run test:messages
 | `could not read env file: .env` | `.env` não existe | Copiar `.env.example` para `.env` |
 | `CREATE EXTENSION postgis` falha | PostgreSQL comum sem PostGIS | Use a imagem `postgis/postgis:16-3.4-alpine` do Docker |
 | Frontend não consegue acessar a API | CORS bloqueando | Verifique `ALLOWED_ORIGINS` no `.env` |
+
+## Autenticação e envio de e-mail
+
+### Perfis e privacidade
+
+- Público (`UserPublic`): nome, curso, foto, gênero, idade, bio, campi, avaliações e marca/modelo do veículo. Nunca inclui contatos, cor, placa, e-mail ou data de nascimento.
+- Confirmado (`UserConfirmed`): acrescenta telefone, redes sociais, cor e placa, apenas nos detalhes de um match aceito acessados pelo motorista ou pelo passageiro correspondente. Bloqueio ou cancelamento revoga essa liberação em novas consultas.
+- Privado (`UserPrivate`): perfil do próprio usuário, incluindo e-mail e nascimento. Endereços salvos continuam restritos ao dono nos endpoints de endereços.
+
+Para buscar, solicitar, oferecer ou confirmar caronas, contas comuns precisam de nome, curso, gênero, nascimento válido (16 a 100 anos) e telefone com DDD. Motoristas também precisam de marca, modelo, cor e placa válida. Foto e redes sociais são opcionais. Contas de desenvolvimento mantêm a dispensa de preenchimento no modo de testes.
+
+Perfis antigos sem telefone ou marca do veículo precisam ser completados. A marca não é inferida do texto do modelo. Aplique `alembic upgrade head` antes de iniciar a versão atualizada.
+
+Cadastro e recuperação de senha usam a mesma configuração no backend:
+
+- `DEBUG=true`: simula o envio, retorna `dev_token` para a tela e registra o código no log. Não conecta ao SMTP.
+- `DEBUG=false`: exige SMTP e nunca retorna o código na resposta da API. Falhas de envio geram erro de serviço, sem simular sucesso. Também desabilita as contas de desenvolvimento, mesmo que `DEV_ACCOUNTS_ENABLED` tenha ficado ativo.
+
+Para envio real, configure no `.env`:
+
+```dotenv
+DEBUG=false
+DEV_ACCOUNTS_ENABLED=false
+SMTP_HOST=<servidor SMTP da conta>
+SMTP_PORT=587
+SMTP_USER=<conta de e-mail real>
+SMTP_PASSWORD=<credencial SMTP da conta>
+EMAIL_FROM=
+```
+
+Com `EMAIL_FROM` vazio, o remetente é `SMTP_USER`. Se preenchido, deve ser autorizado pelo provedor. Não é necessário um domínio próprio do Carona Aí; é necessária uma conta ou serviço autorizado a enviar e-mails. O código usa STARTTLS na porta 587. Obtenha as credenciais SMTP conforme as regras do provedor e não as coloque no frontend nem no repositório. Reinicie o backend após alterar o ambiente.
+
+No login, **Esqueci minha senha** abre `/forgot-password`. O usuário informa o e-mail, recebe um código de seis dígitos e define a nova senha. O código expira em 15 minutos por padrão, permite cinco tentativas e tem intervalo mínimo de um minuto para reenvio. Um novo código invalida o anterior. A troca de senha invalida as sessões anteriores.
+
+Para verificar a entrega real, use uma conta institucional sob seu controle e `DEBUG=false`. Os testes automatizados simulam SMTP e não comprovam entrega na caixa de entrada.
+
+Aplique a migração antes de usar a nova versão:
+
+```bash
+docker compose exec backend alembic upgrade head
+docker compose exec backend python -m unittest discover -s tests -p test_auth.py -v
+```

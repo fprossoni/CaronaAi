@@ -9,7 +9,7 @@ from geoalchemy2.shape import to_shape
 from shapely.geometry import mapping
 from sqlalchemy import func, select
 
-from app.api.deps import DbSession, DriverUser, VerifiedUser
+from app.api.deps import CompleteUser, DbSession, DriverUser, VerifiedUser
 from app.core.campuses import CAMPUS_COORDS, CAMPUS_REQUIRED_MESSAGE, campus_at, campus_label
 from app.models.address import UserAddress
 from app.models.rating import Rating
@@ -22,6 +22,7 @@ from app.schemas.ride import (
 from app.services.addresses import get_owned_address
 from app.services.geocoding import geocode_address
 from app.services.matching import find_matching_rides
+from app.services.match_rules import is_blocked_between
 from app.services.osrm import InvalidRouteError, RouteResult, get_route
 
 router = APIRouter(prefix="/rides", tags=["rides"])
@@ -217,7 +218,7 @@ async def create_ride(body: RideCreate, current_user: DriverUser, db: DbSession)
 
 @router.get("/search", response_model=list[RideSearchResult])
 async def search_rides(
-    current_user: VerifiedUser,
+    current_user: CompleteUser,
     db: DbSession,
     search: Annotated[SearchRidesRequest, Query()],
 ) -> list[RideSearchResult]:
@@ -296,6 +297,8 @@ async def search_rides(
 
     results = []
     for c in candidates:
+        if not (c.ride.driver.is_active and c.ride.driver.is_verified and c.ride.driver.profile_complete):
+            continue
         ride_schema = _serialize_ride(c.ride, RideSearchResult)
         ride_schema.driver_completed_ride_count = completed_counts.get(c.ride.driver_id, 0)
         ride_schema.match_cost = c.match_cost
@@ -438,6 +441,8 @@ def get_ride(ride_id: int, db: DbSession, current_user: VerifiedUser) -> RideDet
     """Get a specific ride by ID."""
     ride = db.get(Ride, ride_id)
     if not ride:
+        raise HTTPException(status_code=404, detail="Ride not found")
+    if is_blocked_between(db, current_user.id, ride.driver_id):
         raise HTTPException(status_code=404, detail="Ride not found")
     return _serialize_ride(ride, RideDetail, driver_view=ride.driver_id == current_user.id)
 

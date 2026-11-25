@@ -10,6 +10,7 @@ MAX_AGE = 100
 
 
 class ProfileUpdate(BaseModel):
+    name: str | None = None
     course: str | None = None
     gender: Gender | None = None
     phone: str | None = None
@@ -20,9 +21,25 @@ class ProfileUpdate(BaseModel):
     campuses: list[str] | None = None
     birth_date: date | None = None
     is_driver: bool = False
+    car_brand: str | None = None
     car_model: str | None = None
     car_plate: str | None = None
     car_color: str | None = None
+
+    @field_validator("name", "course", "car_brand", "car_model", "car_color", mode="before")
+    @classmethod
+    def trim_text(cls, value):
+        return value.strip() or None if isinstance(value, str) else value
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        if not value or not value.strip():
+            return None
+        digits = re.sub(r"\D", "", value)
+        if len(digits) not in (10, 11) and not (digits.startswith("55") and len(digits) in (12, 13)):
+            raise ValueError("Informe um telefone válido com DDD.")
+        return value.strip()
 
     @field_validator("car_plate")
     @classmethod
@@ -62,39 +79,35 @@ class ProfileUpdate(BaseModel):
 
 
 class UserPublic(BaseModel):
-    """Public-facing user info (shown in ride listings and matching lists).
-
-    Shown to the other side of a potential match: email, photo, name, course,
-    gender, age, instagram and phone. The exact birth date is never exposed.
-    """
+    """Level 1: minimal profile visible before confirmation."""
     id: int
     name: str | None
-    email: str
     course: str | None
     gender: Gender | None = None
     photo_url: str | None
-    social_link: str | None
-    instagram: str | None = None
-    phone: str | None = None
     age: int | None = None
     bio: str | None = None
     campuses: list[str] | None = None
     avg_rating: float
     rating_count: int
     is_driver: bool
+    car_brand: str | None = None
     car_model: str | None = None
-    car_color: str | None = None
-
     model_config = {"from_attributes": True}
 
 
-class UserPrivate(UserPublic):
-    """Full profile — only returned to the user themselves."""
-    birth_date: date | None = None
-    car_model: str | None
-    car_plate: str | None
+class UserConfirmed(UserPublic):
+    """Level 2: only shared with the counterpart of a confirmed match."""
+    phone: str | None = None
+    social_link: str | None = None
+    instagram: str | None = None
     car_color: str | None = None
+    car_plate: str | None = None
+
+
+class UserPrivate(UserConfirmed):
+    """Level 3: account owner only. Addresses use owner-scoped endpoints."""
+    email: str
+    birth_date: date | None = None
     is_verified: bool
     profile_complete: bool = False
-
-    model_config = {"from_attributes": True}

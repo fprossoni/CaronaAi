@@ -36,6 +36,8 @@ def get_current_user(
     user = db.get(User, int(user_id))
     if user is None or not user.is_active or (user.dev_owner_hash is not None and not settings.DEV_ACCOUNTS_ENABLED):
         raise credentials_exception
+    if payload.get("version", 0) != user.auth_version:
+        raise credentials_exception
     return user
 
 
@@ -51,8 +53,14 @@ def get_verified_user(
     return current_user
 
 
+def get_complete_user(current_user: Annotated[User, Depends(get_verified_user)]) -> User:
+    if not current_user.profile_complete:
+        raise HTTPException(403, "Complete seu perfil e os dados obrigatórios antes de usar as caronas.")
+    return current_user
+
+
 def get_driver_user(
-    current_user: Annotated[User, Depends(get_verified_user)],
+    current_user: Annotated[User, Depends(get_complete_user)],
 ) -> User:
     """Ensures the current user is a driver."""
     if not current_user.is_driver:
@@ -66,5 +74,6 @@ def get_driver_user(
 # Type aliases for use in route signatures
 CurrentUser = Annotated[User, Depends(get_current_user)]
 VerifiedUser = Annotated[User, Depends(get_verified_user)]
+CompleteUser = Annotated[User, Depends(get_complete_user)]
 DriverUser = Annotated[User, Depends(get_driver_user)]
 DbSession = Annotated[Session, Depends(get_db)]

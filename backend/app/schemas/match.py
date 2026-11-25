@@ -1,13 +1,14 @@
 """Pydantic schemas for matches."""
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from app.models.match import MatchStatus
 from app.schemas.address import AddressCreate
 from app.schemas.ride import CampusId, PickupWindow, RidePublic
-from app.schemas.user import UserPublic
+from app.schemas.user import UserConfirmed, UserPublic
 
 
 class MatchTrip(PickupWindow):
@@ -30,6 +31,7 @@ class MatchTrip(PickupWindow):
 
 class MatchRequest(MatchTrip):
     ride_id: int
+    batch_id: UUID | None = None
 
 
 class MatchBatchRequest(MatchTrip):
@@ -40,6 +42,7 @@ class MatchPublic(BaseModel):
     """What the passenger sees about their own match."""
     id: int
     ride_id: int
+    batch_id: str | None = None
     status: MatchStatus
     detour_meters: float
     detour_seconds: float
@@ -89,6 +92,9 @@ class MatchConfirmed(MatchPublic):
     Includes exact pickup coords, contact info, and detailed pickup address.
     """
     # Driver info (for passenger)
+    driver: UserConfirmed | None = None
+    passenger: UserConfirmed | None = None
+    driver_car_brand: str | None = None
     driver_phone: str | None = None
     driver_car_model: str | None = None
     driver_car_color: str | None = None

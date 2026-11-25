@@ -80,9 +80,8 @@ class RideCandidate:
     def rank(self, desired_pickup_at: datetime) -> None:
         self.pickup_difference_seconds = (self.estimated_pickup_at - desired_pickup_at).total_seconds()
         self.match_cost = (
-            settings.MATCH_TIME_WEIGHT * (self.pickup_difference_seconds / settings.MATCH_TIME_SCALE_SECONDS) ** 2
-            + settings.MATCH_DISTANCE_WEIGHT * (self.detour_meters / settings.MATCH_DISTANCE_SCALE_METERS) ** 2
-            + settings.MATCH_DURATION_WEIGHT * (self.detour_seconds / settings.MATCH_DURATION_SCALE_SECONDS) ** 2
+            settings.MATCH_TIME_WEIGHT * self.pickup_difference_seconds ** 2
+            + settings.MATCH_DURATION_WEIGHT * self.detour_seconds ** 2
         )
 
     def rejection_reason(
@@ -406,7 +405,7 @@ async def find_matching_rides(
     if desired_pickup_at is not None:
         for candidate in results:
             candidate.rank(desired_pickup_at)
-        results.sort(key=lambda r: (r.match_cost, r.detour_meters, abs(r.pickup_difference_seconds), r.ride.id))
+        results.sort(key=lambda r: (r.match_cost, abs(r.pickup_difference_seconds), r.detour_seconds, r.ride.id))
     else:  # Compatibility for existing clients using explicit windows.
         results.sort(key=lambda r: (r.detour_meters, r.detour_seconds, r.estimated_pickup_at, r.ride.id))
     return results

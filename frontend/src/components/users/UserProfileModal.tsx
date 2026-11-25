@@ -8,8 +8,7 @@ import type { UserPublic } from "@/types/user";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
-import { buildSocialUrl, getCampusInfo } from "@/lib/formatters";
-import { extractUfrgsAffiliation } from "@/lib/validators";
+import { getCampusInfo } from "@/lib/formatters";
 import { getErrorMessage } from "@/lib/errors";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +16,6 @@ import {
   BanIcon,
   CarIcon,
   GraduationCapIcon,
-  InstagramIcon,
   MapPinIcon,
   ShieldCheckIcon,
   StarIcon,
@@ -44,8 +42,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const isBlocked = Boolean(
     currentUser?.id && (blockedByUser[currentUser.id] ?? []).includes(profile.id)
   );
-  const affiliation = extractUfrgsAffiliation(profile.email);
-  const socialHandle = profile.instagram || profile.social_link;
 
   useEffect(() => {
     let active = true;
@@ -116,7 +112,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           <div className="absolute bottom-2.5 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-surface/90 backdrop-blur-md text-secondary font-mono text-[10px] font-semibold border border-border-strong">
             <ShieldCheckIcon size={12} />
-            <span>{affiliation.fullBadge}</span>
+            <span>UFRGS</span>
           </div>
         </div>
 
@@ -201,32 +197,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             )}
 
-            {profile.is_driver && (profile.car_model || profile.car_color) && (
+            {profile.is_driver && (profile.car_brand || profile.car_model) && (
               <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-border bg-surface-2">
                 <div className="p-1.5 rounded-md bg-surface text-accent-text border border-border">
                   <CarIcon size={15} />
                 </div>
                 <div className="text-xs">
                   <span className="block font-semibold text-text">
-                    {profile.car_model ?? "Veículo"}
+                    {[profile.car_brand, profile.car_model].filter(Boolean).join(" ") || "Veículo"}
                   </span>
-                  {profile.car_color && (
-                    <span className="text-text-muted">{profile.car_color}</span>
-                  )}
                 </div>
               </div>
-            )}
-
-            {socialHandle && (
-              <a
-                href={buildSocialUrl(socialHandle)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-xs font-semibold border border-border bg-surface-2 text-accent-text hover:border-border-strong transition-colors no-underline"
-              >
-                <InstagramIcon size={13} />
-                <span>{socialHandle}</span>
-              </a>
             )}
           </div>
 

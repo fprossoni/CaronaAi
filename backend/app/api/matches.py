@@ -15,8 +15,9 @@ from fastapi import APIRouter, HTTPException, status
 from geoalchemy2 import WKTElement
 from geoalchemy2.shape import to_shape
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
-from app.api.deps import DbSession, VerifiedUser
+from app.api.deps import CompleteUser, DbSession, DriverUser, VerifiedUser
 from app.core.campuses import CAMPUS_COORDS, CAMPUS_REQUIRED_MESSAGE, campus_at, campus_label
 from app.core.config import settings
 from app.models.match import Match, MatchStatus
@@ -34,9 +35,11 @@ from app.schemas.match import (
     MatchWithRide,
 )
 from app.schemas.ride import RidePublic
+from app.schemas.user import UserConfirmed
 from app.services.addresses import get_owned_address
 from app.services.geocoding import geocode_address
 from app.services.match_rules import (
+    is_blocked_between,
     find_confirmed_conflict,
     request_rejection_reason,
     supersede_related_requests,
@@ -212,17 +215,31 @@ async def _build_match(
 @router.post("/", response_model=MatchPublic, status_code=status.HTTP_201_CREATED)
 async def request_match(
     body: MatchRequest,
-    current_user: VerifiedUser,
+    current_user: CompleteUser,
     db: DbSession,
 ) -> Match:
     """Passenger requests a match with a single driver's ride."""
     ride = db.get(Ride, body.ride_id)
-    reason = request_rejection_reason(db, ride, current_user)
+    batch_id = str(body.batch_id) if body.batch_id is not None else None
+    reason = request_rejection_reason(db, ride, current_user, batch_id=batch_id)
     if reason:
         code = 404 if ride is None else 400
         raise HTTPException(status_code=code, detail=reason)
 
-    match = await _build_match(db, ride, current_user.id, body, batch_id=None)
+    match = await _build_match(db, ride, current_user.id, body, batch_id=batch_id)
+    # Use the same lock order as acceptance. A competing acceptance can hold
+    # locks while awaiting routing, so do not block the event loop here.
+    try:
+        db.refresh(ride, with_for_update={"nowait": True})
+        db.get(User, current_user.id, with_for_update={"nowait": True})
+    except OperationalError as exc:
+        if getattr(exc.orig, "sqlstate", None) != "55P03":
+            raise
+        db.rollback()
+        raise HTTPException(409, "Uma solicitação está sendo processada. Tente novamente.") from exc
+    reason = request_rejection_reason(db, ride, current_user, batch_id=batch_id)
+    if reason:
+        raise HTTPException(status_code=409, detail=reason)
     db.add(match)
     db.commit()
     db.refresh(match)
@@ -232,7 +249,7 @@ async def request_match(
 @router.post("/batch", response_model=MatchBatchResult, status_code=status.HTTP_201_CREATED)
 async def request_match_batch(
     body: MatchBatchRequest,
-    current_user: VerifiedUser,
+    current_user: CompleteUser,
     db: DbSession,
 ) -> MatchBatchResult:
     """Passenger sends a "matching" to several rides at once.
@@ -320,7 +337,7 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
     results: list[MatchForDriver] = []
     for m in matches:
         driver_view = MatchForDriver.model_validate(m)
-        if m.status == MatchStatus.ACCEPTED:
+        if m.status == MatchStatus.ACCEPTED and ride.status != RideStatus.CANCELLED and not is_blocked_between(db, ride.driver_id, m.passenger_id):
             driver_view.pickup_street = m.pickup_street
             driver_view.pickup_number = m.pickup_number
             driver_view.pickup_complement = m.pickup_complement
@@ -336,8 +353,6 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
             driver_view.pickup_neighborhood = None
             driver_view.pickup_city = None
             driver_view.passenger_phone = None
-            if driver_view.passenger:
-                driver_view.passenger.phone = None
         results.append(driver_view)
 
     return results
@@ -347,7 +362,7 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
 async def respond_to_match(
     match_id: int,
     body: MatchActionRequest,
-    current_user: VerifiedUser,
+    current_user: DriverUser,
     db: DbSession,
 ) -> MatchConfirmed:
     """Driver accepts or rejects a match request."""
@@ -391,12 +406,19 @@ async def respond_to_match(
             raise HTTPException(409, "Peça ao passageiro que envie uma nova solicitação com origem e destino.")
         pickup_shape = to_shape(match.pickup_point)
         dropoff_shape = to_shape(match.dropoff_point)
-        if find_confirmed_conflict(db, match.passenger_id, ride.departure_at, exclude_match_id=match.id):
+        if find_confirmed_conflict(
+            db, match.passenger_id, ride.departure_at, exclude_match_id=match.id, batch_id=match.batch_id,
+        ):
             # Passenger already has a confirmed ride at a similar time
             match.status = MatchStatus.SUPERSEDED
             match.responded_at = datetime.now(UTC)
             db.commit()
             raise HTTPException(status_code=409, detail="Este passageiro já confirmou outra carona em horário próximo")
+
+        if is_blocked_between(db, ride.driver_id, match.passenger_id):
+            raise HTTPException(403, "Carona indisponível entre estes usuários.")
+        if not match.passenger.is_active or not match.passenger.is_verified or not match.passenger.profile_complete:
+            raise HTTPException(409, "O passageiro precisa completar seu perfil antes da confirmação.")
 
         confirmed = confirmed_matches(db, ride)
         try:
@@ -460,6 +482,9 @@ async def respond_to_match(
             created_at=match.created_at,
             responded_at=match.responded_at,
             # Full info revealed after acceptance
+            driver=UserConfirmed.model_validate(current_user),
+            passenger=UserConfirmed.model_validate(passenger),
+            driver_car_brand=current_user.car_brand,
             driver_phone=current_user.phone,
             driver_car_model=current_user.car_model,
             driver_car_color=current_user.car_color,
@@ -528,13 +553,16 @@ def get_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> Match
     if not (is_driver or is_passenger):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    if is_driver and match.status != MatchStatus.ACCEPTED:
+    if match.status == MatchStatus.ACCEPTED and is_blocked_between(db, ride.driver_id, match.passenger_id):
+        raise HTTPException(403, "Carona indisponível entre estes usuários.")
+
+    if is_driver and (match.status != MatchStatus.ACCEPTED or ride.status == RideStatus.CANCELLED):
         return _unconfirmed_for_driver(match)
 
-    result = MatchConfirmed.model_validate(match)
+    result = MatchConfirmed(**MatchPublic.model_validate(match).model_dump())
 
     # Only reveal exact location if match is accepted
-    if match.status == MatchStatus.ACCEPTED:
+    if match.status == MatchStatus.ACCEPTED and ride.status != RideStatus.CANCELLED:
         pickup_shape = to_shape(match.pickup_point)
         result.pickup_lat = pickup_shape.y
         result.pickup_lng = pickup_shape.x
@@ -542,6 +570,9 @@ def get_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> Match
             dropoff_shape = to_shape(match.dropoff_point)
             result.dropoff_lat = dropoff_shape.y
             result.dropoff_lng = dropoff_shape.x
+        result.driver = UserConfirmed.model_validate(ride.driver)
+        result.passenger = UserConfirmed.model_validate(match.passenger)
+        result.driver_car_brand = ride.driver.car_brand
         result.passenger_phone = match.passenger.phone
         result.driver_phone = ride.driver.phone
         result.driver_car_model = ride.driver.car_model

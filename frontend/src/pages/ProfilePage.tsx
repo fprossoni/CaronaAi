@@ -62,6 +62,7 @@ export const ProfilePage: React.FC = () => {
   const [instagram, setInstagram] = useState(user?.instagram ?? user?.social_link ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [campuses, setCampuses] = useState<string[]>(user?.campuses ?? []);
+  const [carBrand, setCarBrand] = useState(user?.car_brand ?? "");
   const [carModel, setCarModel] = useState(user?.car_model ?? "");
   const [carColor, setCarColor] = useState(user?.car_color ?? "");
   const [carPlate, setCarPlate] = useState(user?.car_plate ?? "");
@@ -81,6 +82,7 @@ export const ProfilePage: React.FC = () => {
     setInstagram(user.instagram ?? user.social_link ?? "");
     setPhone(user.phone ?? "");
     setCampuses(user.campuses ?? []);
+    setCarBrand(user.car_brand ?? "");
     setCarModel(user.car_model ?? "");
     setCarColor(user.car_color ?? "");
     setCarPlate(user.car_plate ?? "");
@@ -97,6 +99,10 @@ export const ProfilePage: React.FC = () => {
     e.preventDefault();
     if (!course.trim()) {
       toast.error("Curso obrigatório", "Informe seu curso na UFRGS.");
+      return;
+    }
+    if (!phone.trim() || !birthDate.trim() || (isDriver && (!carBrand.trim() || !carModel.trim() || !carColor.trim() || !carPlate.trim()))) {
+      toast.error("Dados obrigatórios", "Preencha telefone, nascimento e todos os dados do veículo para motoristas.");
       return;
     }
     if (birthDate.trim()) {
@@ -125,6 +131,7 @@ export const ProfilePage: React.FC = () => {
         social_link: formattedInsta,
         phone: phone.trim() ? formatPhone(phone) : undefined,
         campuses,
+        car_brand: isDriver ? carBrand.trim() || undefined : undefined,
         car_model: isDriver ? carModel.trim() || undefined : undefined,
         car_color: isDriver ? carColor.trim() || undefined : undefined,
         car_plate: isDriver && carPlate.trim() ? formatCarPlate(carPlate) : undefined,
@@ -374,7 +381,7 @@ export const ProfilePage: React.FC = () => {
                   <div className="p-3 rounded-md border border-border bg-surface-2 space-y-1.5 text-xs">
                     <div className="flex justify-between">
                       <span className="text-text-muted">Modelo</span>
-                      <strong className="text-text">{user.car_model || "—"}</strong>
+                      <strong className="text-text">{[user.car_brand, user.car_model].filter(Boolean).join(" ") || "—"}</strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-muted">Cor</span>
@@ -425,6 +432,7 @@ export const ProfilePage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
+              required
               label="WhatsApp"
               placeholder="(51) 99999-9999"
               value={phone}
@@ -550,20 +558,24 @@ export const ProfilePage: React.FC = () => {
               <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-accent-text flex items-center gap-1.5">
                 <CarIcon size={14} /> Veículo
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input label="Marca" value={carBrand} onChange={(e) => setCarBrand(e.target.value)} required />
                 <Input
+                  required
                   label="Modelo"
                   placeholder="VW Gol 2022"
                   value={carModel}
                   onChange={(e) => setCarModel(e.target.value)}
                 />
                 <Input
+                  required
                   label="Cor"
                   placeholder="Prata"
                   value={carColor}
                   onChange={(e) => setCarColor(e.target.value)}
                 />
                 <Input
+                  required
                   label="Placa"
                   placeholder="ABC1C34"
                   maxLength={7}

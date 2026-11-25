@@ -22,10 +22,8 @@ interface RideCardProps {
   ride: RideSearchResult;
   onRequestMatch?: (ride: RideSearchResult) => void;
   isRequesting?: boolean;
+  requestDisabled?: boolean;
   existingMatchStatus?: MatchStatus | null;
-  selectable?: boolean;
-  selected?: boolean;
-  onToggleSelect?: (rideId: number) => void;
 }
 
 function formatTime(isoDate: string): string {
@@ -54,10 +52,8 @@ export const RideCard: React.FC<RideCardProps> = ({
   ride,
   onRequestMatch,
   isRequesting = false,
+  requestDisabled = false,
   existingMatchStatus = null,
-  selectable = false,
-  selected = false,
-  onToggleSelect,
 }) => {
   const [showDriverProfile, setShowDriverProfile] = useState(false);
 
@@ -68,18 +64,10 @@ export const RideCard: React.FC<RideCardProps> = ({
     maximumFractionDigits: 1,
   });
   const resolvedMatchStatus = existingMatchStatus ?? ride.my_match_status ?? null;
-  const canSelectForBatch =
-    selectable && !resolvedMatchStatus && ride.available_seats > 0 && Boolean(onToggleSelect);
 
   return (
     <>
-      <div
-        className={`rounded-[10px] border bg-surface p-4 sm:p-5 transition-colors animate-fade-in ${
-          selected
-            ? "border-primary shadow-[0_0_0_1px_var(--color-primary)]"
-            : "border-border hover:border-border-strong"
-        }`}
-      >
+      <div className="rounded-[10px] border border-border bg-surface p-4 sm:p-5 transition-colors hover:border-border-strong animate-fade-in">
         {/* Top Bento Time Block */}
         <dl className="grid grid-cols-2 gap-3 rounded-md border border-border bg-surface-2 p-3 sm:p-3.5 relative">
           {[
@@ -182,8 +170,7 @@ export const RideCard: React.FC<RideCardProps> = ({
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] border border-border bg-surface-2 font-mono text-[10px] text-text-secondary">
                 <CarIcon size={11} className="text-text-muted" />
                 <span>
-                  {ride.driver.car_model}
-                  {ride.driver.car_color ? ` · ${ride.driver.car_color}` : ""}
+                  {[ride.driver.car_brand, ride.driver.car_model].filter(Boolean).join(" ")}
                 </span>
               </span>
             )}
@@ -192,24 +179,7 @@ export const RideCard: React.FC<RideCardProps> = ({
 
         {/* Footer Actions */}
         {onRequestMatch && (
-          <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              {canSelectForBatch && (
-                <button
-                  type="button"
-                  onClick={() => onToggleSelect?.(ride.id)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-xs font-semibold border transition-colors ${
-                    selected
-                      ? "bg-primary text-on-primary border-primary"
-                      : "bg-surface-2 border-border text-text-secondary hover:border-border-strong"
-                  }`}
-                  title="Selecionar para solicitação em lote"
-                >
-                  <span>{selected ? "✓ Lote" : "+ Lote"}</span>
-                </button>
-              )}
-            </div>
-
+          <div className="mt-4 pt-3 border-t border-border flex items-center justify-end gap-3 flex-wrap">
             {resolvedMatchStatus === "accepted" ? (
               <span className="px-2.5 py-1 rounded-[2px] font-mono text-[11px] font-bold uppercase bg-secondary/15 text-secondary border border-secondary/35">
                 Confirmada
@@ -227,7 +197,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 variant="primary"
                 size="sm"
                 loading={isRequesting}
-                disabled={ride.available_seats <= 0}
+                disabled={requestDisabled || ride.available_seats <= 0}
                 onClick={() => onRequestMatch(ride)}
               >
                 Solicitar

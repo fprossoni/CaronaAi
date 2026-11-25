@@ -94,6 +94,13 @@ export const LoginPage: React.FC = () => {
             required
           />
 
+          <Link
+            to="/forgot-password"
+            className="block text-right text-xs font-semibold text-accent-text hover:underline"
+          >
+            Esqueci minha senha
+          </Link>
+
           {error && (
             <div className="p-3 rounded-md bg-danger/10 border border-danger/30 text-xs text-danger font-medium">
               {error}

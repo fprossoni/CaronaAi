@@ -18,8 +18,8 @@ até 10 km e até 2h adicionais. O tempo entre saída do motorista e embarque també
 configuráveis em `.env`; pedidos antigos preservam seus intervalos gravados.
 
 Custo (menor primeiro):
-`0.45 * (diferenca_seg / 600)^2 + 0.40 * (desvio_m / 2000)^2 + 0.15 * (desvio_seg / 300)^2`.
-Os pesos `MATCH_*_WEIGHT` e escalas `MATCH_*_SCALE_*` estão em `.env.example`.
+`0.60 * diferenca_de_embarque_seg^2 + 0.40 * desvio_do_motorista_seg^2`.
+Os pesos configuraveis sao MATCH_TIME_WEIGHT e MATCH_DURATION_WEIGHT.
 O desvio é relativo à rota atual com passageiros confirmados. A resposta inclui
 `match_cost` e `pickup_difference_seconds` (negativo significa antecipação).
 

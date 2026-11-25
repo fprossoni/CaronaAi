@@ -1,4 +1,4 @@
-import type { UserPublic } from "./user";
+import type { UserConfirmed, UserPublic } from "./user";
 import type { CampusId, RidePublic } from "./ride";
 import type { AddressCreate } from "./address";
 
@@ -7,6 +7,7 @@ export type MatchStatus = "pending" | "accepted" | "rejected" | "cancelled" | "s
 export interface MatchPublic {
   id: number;
   ride_id: number;
+  batch_id?: string | null;
   status: MatchStatus;
   detour_meters: number;
   detour_seconds: number;
@@ -41,6 +42,9 @@ export interface MatchForDriver {
 }
 
 export interface MatchConfirmed extends MatchPublic {
+  driver?: UserConfirmed | null;
+  passenger?: UserConfirmed | null;
+  driver_car_brand?: string | null;
   // Revealed after acceptance
   driver_phone?: string | null;
   driver_car_model?: string | null;
@@ -82,6 +86,7 @@ interface MatchTrip {
 
 export interface MatchRequest extends MatchTrip {
   ride_id: number;
+  batch_id?: string;
 }
 
 export interface MatchBatchRequest extends MatchTrip {

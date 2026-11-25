@@ -1,6 +1,6 @@
 import json
 
-from pydantic import PositiveFloat, PositiveInt, field_validator
+from pydantic import PositiveFloat, PositiveInt, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,16 +33,11 @@ class Settings(BaseSettings):
 
     MATCH_TIME_TOLERANCE_SECONDS: PositiveInt = 7200
     MATCH_AGREED_TOLERANCE_SECONDS: PositiveInt = 300
-    MATCH_TIME_WEIGHT: PositiveFloat = 0.45
-    MATCH_DISTANCE_WEIGHT: PositiveFloat = 0.40
-    MATCH_DURATION_WEIGHT: PositiveFloat = 0.15
-    MATCH_TIME_SCALE_SECONDS: PositiveFloat = 600
-    MATCH_DISTANCE_SCALE_METERS: PositiveFloat = 2000
-    MATCH_DURATION_SCALE_SECONDS: PositiveFloat = 300
+    MATCH_TIME_WEIGHT: PositiveFloat = 0.6
+    MATCH_DURATION_WEIGHT: PositiveFloat = 0.4
 
-    # Matching — when a passenger's request is accepted, their other pending
-    # requests (same batch / same origin+destination) whose ride departs within
-    # ± this window are withdrawn so other drivers stop seeing them.
+    # Matching — withdrawal window for requests on the same route in different
+    # batches. Requests within the same batch are withdrawn at any departure time.
     MATCH_CONFLICT_WINDOW_MINUTES: int = 30
 
     # Email (SMTP)
@@ -50,13 +45,19 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    EMAIL_FROM: str = "noreply@caronaai.com"
+    EMAIL_FROM: str = ""
     EMAIL_TOKEN_EXPIRE_MINUTES: int = 15
 
     # CORS — accepts either JSON array or comma-separated string:
     #   ["http://localhost:5173","http://localhost:3000"]  ← JSON (default)
     #   http://localhost:5173,http://localhost:3000        ← comma-separated
     ALLOWED_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+
+    @model_validator(mode="after")
+    def disable_dev_accounts_outside_debug(self) -> "Settings":
+        if not self.DEBUG:
+            self.DEV_ACCOUNTS_ENABLED = False
+        return self
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

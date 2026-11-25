@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
 import type { RideSearchResult, SearchRidesParams } from "@/types/ride";
-import type { MatchStatus } from "@/types/match";
+import type { MatchPublic } from "@/types/match";
 import { getInitialTripRoute, hasTripCampus, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
 import { getErrorMessage } from "@/lib/errors";
 import { useAuthStore } from "@/store/authStore";
@@ -14,11 +14,12 @@ import { TripRouteFields } from "@/components/rides/TripRouteFields";
 import { KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { CheckCircleIcon, LockIcon } from "@/components/ui/Icons";
+import { LockIcon } from "@/components/ui/Icons";
 
 type SearchResult = { params: SearchRidesParams } & ({ rides: RideSearchResult[] } | { error: string });
 
 type SubmittedSearch = {
+  batchId: string;
   params: SearchRidesParams;
   pickup: NonNullable<TripRoute["origin"]>;
   dropoff: NonNullable<TripRoute["destination"]>;
@@ -39,13 +40,8 @@ export const FindRidePage: React.FC = () => {
   const [womenOnly, setWomenOnly] = useState(false);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [submittedSearch, setSubmittedSearch] = useState<SubmittedSearch | null>(null);
-  const [myMatchesByRide, setMyMatchesByRide] = useState<Record<number, MatchStatus>>({});
-  const [selection, setSelection] = useState<{ params: SearchRidesParams | null; ids: number[] }>({
-    params: null,
-    ids: [],
-  });
+  const [myMatches, setMyMatches] = useState<MatchPublic[]>([]);
   const [requestingId, setRequestingId] = useState<number | null>(null);
-  const [batchRequesting, setBatchRequesting] = useState(false);
 
   const { origin: pickup, destination: dropoff } = route;
   const hasCampus = hasTripCampus(route);
@@ -59,6 +55,7 @@ export const FindRidePage: React.FC = () => {
     if (!canSearch || !pickup || !dropoff) return;
 
     setSubmittedSearch({
+      batchId: window.crypto.randomUUID(),
       pickup,
       dropoff,
       params: {
@@ -75,18 +72,22 @@ export const FindRidePage: React.FC = () => {
       },
     });
     setSearchResult(null);
-    setSelection({ params: null, ids: [] });
   }
 
   const result = params && searchResult?.params === params ? searchResult : null;
   const searched = result !== null && "rides" in result;
-  const rides = result && "rides" in result ? result.rides : NO_RIDES;
+  const confirmedMatch = submittedSearch && myMatches.find(
+    (match) => match.batch_id === submittedSearch.batchId && match.status === "accepted",
+  );
+  const rides = result && "rides" in result
+    ? result.rides.filter((ride) => !confirmedMatch || ride.id === confirmedMatch.ride_id)
+    : NO_RIDES;
   const searchError = result && "error" in result ? result.error : null;
   const loading = params !== null && result === null;
-  const selectedRideIds = selection.params === params ? selection.ids : [];
   const matchPoints =
     searched && submittedSearch
       ? {
+          batch_id: submittedSearch.batchId,
           pickup_campus_id: submittedSearch.params.pickup_campus_id,
           dropoff_campus_id: submittedSearch.params.dropoff_campus_id,
           desired_pickup_at: submittedSearch.params.desired_pickup_at,
@@ -103,21 +104,25 @@ export const FindRidePage: React.FC = () => {
       : null;
 
   useEffect(() => {
-    matchesApi
-      .getMyMatches()
-      .then(({ data }) => {
-        const map: Record<number, MatchStatus> = {};
-        for (const m of data) {
-          if (m.status === "pending" || m.status === "accepted" || m.status === "superseded") {
-            map[m.ride_id] = m.status;
-          }
-        }
-        setMyMatchesByRide(map);
-      })
-      .catch(() => {
-        // Ignore silently
-      });
-  }, []);
+    if (requestingId !== null) return;
+    let active = true;
+    let timer: number | undefined;
+    async function refreshMatches() {
+      try {
+        const { data } = await matchesApi.getMyMatches();
+        if (active) setMyMatches(data);
+      } catch {
+        // Preserve the last status while the connection is unavailable.
+      } finally {
+        if (active && params) timer = window.setTimeout(refreshMatches, 5000);
+      }
+    }
+    void refreshMatches();
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [params, requestingId]);
 
   useEffect(() => {
     if (!params) return;
@@ -138,45 +143,15 @@ export const FindRidePage: React.FC = () => {
     return () => controller.abort();
   }, [params]);
 
-  function setSelectedRideIds(update: number[] | ((previous: number[]) => number[])) {
-    setSelection((current) => ({
-      params,
-      ids: typeof update === "function" ? update(current.params === params ? current.ids : []) : update,
-    }));
-  }
-
-  const eligibleBatchRides = useMemo(
-    () =>
-      rides.filter((r) => {
-        const st = myMatchesByRide[r.id] ?? r.my_match_status ?? null;
-        return r.available_seats > 0 && !st;
-      }),
-    [rides, myMatchesByRide]
-  );
-
-  const handleToggleSelectRide = (rideId: number) => {
-    setSelectedRideIds((prev) =>
-      prev.includes(rideId) ? prev.filter((id) => id !== rideId) : [...prev, rideId]
-    );
-  };
-
-  const handleToggleSelectAll = () => {
-    const eligibleIds = eligibleBatchRides.map((r) => r.id);
-    const allSelected =
-      eligibleIds.length > 0 && eligibleIds.every((id) => selectedRideIds.includes(id));
-    setSelectedRideIds(allSelected ? [] : eligibleIds);
-  };
-
   const handleRequestMatch = async (ride: RideSearchResult) => {
-    if (!matchPoints) return;
+    if (!matchPoints || confirmedMatch || requestingId !== null) return;
     setRequestingId(ride.id);
     try {
-      await matchesApi.request({
+      const { data } = await matchesApi.request({
         ride_id: ride.id,
         ...matchPoints,
       });
-      setMyMatchesByRide((prev) => ({ ...prev, [ride.id]: "pending" }));
-      setSelectedRideIds((prev) => prev.filter((id) => id !== ride.id));
+      setMyMatches((previous) => [data, ...previous]);
       toast.success(
         "Solicitação enviada",
         `Bairro "${matchPoints.pickup_region}" compartilhado.`
@@ -185,43 +160,6 @@ export const FindRidePage: React.FC = () => {
       toast.error("Não foi possível solicitar", getErrorMessage(err));
     } finally {
       setRequestingId(null);
-    }
-  };
-
-  const handleRequestBatch = async () => {
-    if (!matchPoints || selectedRideIds.length === 0) return;
-    setBatchRequesting(true);
-    try {
-      const { data } = await matchesApi.requestBatch({
-        ride_ids: selectedRideIds,
-        ...matchPoints,
-      });
-
-      setMyMatchesByRide((prev) => {
-        const next = { ...prev };
-        for (const created of data.created) {
-          next[created.ride_id] = "pending";
-        }
-        return next;
-      });
-      setSelectedRideIds([]);
-
-      const createdCount = data.created.length;
-      if (createdCount > 0) {
-        toast.success(
-          `Lote enviado (${createdCount})`,
-          "O primeiro aceite encerra as demais solicitações."
-        );
-      } else {
-        toast.info(
-          "Nenhuma solicitação criada",
-          data.skipped[0]?.reason ?? "Caronas indisponíveis."
-        );
-      }
-    } catch (err: unknown) {
-      toast.error("Erro no Multi-Matching", getErrorMessage(err));
-    } finally {
-      setBatchRequesting(false);
     }
   };
 
@@ -250,7 +188,9 @@ export const FindRidePage: React.FC = () => {
     <section className="space-y-4 pt-1 animate-fade-in" aria-label="Resultados da busca">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="font-display text-lg font-bold text-text">
-          {rides.length === 0
+          {confirmedMatch
+            ? "Carona confirmada"
+            : rides.length === 0
             ? "Nenhuma carona compatível"
             : `${rides.length} ${rides.length === 1 ? "carona" : "caronas"}`}
         </h2>
@@ -261,44 +201,6 @@ export const FindRidePage: React.FC = () => {
         )}
       </div>
 
-      {/* Multi-Matching Batch Bar */}
-      {(eligibleBatchRides.length >= 2 || selectedRideIds.length > 0) && (
-        <div
-          className={`p-3.5 rounded-[10px] border bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-            selectedRideIds.length > 0 ? "border-primary" : "border-border"
-          }`}
-        >
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <CheckCircleIcon size={15} className="text-accent-text shrink-0" />
-            <span>
-              <strong className="text-text">Multi-Matching</strong> · O primeiro aceite cancela os
-              demais pedidos
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={handleToggleSelectAll}>
-              {eligibleBatchRides.length > 0 &&
-              eligibleBatchRides.every((r) => selectedRideIds.includes(r.id))
-                ? "Limpar"
-                : `Selecionar todas (${eligibleBatchRides.length})`}
-            </Button>
-
-            {selectedRideIds.length > 0 && (
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                loading={batchRequesting}
-                onClick={handleRequestBatch}
-              >
-                Solicitar lote ({selectedRideIds.length})
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
       {rides.length > 0 && (
         <div className="grid gap-3.5">
           {rides.map((ride) => (
@@ -307,10 +209,10 @@ export const FindRidePage: React.FC = () => {
               ride={ride}
               onRequestMatch={handleRequestMatch}
               isRequesting={requestingId === ride.id}
-              existingMatchStatus={myMatchesByRide[ride.id] ?? null}
-              selectable={eligibleBatchRides.length >= 2}
-              selected={selectedRideIds.includes(ride.id)}
-              onToggleSelect={handleToggleSelectRide}
+              requestDisabled={requestingId !== null}
+              existingMatchStatus={myMatches.find(
+                (match) => match.ride_id === ride.id && (match.status === "pending" || match.status === "accepted"),
+              )?.status ?? null}
             />
           ))}
         </div>
@@ -342,11 +244,10 @@ export const FindRidePage: React.FC = () => {
             type="button"
             size="sm"
             variant="secondary"
-            disabled={batchRequesting || requestingId !== null}
+            disabled={requestingId !== null}
             onClick={() => {
               setSubmittedSearch(null);
               setSearchResult(null);
-              setSelection({ params: null, ids: [] });
             }}
           >
             Alterar
@@ -358,7 +259,7 @@ export const FindRidePage: React.FC = () => {
           route={route}
           onChange={setRoute}
           onSubmit={handleSearch}
-          disabled={batchRequesting || requestingId !== null}
+          disabled={requestingId !== null}
           showRoutePreview={false}
           allowMeetingPoint
           initialQueries={{

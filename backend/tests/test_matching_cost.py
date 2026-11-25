@@ -20,14 +20,17 @@ def candidate(minutes=0, meters=0, seconds=0):
     )
 
 
-def test_combined_cost_prefers_small_detour_over_exact_time():
+def test_combined_cost_uses_only_pickup_difference_and_detour_time():
     close = candidate(3, 500, 120)
     punctual = candidate(0, 2500, 480)
     distant = candidate(10, 200, 60)
     for option in (close, punctual, distant):
         option.rank(TARGET)
-    assert close.match_cost < distant.match_cost < punctual.match_cost
-    assert close.match_cost == pytest.approx(0.0895)
+    assert close.match_cost < punctual.match_cost < distant.match_cost
+    assert close.match_cost == pytest.approx(25200)
+    close.detour_meters = 3000
+    close.rank(TARGET)
+    assert close.match_cost == pytest.approx(25200)
 
 
 def test_cost_is_symmetric_and_configurable(monkeypatch):
@@ -36,7 +39,7 @@ def test_cost_is_symmetric_and_configurable(monkeypatch):
     late.rank(TARGET)
     assert early.match_cost == late.match_cost
     assert early.pickup_difference_seconds == -600
-    monkeypatch.setattr(settings, "MATCH_TIME_WEIGHT", 0.9)
+    monkeypatch.setattr(settings, "MATCH_TIME_WEIGHT", 2 * settings.MATCH_TIME_WEIGHT)
     late.rank(TARGET)
     assert late.match_cost == pytest.approx(2 * early.match_cost)
 

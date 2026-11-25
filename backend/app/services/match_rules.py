@@ -6,8 +6,8 @@ as one driver accepts (a *complete match*), the passenger's related pending
 requests are withdrawn (status SUPERSEDED) so the other drivers stop seeing
 them.
 
-Related = same batch OR same pickup/dropoff labels, AND the ride departs within
-± settings.MATCH_CONFLICT_WINDOW_MINUTES of the confirmed ride.
+Related requests share a batch, or share pickup/dropoff labels and depart
+within ± settings.MATCH_CONFLICT_WINDOW_MINUTES of the confirmed ride.
 """
 
 from __future__ import annotations
@@ -44,15 +44,19 @@ def find_confirmed_conflict(
     passenger_id: int,
     departure_at: datetime,
     exclude_match_id: int | None = None,
+    *,
+    batch_id: str | None = None,
 ) -> Match | None:
-    """An ACCEPTED match of the passenger whose ride departs close to `departure_at`."""
+    """Find an accepted match in the same batch or with a nearby departure."""
+    conflict = and_(Ride.status.in_(LIVE_RIDE_STATUSES), _departure_window_clause(departure_at))
+    if batch_id is not None:
+        conflict = or_(Match.batch_id == batch_id, conflict)
     query = (
         select(Match)
         .join(Ride, Ride.id == Match.ride_id)
         .where(Match.passenger_id == passenger_id)
         .where(Match.status == MatchStatus.ACCEPTED)
-        .where(Ride.status.in_(LIVE_RIDE_STATUSES))
-        .where(_departure_window_clause(departure_at))
+        .where(conflict)
     )
     if exclude_match_id is not None:
         query = query.where(Match.id != exclude_match_id)
@@ -67,6 +71,7 @@ def supersede_related_requests(db: Session, accepted: Match) -> list[Match]:
     related = [
         and_(
             Match.pickup_label == accepted.pickup_label,
+            _departure_window_clause(accepted.ride.departure_at),
             Match.dropoff_label.is_(None) if accepted.dropoff_label is None
             else Match.dropoff_label == accepted.dropoff_label,
         )
@@ -80,7 +85,6 @@ def supersede_related_requests(db: Session, accepted: Match) -> list[Match]:
         .where(Match.passenger_id == accepted.passenger_id)
         .where(Match.id != accepted.id)
         .where(Match.status == MatchStatus.PENDING)
-        .where(_departure_window_clause(accepted.ride.departure_at))
         .where(or_(*related))
     ).scalars().all()
 
@@ -102,12 +106,16 @@ def is_blocked_between(db: Session, user_a: int, user_b: int) -> bool:
     ).first() is not None
 
 
-def request_rejection_reason(db: Session, ride: Ride | None, passenger: User) -> str | None:
+def request_rejection_reason(
+    db: Session, ride: Ride | None, passenger: User, *, batch_id: str | None = None,
+) -> str | None:
     """Why `passenger` cannot request `ride` right now (None = allowed)."""
     if ride is None:
         return "Carona não encontrada"
     if ride.driver_id == passenger.id:
         return "Você não pode pedir a sua própria carona"
+    if not ride.driver.is_active or not ride.driver.is_verified or not ride.driver.profile_complete:
+        return "O motorista precisa completar seu perfil antes de receber solicitações"
     if ride.status != RideStatus.ACTIVE:
         return "Carona não está mais aceitando passageiros"
     if ride.available_seats <= 0:
@@ -129,6 +137,9 @@ def request_rejection_reason(db: Session, ride: Ride | None, passenger: User) ->
     if existing:
         return "Você já tem uma solicitação ativa para esta carona"
 
-    if find_confirmed_conflict(db, passenger.id, ride.departure_at):
+    conflict = find_confirmed_conflict(db, passenger.id, ride.departure_at, batch_id=batch_id)
+    if conflict:
+        if batch_id is not None and conflict.batch_id == batch_id:
+            return "Uma carona desta busca já foi confirmada"
         return "Você já tem uma carona confirmada em horário próximo"
     return None

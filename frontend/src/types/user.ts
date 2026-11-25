@@ -5,13 +5,9 @@ export type Gender = "male" | "female" | "other" | "prefer_not_to_say";
 export interface UserPublic {
   id: number;
   name: string | null;
-  email: string;
   course: string | null;
   gender: Gender | null;
   photo_url: string | null;
-  social_link: string | null;
-  instagram: string | null;
-  phone: string | null;
   age: number | null; // derived from birth_date — the date itself is private
   bio: string | null;
   campuses: string[] | null;
@@ -19,10 +15,19 @@ export interface UserPublic {
   rating_count: number;
   is_driver: boolean;
   car_model?: string | null;
-  car_color?: string | null;
+  car_brand?: string | null;
 }
 
-export interface UserPrivate extends UserPublic {
+export interface UserConfirmed extends UserPublic {
+  phone: string | null;
+  social_link: string | null;
+  instagram: string | null;
+  car_color: string | null;
+  car_plate: string | null;
+}
+
+export interface UserPrivate extends UserConfirmed {
+  email: string;
   birth_date: string | null; // YYYY-MM-DD
   car_model: string | null;
   car_plate: string | null;
@@ -32,6 +37,8 @@ export interface UserPrivate extends UserPublic {
 }
 
 export interface ProfileUpdate {
+  name?: string;
+  car_brand?: string;
   course?: string;
   gender?: Gender;
   phone?: string;

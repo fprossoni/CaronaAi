@@ -20,14 +20,14 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 # ─── JWT ─────────────────────────────────────────────────────────────────────
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: str, auth_version: int = 0) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return jwt.encode({"sub": subject, "exp": expire, "type": "access"}, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode({"sub": subject, "exp": expire, "type": "access", "version": auth_version}, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(subject: str) -> str:
+def create_refresh_token(subject: str, auth_version: int = 0) -> str:
     expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    return jwt.encode({"sub": subject, "exp": expire, "type": "refresh"}, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode({"sub": subject, "exp": expire, "type": "refresh", "version": auth_version}, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
 def decode_token(token: str) -> dict:

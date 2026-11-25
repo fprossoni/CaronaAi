@@ -22,6 +22,7 @@ export const OfferRidePage: React.FC = () => {
   const canOfferWomenOnly = user?.gender === "female";
   const toast = useToastStore();
 
+  const [carBrand, setCarBrand] = useState(user?.car_brand ?? "");
   const [carModel, setCarModel] = useState(user?.car_model ?? "");
   const [carColor, setCarColor] = useState(user?.car_color ?? "");
   const [carPlate, setCarPlate] = useState(user?.car_plate ?? "");
@@ -48,6 +49,7 @@ export const OfferRidePage: React.FC = () => {
     try {
       const { data } = await usersApi.updateMe({
         is_driver: true,
+        car_brand: carBrand.trim(),
         car_model: carModel.trim() || undefined,
         car_color: carColor.trim() || undefined,
         car_plate: carPlate.trim() ? formatCarPlate(carPlate) : undefined,
@@ -113,26 +115,30 @@ export const OfferRidePage: React.FC = () => {
           <div className="space-y-1">
             <h1 className="font-display text-xl font-bold text-text">Ativar modo motorista</h1>
             <p className="text-xs text-text-muted">
-              Informe os dados opcionais do veículo para publicar caronas.
+              Informe os dados obrigatórios do veículo para publicar caronas.
             </p>
           </div>
 
           <form onSubmit={handleActivateDriver} className="space-y-4">
+            <Input label="Marca" placeholder="Chevrolet" value={carBrand} onChange={(e) => setCarBrand(e.target.value)} required />
             <Input
-              label="Modelo (opcional)"
+              required
+              label="Modelo"
               placeholder="Chevrolet Onix 2021"
               value={carModel}
               onChange={(e) => setCarModel(e.target.value)}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
-                label="Cor (opcional)"
+                required
+                label="Cor"
                 placeholder="Prata"
                 value={carColor}
                 onChange={(e) => setCarColor(e.target.value)}
               />
               <Input
-                label="Placa (opcional)"
+                required
+                label="Placa"
                 placeholder="ABC1C34"
                 maxLength={7}
                 value={carPlate}
