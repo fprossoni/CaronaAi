@@ -1,8 +1,5 @@
 /**
  * RatingModal Component
- *
- * Allows a passenger or driver to rate a trip participant (1 to 5 stars + optional comment)
- * via `POST /ratings/`.
  */
 
 import React, { useState } from "react";
@@ -28,11 +25,11 @@ interface RatingModalProps {
 }
 
 const STAR_LABELS: Record<number, string> = {
-  1: "1 estrela — Experiência ruim",
-  2: "2 estrelas — Abaixo do esperado",
-  3: "3 estrelas — Regular",
-  4: "4 estrelas — Muito boa viagem!",
-  5: "5 estrelas — Excelente companhia e pontualidade!",
+  1: "1 · Ruim",
+  2: "2 · Abaixo do esperado",
+  3: "3 · Regular",
+  4: "4 · Boa viagem",
+  5: "5 · Excelente",
 };
 
 export const RatingModal: React.FC<RatingModalProps> = ({
@@ -59,14 +56,11 @@ export const RatingModal: React.FC<RatingModalProps> = ({
         stars,
         comment: comment.trim() || undefined,
       });
-      toast.success(
-        "Avaliação enviada!",
-        `Sua nota de ${stars} estrelas para ${ratedUser.name ?? "o participante"} foi registrada.`
-      );
+      toast.success("Avaliação enviada");
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      toast.error("Erro ao enviar avaliação", getErrorMessage(err));
+      toast.error("Erro ao avaliar", getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -74,47 +68,41 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-3xl p-6 border border-border bg-surface shadow-2xl animate-slide-up"
+        className="w-full max-w-md rounded-[10px] p-5 sm:p-6 border border-border-strong bg-surface shadow-lg animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-text">
-            Avaliar Carona
-          </h3>
+          <h3 className="font-display text-lg font-bold text-text">Avaliar viagem</h3>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-text-muted hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-md text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
+            aria-label="Fechar"
           >
-            <XIcon size={18} />
+            <XIcon size={17} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Participant Info */}
-          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-border bg-surface-2">
-            <Avatar name={ratedUser.name} photoUrl={ratedUser.photo_url} size="md" ring />
-            <div>
-              <p className="font-bold text-sm text-text">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex items-center gap-3 p-3 rounded-md border border-border bg-surface-2">
+            <Avatar name={ratedUser.name} photoUrl={ratedUser.photo_url} size="md" />
+            <div className="min-w-0">
+              <p className="font-bold text-sm text-text truncate">
                 {ratedUser.name ?? "Estudante UFRGS"}
               </p>
-              <p className="text-xs text-text-muted">
-                {ratedUser.role === "driver" ? "Motorista da viagem" : "Passageiro(a) da viagem"}
-                {ratedUser.course ? ` • ${ratedUser.course}` : ""}
+              <p className="text-xs text-text-muted truncate">
+                {ratedUser.role === "driver" ? "Motorista" : "Passageiro"}
+                {ratedUser.course ? ` · ${ratedUser.course}` : ""}
               </p>
             </div>
           </div>
 
-          {/* Interactive 1–5 Star Selector */}
           <div className="text-center py-2">
-            <p className="text-xs font-semibold uppercase tracking-wider mb-3 text-text-muted">
-              Como foi viajar com {ratedUser.name?.split(" ")[0] ?? "este colega"}?
-            </p>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-1.5">
               {[1, 2, 3, 4, 5].map((value) => (
                 <button
                   key={value}
@@ -122,47 +110,44 @@ export const RatingModal: React.FC<RatingModalProps> = ({
                   onMouseEnter={() => setHoverStars(value)}
                   onMouseLeave={() => setHoverStars(null)}
                   onClick={() => setStars(value)}
-                  className="p-2 rounded-xl transition-transform hover:scale-110 focus:outline-none"
+                  className="p-1.5 rounded-md transition-transform hover:scale-110 focus:outline-none"
                   aria-label={`${value} estrelas`}
                 >
                   <StarIcon
-                    size={34}
+                    size={30}
                     filled={value <= activeStars}
                     className={
-                      value <= activeStars
-                        ? "text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.4)]"
-                        : "text-slate-600"
+                      value <= activeStars ? "text-primary" : "text-border-strong"
                     }
                   />
                 </button>
               ))}
             </div>
-            <p className="text-xs font-medium mt-2 text-amber-400">
+            <p className="font-mono text-xs font-semibold mt-2 text-accent-text">
               {STAR_LABELS[activeStars]}
             </p>
           </div>
 
-          {/* Optional Comment */}
           <div>
-            <label className="block text-xs font-semibold mb-1.5 text-text-secondary">
-              Comentário ou elogio (opcional)
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-text-muted">
+              Comentário (opcional)
             </label>
             <textarea
               rows={3}
               maxLength={250}
-              placeholder="Ex.: Muito pontual, direção super tranquila, ótimo papo até o Campus do Vale!"
+              placeholder="Pontualidade, trajeto..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full p-3 rounded-xl text-sm border border-border bg-surface-2 text-text outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
+              className="w-full p-3 rounded-md text-sm border border-border bg-surface-2 text-text placeholder:text-text-muted outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" variant="primary" size="sm" loading={loading}>
-              Enviar Avaliação
+              Enviar
             </Button>
           </div>
         </form>

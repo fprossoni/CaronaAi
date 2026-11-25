@@ -53,16 +53,14 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
   );
   const [geocoding, setGeocoding] = useState(false);
   const latestCep = useRef("");
+  const canAutoGeocode = Boolean(form.street.trim() && form.number.trim() && form.city.trim());
+  const effectiveCoords = manualOverride || canAutoGeocode ? coords : null;
 
   useEffect(() => {
-    if (manualOverride) return;
+    if (manualOverride || !canAutoGeocode) return;
     const street = form.street.trim();
     const number = form.number.trim();
     const city = form.city.trim();
-    if (!street || !number || !city) {
-      setCoords(null);
-      return;
-    }
 
     let active = true;
     const timer = setTimeout(async () => {
@@ -79,11 +77,14 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
         if (active) {
           setCoords({ lat: data.lat, lng: data.lng });
           if (!form.neighborhood?.trim() && data.neighborhood) {
-            setForm((prev) => ({ ...prev, neighborhood: prev.neighborhood || data.neighborhood }));
+            setForm((prev) => ({
+              ...prev,
+              neighborhood: prev.neighborhood || data.neighborhood,
+            }));
           }
         }
       } catch {
-        // Ignore preview geocode error; user can still click on the map to position the pin
+        // User can click on map
       } finally {
         if (active) setGeocoding(false);
       }
@@ -93,7 +94,17 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
       active = false;
       clearTimeout(timer);
     };
-  }, [form.street, form.number, form.city, form.state, form.country, form.postal_code, manualOverride]);
+  }, [
+    form.street,
+    form.number,
+    form.city,
+    form.state,
+    form.country,
+    form.postal_code,
+    form.neighborhood,
+    manualOverride,
+    canAutoGeocode,
+  ]);
 
   const handleCepLookup = async (cepValue: string) => {
     const cleanCep = cepValue.replace(/\D/g, "");
@@ -114,10 +125,10 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
         state: data.state || prev.state,
       }));
       setManualOverride(false);
-      setCepHint("Endereço preenchido automaticamente pelo CEP.");
+      setCepHint("");
     } catch {
       if (latestCep.current !== cleanCep) return;
-      setCepHint("CEP não localizado automaticamente. Preencha os campos abaixo.");
+      setCepHint("CEP não localizado; preencha manualmente.");
     } finally {
       if (latestCep.current === cleanCep) setCepLoading(false);
     }
@@ -127,8 +138,12 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
     e.preventDefault();
     e.stopPropagation();
     setError("");
-    if (!form.street.trim() || !form.number.trim() || form.postal_code.replace(/\D/g, "").length !== 8) {
-      setError("Informe um CEP de 8 dígitos, a rua e o número.");
+    if (
+      !form.street.trim() ||
+      !form.number.trim() ||
+      form.postal_code.replace(/\D/g, "").length !== 8
+    ) {
+      setError("Informe CEP (8 dígitos), rua e número.");
       return;
     }
 
@@ -137,34 +152,34 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
       const { data: created } = await addressesApi.create({
         ...form,
         label: form.label.trim() || "Casa",
-        lat: coords?.lat ?? null,
-        lng: coords?.lng ?? null,
+        lat: effectiveCoords?.lat ?? null,
+        lng: effectiveCoords?.lng ?? null,
       });
       onSaved(created);
-      toast.success("Endereço salvo!", `${created.label} já pode ser usado nas caronas.`);
+      toast.success("Endereço salvo", created.label);
       setForm(EMPTY_FORM);
       setCoords(null);
       setManualOverride(false);
       setCepHint("");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Não foi possível salvar o endereço."));
+      setError(getErrorMessage(err, "Erro ao salvar endereço."));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleCreate} className="space-y-4">
+    <form onSubmit={handleCreate} className="space-y-3.5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
-          label="Apelido do local"
-          placeholder="Ex.: Casa, República, Estágio"
+          label="Apelido"
+          placeholder="Casa, Trabalho..."
           value={form.label}
           onChange={(e) => setForm({ ...form, label: e.target.value })}
           required
         />
         <Input
-          label={cepLoading ? "CEP (Buscando ViaCEP...)" : "CEP"}
+          label={cepLoading ? "CEP (buscando…)" : "CEP"}
           placeholder="90035-191"
           maxLength={9}
           value={form.postal_code}
@@ -173,7 +188,7 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
             setForm({ ...form, postal_code: formatted });
             void handleCepLookup(formatted);
           }}
-          hint={cepHint || "Digite os 8 dígitos para autocompletar"}
+          hint={cepHint || undefined}
           required
         />
       </div>
@@ -182,7 +197,7 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
         <div className="sm:col-span-2">
           <Input
             label="Rua / Avenida"
-            placeholder="Ex.: Av. Osvaldo Aranha"
+            placeholder="Av. Osvaldo Aranha"
             value={form.street}
             onChange={(e) => setForm({ ...form, street: e.target.value })}
             required
@@ -190,7 +205,7 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
         </div>
         <Input
           label="Número"
-          placeholder="Ex.: 1020"
+          placeholder="1020"
           value={form.number}
           onChange={(e) => setForm({ ...form, number: e.target.value })}
           required
@@ -199,14 +214,14 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Input
-          label="Complemento (opcional)"
-          placeholder="Apto, Bloco..."
+          label="Complemento"
+          placeholder="Apto, bloco..."
           value={form.complement ?? ""}
           onChange={(e) => setForm({ ...form, complement: e.target.value })}
         />
         <Input
           label="Bairro"
-          placeholder="Ex.: Bom Fim"
+          placeholder="Bom Fim"
           value={form.neighborhood ?? ""}
           onChange={(e) => setForm({ ...form, neighborhood: e.target.value })}
         />
@@ -219,29 +234,28 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
         />
       </div>
 
-
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-xs font-semibold text-text-secondary">
-            Localização no mapa {geocoding ? "(buscando localização...)" : "(clique no mapa para ajustar o pino, se necessário)"}
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+            {geocoding ? "Localizando…" : "Mapa (ajuste o pino se precisar)"}
           </span>
           {manualOverride && (
             <button
               type="button"
               onClick={() => setManualOverride(false)}
-              className="text-xs font-semibold text-indigo-400 hover:underline"
+              className="text-xs font-semibold text-accent-text hover:underline"
             >
-              Recalcular pelo endereço escrito
+              Recalcular
             </button>
           )}
         </div>
         <InteractiveMap
-          height="220px"
+          height="210px"
           origin={
-            coords
+            effectiveCoords
               ? {
-                  lat: coords.lat,
-                  lng: coords.lng,
+                  lat: effectiveCoords.lat,
+                  lng: effectiveCoords.lng,
                   label: form.street.trim()
                     ? `${form.street}${form.number.trim() ? `, ${form.number}` : ""}`
                     : form.label || "Endereço",
@@ -256,10 +270,18 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
         />
       </div>
 
-      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>Cancelar</Button>
-        <Button type="submit" loading={submitting} disabled={cepLoading}>Salvar endereço</Button>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>
+          Cancelar
+        </Button>
+        <Button type="submit" loading={submitting} disabled={cepLoading}>
+          Salvar
+        </Button>
       </div>
     </form>
   );

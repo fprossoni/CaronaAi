@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
+import { BrandMark, KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { CarIcon, ShieldCheckIcon } from "@/components/ui/Icons";
+import { ShieldCheckIcon } from "@/components/ui/Icons";
 import { getErrorMessage } from "@/lib/errors";
 
 interface LoginLocationState {
@@ -44,7 +45,7 @@ export const LoginPage: React.FC = () => {
         });
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Erro ao fazer login. Verifique suas credenciais."));
+      setError(getErrorMessage(err, "Credenciais inválidas."));
     } finally {
       setLoading(false);
     }
@@ -52,35 +53,34 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md rounded-3xl p-8 sm:p-10 border border-border bg-gradient-card shadow-lg animate-fade-in">
-        <div className="flex flex-col items-center text-center mb-8">
-          <Link to="/" className="no-underline flex flex-col items-center group">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-primary text-white shadow-lg mb-4 transition-transform group-hover:scale-105">
-              <CarIcon size={28} />
-            </div>
-          </Link>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 mb-3">
-            <ShieldCheckIcon size={14} /> Rede Universitária Verificada
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text">
-            Carona Aí
+      <div className="w-full max-w-md rounded-[10px] p-7 sm:p-8 border border-border-strong bg-surface bg-topo-pattern shadow-lg animate-fade-in">
+        <div className="flex flex-col items-start mb-7 space-y-3">
+          <div className="flex items-center justify-between w-full">
+            <Link to="/" className="no-underline inline-flex items-center gap-2.5">
+              <BrandMark size="md" />
+              <span className="font-display font-bold text-base text-text">Carona Aí</span>
+            </Link>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold uppercase tracking-wider bg-surface-2 text-accent-text border border-border">
+              <ShieldCheckIcon size={12} /> @ufrgs.br
+            </span>
+          </div>
+
+          <h1 className="font-display text-2xl font-bold tracking-tight text-text pt-1">
+            Entrar
           </h1>
-          <p className="text-xs sm:text-sm mt-1.5 text-text-muted">
-            Compartilhe rotas com colegas dos campi da UFRGS
-          </p>
         </div>
 
         {navState?.message && (
-          <div className="mb-6 p-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-indigo-300 font-medium leading-relaxed">
+          <div className="mb-5 p-3 rounded-md bg-primary/10 border border-primary/30 text-xs text-text-secondary leading-relaxed">
             {navState.message}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="E-mail institucional"
             type="email"
-            placeholder="seu.nome@ufrgs.br ou @inf.ufrgs.br"
+            placeholder="nome@ufrgs.br"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
@@ -95,30 +95,26 @@ export const LoginPage: React.FC = () => {
           />
 
           {error && (
-            <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-medium">
+            <div className="p-3 rounded-md bg-danger/10 border border-danger/30 text-xs text-danger font-medium">
               {error}
             </div>
           )}
 
-          <div className="pt-2">
+          <div className="pt-1">
             <Button type="submit" fullWidth loading={loading} size="lg">
-              Entrar
+              <span>Entrar</span>
+              <KineticChevrons />
             </Button>
           </div>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-border space-y-3 text-center text-xs text-text-muted">
-          <p>
-            Ainda não tem conta?{" "}
-            <Link to="/register" className="font-bold text-indigo-400 hover:underline">
-              Cadastre-se com seu e-mail UFRGS
-            </Link>
-          </p>
-          <p>
-            <Link to="/" className="font-semibold text-text-secondary hover:underline">
-              ← Voltar para a página inicial
-            </Link>
-          </p>
+        <div className="mt-6 pt-5 border-t border-border flex items-center justify-between gap-2 text-xs text-text-muted">
+          <Link to="/" className="font-medium text-text-secondary hover:text-text no-underline">
+            ← Início
+          </Link>
+          <Link to="/register" className="font-semibold text-accent-text hover:underline no-underline">
+            Criar conta →
+          </Link>
         </div>
       </div>
     </div>

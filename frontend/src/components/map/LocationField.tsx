@@ -1,12 +1,7 @@
 /**
  * LocationField Component
  *
- * Smart mobility address picker inspired by Uber & BlaBlaCar.
- * Allows selecting a location via:
- * 1. Typing a street/neighborhood name (autocomplete via `geocodingService`)
- * 2. One-tap UFRGS Campus shortcuts
- * 3. Browser GPS ("Usar minha localização")
- * 4. Interactive map click ("Marcar no mapa")
+ * Address picker with autocomplete, UFRGS campus shortcuts, browser GPS, and map pick trigger.
  */
 
 import React, { useEffect, useId, useRef, useState } from "react";
@@ -44,13 +39,13 @@ interface LocationFieldProps {
 
 export const LocationField: React.FC<LocationFieldProps> = ({
   label,
-  placeholder = "Digite rua, número, bairro ou campus...",
+  placeholder = "Rua, bairro ou campus...",
   value,
   onChange,
   onClear,
   onQueryChange,
   initialQuery,
-  dotColor = "#10b981",
+  dotColor = "#fa952d",
   isPickingOnMap = false,
   onTogglePickOnMap,
   allowGps = true,
@@ -60,7 +55,9 @@ export const LocationField: React.FC<LocationFieldProps> = ({
 }) => {
   const { isAuthenticated, user } = useAuthStore();
   const inputId = useId();
-  const [draftText, setDraftText] = useState<string | null>(initialQuery ?? null);
+  const [draft, setDraft] = useState<{ forValue: LocationValue | null; text: string } | null>(
+    () => (initialQuery != null ? { forValue: value, text: initialQuery } : null)
+  );
   const [suggestions, setSuggestions] = useState<{ query: string; items: GeocodingSuggestion[] } | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<AddressPublic[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -69,17 +66,9 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   const [gpsError, setGpsError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Reset draft text when an external value is selected/updated (e.g. map click)
-  useEffect(() => {
-    if (value) {
-      setDraftText(null);
-    }
-  }, [value]);
-
-  const displayedQuery = draftText !== null ? draftText : (value?.label ?? "");
+  const displayedQuery = draft && draft.forValue === value ? draft.text : (value?.label ?? "");
   const mapAddress = value?.mapAddress;
 
-  // Load user's saved personal addresses for 1-click selection
   useEffect(() => {
     if (!showSavedAddresses || !isAuthenticated) return;
 
@@ -97,7 +86,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
     };
   }, [showSavedAddresses, isAuthenticated, user?.id]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
       if (isOpen && containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -108,7 +96,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [isOpen]);
 
-  // Debounced address search
   useEffect(() => {
     const trimmed = displayedQuery.trim();
     if (!isOpen || trimmed.length < 2) {
@@ -133,7 +120,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   }, [displayedQuery, isOpen]);
 
   const handleSelectSuggestion = (item: GeocodingSuggestion) => {
-    setDraftText(null);
+    setDraft(null);
     setIsOpen(false);
     onChange({
       label: item.label,
@@ -148,7 +135,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   const handleSelectCampus = (campusId: string) => {
     const loc = campusToLocation(campusId);
     if (!loc) return;
-    setDraftText(null);
+    setDraft(null);
     setIsOpen(false);
     onChange(loc);
   };
@@ -158,28 +145,27 @@ export const LocationField: React.FC<LocationFieldProps> = ({
     setGpsLoading(true);
     try {
       const loc = await getBrowserCurrentLocation();
-      setDraftText(null);
+      setDraft(null);
       onChange(loc);
     } catch {
-      setGpsError("Não foi possível obter o GPS. Digite o endereço ou marque no mapa.");
+      setGpsError("GPS indisponível. Digite o endereço ou marque no mapa.");
     } finally {
       setGpsLoading(false);
     }
   };
 
-  const visibleSuggestions = suggestions?.query === displayedQuery.trim()
-    ? suggestions.items
-    : [];
+  const visibleSuggestions =
+    suggestions?.query === displayedQuery.trim() ? suggestions.items : [];
 
   return (
     <div ref={containerRef} className="relative flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <label
           htmlFor={inputId}
-          className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-text-secondary"
+          className="text-xs font-semibold uppercase tracking-wider flex items-center gap-2 text-text-secondary"
         >
           <span
-            className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+            className="w-2 h-2 rounded-full inline-block shrink-0"
             style={{ backgroundColor: dotColor }}
           />
           {label}
@@ -191,14 +177,14 @@ export const LocationField: React.FC<LocationFieldProps> = ({
               type="button"
               onClick={handleUseGps}
               disabled={gpsLoading}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-border bg-surface-2 text-text-secondary transition-colors hover:border-indigo-500/60"
-              title="Usar minha localização atual via GPS"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-border bg-surface-2 text-text-secondary transition-colors hover:border-border-strong hover:text-text"
+              title="Usar localização atual via GPS"
             >
               <CrosshairIcon
                 size={13}
-                className={gpsLoading ? "animate-spin text-indigo-400" : "text-indigo-400"}
+                className={gpsLoading ? "animate-spin text-accent-text" : "text-accent-text"}
               />
-              <span>{gpsLoading ? "Localizando..." : "Meu GPS"}</span>
+              <span>{gpsLoading ? "Localizando..." : "GPS"}</span>
             </button>
           )}
 
@@ -209,19 +195,19 @@ export const LocationField: React.FC<LocationFieldProps> = ({
                 setIsOpen(false);
                 onTogglePickOnMap();
               }}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
                 isPickingOnMap
-                  ? "border-primary bg-indigo-500/18 text-primary-light"
-                  : "border-border bg-surface-2 text-text-secondary"
+                  ? "border-primary bg-primary/15 text-accent-text"
+                  : "border-border bg-surface-2 text-text-secondary hover:border-border-strong"
               }`}
             >
               <MapPinIcon size={13} />
               <span>
                 {isPickingOnMap
-                  ? "Clicando no mapa..."
+                  ? "Clicando..."
                   : value
                   ? "Ajustar no mapa"
-                  : "Marcar no mapa"}
+                  : "Mapa"}
               </span>
             </button>
           )}
@@ -230,8 +216,8 @@ export const LocationField: React.FC<LocationFieldProps> = ({
 
       {/* Main Search Input */}
       <div className="relative">
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
-          <SearchIcon size={16} />
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
+          <SearchIcon size={15} />
         </span>
         <input
           id={inputId}
@@ -246,7 +232,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           }}
           onChange={(e) => {
             const nextVal = e.target.value;
-            setDraftText(nextVal);
+            setDraft({ forValue: value, text: nextVal });
             onQueryChange?.(nextVal);
             setIsOpen(true);
             if (!nextVal.trim() && onClear) {
@@ -255,43 +241,40 @@ export const LocationField: React.FC<LocationFieldProps> = ({
               onChange({ ...value, label: nextVal });
             }
           }}
-          className={`w-full pl-10 pr-4 py-3 rounded-xl text-sm border bg-surface-2 text-text outline-none transition-all focus:ring-2 focus:ring-indigo-500/30 ${
+          className={`w-full pl-9 pr-4 py-2.5 rounded-md text-sm border bg-surface-2 text-text placeholder:text-text-muted outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/30 ${
             value ? "border-border-strong" : "border-border"
           }`}
         />
         {isOpen && displayedQuery.trim().length >= 2 && searching && (
-          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-text-muted animate-pulse">
-            Buscando...
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] text-text-muted animate-pulse">
+            Buscando…
           </span>
         )}
+
         {/* Autocomplete Suggestions Dropdown */}
         {isOpen && visibleSuggestions.length > 0 && (
-          <ul className="absolute top-full left-0 right-0 z-50 rounded-xl border border-border-strong bg-surface shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+          <ul className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 rounded-md border border-border-strong bg-surface shadow-lg overflow-hidden max-h-60 overflow-y-auto">
             {visibleSuggestions.map((item) => (
               <li key={item.id} className="border-b border-border last:border-b-0">
                 <button
                   type="button"
                   onClick={() => handleSelectSuggestion(item)}
-                  className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-indigo-500/10"
+                  className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface-hover"
                 >
                   <span
                     className={`mt-0.5 shrink-0 ${
-                      item.isCampus ? "text-indigo-400" : "text-emerald-400"
+                      item.isCampus ? "text-accent-text" : "text-secondary"
                     }`}
                   >
-                    <NavigationIcon size={15} />
+                    <NavigationIcon size={14} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate text-text">
-                      {item.label}
-                    </p>
-                    <p className="text-xs truncate text-text-muted">
-                      {item.subtitle}
-                    </p>
+                    <p className="text-sm font-medium truncate text-text">{item.label}</p>
+                    <p className="text-xs truncate text-text-muted">{item.subtitle}</p>
                   </div>
                   {item.isCampus && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-400 shrink-0">
-                      Campus UFRGS
+                    <span className="px-1.5 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold uppercase bg-primary/15 text-accent-text border border-primary/30 shrink-0">
+                      UFRGS
                     </span>
                   )}
                 </button>
@@ -304,9 +287,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       {/* Saved Personal Addresses Quick Pills */}
       {showSavedAddresses && savedAddresses.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium mr-0.5 text-text-muted">
-            Salvos:
-          </span>
+          <span className="text-[11px] font-medium mr-0.5 text-text-muted">Salvos:</span>
           {savedAddresses.map((addr) => {
             const active = value?.addressId === addr.id;
             return (
@@ -314,7 +295,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
                 key={addr.id}
                 type="button"
                 onClick={() => {
-                  setDraftText(null);
+                  setDraft(null);
                   setIsOpen(false);
                   onChange({
                     label: `${addr.label} (${addr.street}, ${addr.number})`,
@@ -324,14 +305,15 @@ export const LocationField: React.FC<LocationFieldProps> = ({
                     addressId: addr.id,
                   });
                 }}
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all inline-flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors inline-flex items-center gap-1 ${
                   active
-                    ? "bg-emerald-500 border-emerald-500 text-white"
-                    : "bg-surface-2 border-border text-text-secondary"
+                    ? "bg-primary border-primary text-on-primary"
+                    : "bg-surface-2 border-border text-text-secondary hover:border-border-strong"
                 }`}
                 title={`${addr.street}, ${addr.number} — CEP ${addr.postal_code}`}
               >
-                <span>📍 {addr.label}</span>
+                <MapPinIcon size={12} />
+                <span>{addr.label}</span>
               </button>
             );
           })}
@@ -341,9 +323,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       {/* UFRGS Campus Quick Pills */}
       {showCampusShortcuts && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium mr-0.5 text-text-muted">
-            Campi:
-          </span>
+          <span className="text-[11px] font-medium mr-0.5 text-text-muted">Campi:</span>
           {UFRGS_CAMPUS.map((c) => {
             const active =
               value?.campusId === c.id ||
@@ -353,10 +333,10 @@ export const LocationField: React.FC<LocationFieldProps> = ({
                 key={c.id}
                 type="button"
                 onClick={() => handleSelectCampus(c.id)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
                   active
-                    ? "bg-primary border-primary text-white"
-                    : "bg-surface-2 border-border text-text-secondary"
+                    ? "bg-primary border-primary text-on-primary font-semibold"
+                    : "bg-surface-2 border-border text-text-secondary hover:border-border-strong"
                 }`}
               >
                 {c.shortName}
@@ -366,29 +346,27 @@ export const LocationField: React.FC<LocationFieldProps> = ({
         </div>
       )}
 
-      {/* Selected Location Metadata / Privacy Region Indicator */}
+      {/* Selected Location Region Indicator */}
       {value && (
-        <div className="flex items-center text-[11px] px-1 text-text-muted">
+        <div className="flex items-center font-mono text-[11px] px-0.5 text-text-muted">
           <span>
-            ✓ Região identificada:{" "}
-            <strong className="text-text-secondary">{value.region}</strong>
+            Bairro: <strong className="text-text-secondary">{value.region}</strong>
           </span>
         </div>
       )}
 
       {helperText && !gpsError && (
-        <p className="text-xs px-1 text-text-muted">
-          {helperText}
-        </p>
+        <p className="text-xs px-0.5 text-text-muted">{helperText}</p>
       )}
 
-      {gpsError && <p className="text-xs text-red-400 px-1">{gpsError}</p>}
+      {gpsError && <p className="text-xs text-danger px-0.5">{gpsError}</p>}
+
       {value && mapAddress && (
         <Input
           id={`${inputId}-number`}
           label={`Número · ${label}`}
           value={mapAddress.number}
-          placeholder="Informe o número, se houver"
+          placeholder="Número (se houver)"
           maxLength={20}
           onChange={(event) => {
             const address = { ...mapAddress, number: event.target.value };

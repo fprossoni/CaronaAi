@@ -21,7 +21,7 @@ function getInitials(name?: string | null): string {
 }
 
 function getColorFromName(name?: string | null): string {
-  const colors = ["#6366f1", "#8b5cf6", "#ec4899", "#10b981", "#f59e0b", "#0ea5e9"];
+  const colors = ["#1f2329", "#282d35", "#323842", "#22262c", "#3a4049", "#171a1f"];
   if (!name) return colors[0];
   const index = name.charCodeAt(0) % colors.length;
   return colors[index];
@@ -39,35 +39,35 @@ export const Avatar: React.FC<AvatarProps> = ({
   const bg = getColorFromName(name);
 
   const sizeClasses = {
-    sm: "w-9 h-9 text-xs",
-    md: "w-11 h-11 text-sm",
-    lg: "w-16 h-16 text-lg",
-    xl: "w-24 h-24 text-2xl",
+    sm: "w-8 h-8 text-[11px]",
+    md: "w-11 h-11 text-xs",
+    lg: "w-16 h-16 text-base",
+    xl: "w-24 h-24 text-xl",
   }[size];
 
   return (
     <div
       className={`relative shrink-0 ${
-        onClick ? "cursor-pointer transition-transform hover:scale-105" : ""
+        onClick ? "cursor-pointer transition-opacity hover:opacity-90" : ""
       }`}
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
       <div
-        className={`rounded-full p-0.5 ${
-          ring ? "bg-linear-to-tr from-indigo-500 via-purple-500 to-pink-500" : ""
+        className={`rounded-md overflow-hidden border ${
+          ring ? "border-primary/70" : "border-border-strong"
         }`}
       >
         {photoUrl ? (
           <img
             src={photoUrl}
             alt={name ?? "Usuário"}
-            className={`${sizeClasses} rounded-full object-cover block border-2 border-surface`}
+            className={`${sizeClasses} rounded-[5px] object-cover block`}
           />
         ) : (
           <div
-            className={`${sizeClasses} rounded-full flex items-center justify-center font-bold text-white select-none border-2 border-surface`}
+            className={`${sizeClasses} rounded-[5px] flex items-center justify-center font-mono font-bold text-[#f4f5f2] select-none`}
             style={{ backgroundColor: bg }}
           >
             {initials}
@@ -75,7 +75,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         )}
       </div>
       {rating !== undefined && (
-        <span className="absolute -bottom-1 -right-1 rounded-full border border-border bg-surface px-1.5 py-px text-[10px] font-semibold whitespace-nowrap text-text">
+        <span className="absolute -bottom-1.5 -right-1.5 rounded-[2px] border border-border-strong bg-surface px-1 py-px font-mono text-[10px] font-bold leading-none whitespace-nowrap text-text">
           ★ {rating.toFixed(1)}
         </span>
       )}

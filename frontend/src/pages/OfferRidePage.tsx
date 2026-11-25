@@ -9,6 +9,7 @@ import { TripRouteFields } from "@/components/rides/TripRouteFields";
 import { getInitialTripRoute, hasTripCampus, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
 import { formatCarPlate, isValidCarPlate } from "@/lib/formatters";
 import { getErrorMessage } from "@/lib/errors";
+import { KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
@@ -21,7 +22,6 @@ export const OfferRidePage: React.FC = () => {
   const canOfferWomenOnly = user?.gender === "female";
   const toast = useToastStore();
 
-  // Quick driver activation state (if user registered as passenger-only)
   const [carModel, setCarModel] = useState(user?.car_model ?? "");
   const [carColor, setCarColor] = useState(user?.car_color ?? "");
   const [carPlate, setCarPlate] = useState(user?.car_plate ?? "");
@@ -40,10 +40,7 @@ export const OfferRidePage: React.FC = () => {
   const handleActivateDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (carPlate.trim() && !isValidCarPlate(carPlate)) {
-      toast.error(
-        "Placa inválida",
-        "Use o formato ABC1234 ou padrão Mercosul ABC1C34."
-      );
+      toast.error("Placa inválida", "Use ABC1234 ou ABC1C34.");
       return;
     }
 
@@ -56,12 +53,9 @@ export const OfferRidePage: React.FC = () => {
         car_plate: carPlate.trim() ? formatCarPlate(carPlate) : undefined,
       });
       setUser(data);
-      toast.success(
-        "Modo Motorista ativado!",
-        "Agora você já pode publicar caronas para a comunidade UFRGS."
-      );
+      toast.success("Modo motorista ativado");
     } catch (err: unknown) {
-      toast.error("Erro ao ativar perfil de motorista", getErrorMessage(err));
+      toast.error("Erro ao ativar", getErrorMessage(err));
     } finally {
       setActivatingDriver(false);
     }
@@ -72,13 +66,13 @@ export const OfferRidePage: React.FC = () => {
     setError("");
 
     if (!originLocation || !destinationLocation) {
-      setError("Confirme os pontos de origem e destino.");
+      setError("Confirme origem e destino.");
       return;
     }
     if (!hasTripCampus(route)) return;
 
     if (!departureAt) {
-      setError("Informe a data e o horário de saída.");
+      setError("Informe data e horário de saída.");
       return;
     }
 
@@ -103,51 +97,43 @@ export const OfferRidePage: React.FC = () => {
         total_seats: Number(totalSeats),
         women_only: canOfferWomenOnly && womenOnly,
       });
-      toast.success(
-        "Carona publicada com sucesso!",
-        "Os estudantes que compartilham seu trajeto já podem enviar solicitações."
-      );
+      toast.success("Carona publicada");
       navigate("/rides");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Erro ao publicar carona. Verifique os dados."));
+      setError(getErrorMessage(err, "Erro ao publicar carona."));
     } finally {
       setLoading(false);
     }
   };
 
-  // Guard: If user is not registered as a driver yet, show instant activation card
   if (user && !user.is_driver) {
     return (
-      <div className="max-w-xl mx-auto py-6 animate-fade-in">
-        <div className="rounded-3xl p-6 md:p-8 border border-border bg-gradient-card shadow-xl space-y-5">
-          <div>
-            <h2 className="text-xl font-extrabold text-text">
-              Ative seu Perfil de Motorista
-            </h2>
-            <p className="text-sm mt-1 leading-relaxed text-text-muted">
-              No momento sua conta está configurada apenas como <strong>Passageiro</strong>.
-              Ative o modo motorista abaixo (e opcionalmente informe seu veículo) para oferecer
-              caronas.
+      <div className="max-w-lg mx-auto py-6 animate-fade-in">
+        <div className="rounded-[10px] p-6 border border-border-strong bg-surface shadow-md space-y-5">
+          <div className="space-y-1">
+            <h1 className="font-display text-xl font-bold text-text">Ativar modo motorista</h1>
+            <p className="text-xs text-text-muted">
+              Informe os dados opcionais do veículo para publicar caronas.
             </p>
           </div>
 
           <form onSubmit={handleActivateDriver} className="space-y-4">
             <Input
-              label="Modelo do veículo (opcional)"
-              placeholder="Ex.: Chevrolet Onix 2021"
+              label="Modelo (opcional)"
+              placeholder="Chevrolet Onix 2021"
               value={carModel}
               onChange={(e) => setCarModel(e.target.value)}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Cor (opcional)"
-                placeholder="Ex.: Prata"
+                placeholder="Prata"
                 value={carColor}
                 onChange={(e) => setCarColor(e.target.value)}
               />
               <Input
                 label="Placa (opcional)"
-                placeholder="ABC1234 ou ABC1C34"
+                placeholder="ABC1C34"
                 maxLength={7}
                 value={carPlate}
                 onChange={(e) => setCarPlate(formatCarPlate(e.target.value))}
@@ -155,7 +141,8 @@ export const OfferRidePage: React.FC = () => {
             </div>
 
             <Button type="submit" fullWidth loading={activatingDriver}>
-              Habilitar Modo Motorista e Continuar
+              <span>Ativar e continuar</span>
+              <KineticChevrons />
             </Button>
           </form>
         </div>
@@ -165,34 +152,58 @@ export const OfferRidePage: React.FC = () => {
 
   return (
     <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
-      <h1 className="text-2xl font-extrabold text-text">Oferecer carona</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-text">Oferecer carona</h1>
       <TripRouteFields
         route={route}
-        onChange={(update) => { setRoute(update); setError(""); }}
+        onChange={(update) => {
+          setRoute(update);
+          setError("");
+        }}
         onSubmit={handleSubmit}
         disabled={loading}
         showRoutePreview
       >
-        <Input
-          label="Data e hora de saída do motorista"
-          type="datetime-local"
-          value={departureAt}
-          hint={departureEdited ? undefined : "Ao publicar com o horário automático, a saída fica marcada para o próximo minuto."}
-          onChange={(event) => {
-            setDepartureEdited(true);
-            setDepartureAt(event.target.value);
-          }}
-          required
-        />
-        <Input label="Vagas disponíveis" type="number" min={1} max={6} value={totalSeats} onChange={(event) => setTotalSeats(Number(event.target.value))} required />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Saída"
+            type="datetime-local"
+            value={departureAt}
+            onChange={(event) => {
+              setDepartureEdited(true);
+              setDepartureAt(event.target.value);
+            }}
+            required
+          />
+          <Input
+            label="Vagas livres"
+            type="number"
+            min={1}
+            max={6}
+            value={totalSeats}
+            onChange={(event) => setTotalSeats(Number(event.target.value))}
+            required
+          />
+        </div>
         {canOfferWomenOnly && (
-          <label className="flex items-start gap-2 text-sm text-text">
-            <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
-            Carona exclusiva para mulheres
+          <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
+            <input
+              type="checkbox"
+              className="accent-primary w-4 h-4 rounded-[2px]"
+              checked={womenOnly}
+              onChange={(event) => setWomenOnly(event.target.checked)}
+            />
+            <span>Carona exclusiva para mulheres</span>
           </label>
         )}
-        {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
-        <Button type="submit" fullWidth size="lg" loading={loading}>Publicar carona</Button>
+        {error && (
+          <p role="alert" className="text-xs text-danger">
+            {error}
+          </p>
+        )}
+        <Button type="submit" fullWidth size="lg" loading={loading}>
+          <span>Publicar carona</span>
+          <KineticChevrons />
+        </Button>
       </TripRouteFields>
     </section>
   );

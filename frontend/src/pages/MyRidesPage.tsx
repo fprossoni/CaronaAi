@@ -1,11 +1,8 @@
 /**
  * MyRidesPage ("Minhas Caronas")
  *
- * Central dashboard for active rides (both as Driver and as Passenger):
- * - Driver View: Manage offered rides, inspect route on map, open `RideRequestsModal`
- *   to accept/reject requests, or cancel a ride.
- * - Passenger View: Track pending requests and confirmed rides (`status === "accepted"`),
- *   revealing the driver's WhatsApp contact, vehicle details, and exact pickup map point.
+ * Active rides dashboard for Driver and Passenger roles with telemetry ETA,
+ * vertical bar SeatMeter, and quick access to ride requests and messages.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -20,11 +17,13 @@ import { RideRequestsModal } from "@/components/rides/RideRequestsModal";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { UserProfileModal } from "@/components/users/UserProfileModal";
 import { Avatar } from "@/components/ui/Avatar";
+import { SeatMeter } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import {
   CarIcon,
   CheckCircleIcon,
   HistoryIcon,
+  LockIcon,
   MapPinIcon,
   MessageIcon,
   NavigationIcon,
@@ -49,7 +48,7 @@ function isActiveRide(status: RideStatus): boolean {
 }
 
 function formatDate(iso: string): string {
-  return format(new Date(iso), "dd 'de' MMM 'às' HH:mm", { locale: ptBR });
+  return format(new Date(iso), "dd MMM · HH:mm", { locale: ptBR });
 }
 
 export const MyRidesPage: React.FC = () => {
@@ -78,28 +77,9 @@ export const MyRidesPage: React.FC = () => {
       const { data } = await messagesApi.open(rideId);
       navigate(`/messages?conversation=${data.id}`);
     } catch (err) {
-      toast.error("Não foi possível abrir as mensagens", getErrorMessage(err));
+      toast.error("Não foi possível abrir mensagens", getErrorMessage(err));
     } finally {
       setOpeningChat(null);
-    }
-  };
-
-  const changeRideStatus = async (ride: RideDetail) => {
-    const completing = ride.status === "in_progress";
-    if (completing && !await toast.confirm({
-      title: "Concluir esta carona?",
-      description: "A viagem irá para o histórico e as conversas serão encerradas para todos os participantes.",
-      confirmLabel: "Concluir carona",
-    })) return;
-    setChangingRide(ride.id);
-    try {
-      await (completing ? ridesApi.complete(ride.id) : ridesApi.start(ride.id));
-      refresh();
-      toast.info(completing ? "Carona concluída. Conversas encerradas." : "Carona iniciada.");
-    } catch (err) {
-      toast.error("Não foi possível atualizar a carona", getErrorMessage(err));
-    } finally {
-      setChangingRide(null);
     }
   };
 
@@ -127,7 +107,6 @@ export const MyRidesPage: React.FC = () => {
       })
     );
 
-    // Fetch confirmed details (driver phone + exact pickup coordinates) for accepted passenger matches
     const acceptedPassengerMatches = matchesRes.data.filter((m) => m.status === "accepted");
     const confirmedEntries = await Promise.all(
       acceptedPassengerMatches.map(async (m) => {
@@ -185,11 +164,34 @@ export const MyRidesPage: React.FC = () => {
       });
   }, [loadData, commit]);
 
+  const changeRideStatus = async (ride: RideDetail) => {
+    const completing = ride.status === "in_progress";
+    if (
+      completing &&
+      !(await toast.confirm({
+        title: "Concluir esta carona?",
+        description: "A viagem irá para o histórico e as conversas serão encerradas.",
+        confirmLabel: "Concluir",
+      }))
+    )
+      return;
+    setChangingRide(ride.id);
+    try {
+      await (completing ? ridesApi.complete(ride.id) : ridesApi.start(ride.id));
+      refresh();
+      toast.info(completing ? "Carona concluída." : "Carona iniciada.");
+    } catch (err) {
+      toast.error("Erro ao atualizar carona", getErrorMessage(err));
+    } finally {
+      setChangingRide(null);
+    }
+  };
+
   const handleCancelRide = async (ride: RideDetail) => {
     const ok = await toast.confirm({
-      title: "Cancelar esta oferta de carona?",
-      description: `A viagem de ${formatDate(ride.departure_at)} (${ride.origin_label} → ${ride.destination_label}) será cancelada para todos os passageiros.`,
-      confirmLabel: "Sim, cancelar carona",
+      title: "Cancelar carona?",
+      description: `${formatDate(ride.departure_at)} · ${ride.origin_label} → ${ride.destination_label}`,
+      confirmLabel: "Cancelar carona",
       variant: "danger",
     });
     if (!ok) return;
@@ -200,7 +202,7 @@ export const MyRidesPage: React.FC = () => {
       setRides((prev) =>
         prev.map((r) => (r.id === ride.id ? { ...r, status: "cancelled" } : r))
       );
-      toast.info("Carona cancelada com sucesso.");
+      toast.info("Carona cancelada.");
     } catch (err: unknown) {
       toast.error("Erro ao cancelar carona", getErrorMessage(err));
     } finally {
@@ -210,12 +212,12 @@ export const MyRidesPage: React.FC = () => {
 
   const handleCancelMatch = async (match: MatchWithRide) => {
     const ok = await toast.confirm({
-      title: "Cancelar participação nesta carona?",
+      title: "Cancelar participação?",
       description:
         match.status === "accepted"
-          ? "Sua vaga confirmada será liberada de volta para o motorista."
+          ? "Sua vaga será liberada para o motorista."
           : "Sua solicitação pendente será retirada.",
-      confirmLabel: "Cancelar solicitação",
+      confirmLabel: "Confirmar",
       variant: "danger",
     });
     if (!ok) return;
@@ -228,7 +230,7 @@ export const MyRidesPage: React.FC = () => {
       );
       toast.info("Solicitação cancelada.");
     } catch (err: unknown) {
-      toast.error("Erro ao cancelar solicitação", getErrorMessage(err));
+      toast.error("Erro ao cancelar", getErrorMessage(err));
     } finally {
       setCancellingId(null);
     }
@@ -236,8 +238,8 @@ export const MyRidesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="py-16 text-center text-sm text-text-muted animate-pulse">
-        Carregando seu painel de caronas...
+      <div className="py-16 text-center font-mono text-xs text-text-muted animate-pulse">
+        Carregando caronas…
       </div>
     );
   }
@@ -260,55 +262,45 @@ export const MyRidesPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-text">
-            Minhas Caronas Ativas
-          </h1>
-          <p className="text-sm mt-0.5 text-text-muted">
-            Acompanhe aprovações, pontos de encontro no mapa e contatos de WhatsApp.
-          </p>
-        </div>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-text">
+          Minhas Caronas
+        </h1>
 
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={() => navigate("/rides/history")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold border border-border bg-surface text-text transition-all hover:border-indigo-500/50"
         >
-          <HistoryIcon size={15} className="text-indigo-400" />
-          <span>Ver Histórico & Avaliações</span>
-        </button>
+          <HistoryIcon size={14} className="text-accent-text" />
+          <span>Histórico</span>
+        </Button>
       </div>
 
       {error && (
-        <div className="p-4 rounded-2xl bg-red-500/15 border border-red-500/30 text-sm text-red-400">
+        <div className="p-3.5 rounded-md bg-danger/10 border border-danger/30 text-xs text-danger">
           {error}
         </div>
       )}
 
       {/* Empty State */}
       {!hasAnyActive && (
-        <div className="rounded-3xl p-10 border border-border bg-gradient-card text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mx-auto">
-            <CarIcon size={28} />
+        <div className="rounded-[10px] p-10 border border-border bg-surface bg-dot-matrix text-center space-y-4">
+          <div className="w-12 h-12 rounded-md border border-border-strong bg-surface-2 text-accent-text flex items-center justify-center mx-auto">
+            <CarIcon size={22} />
           </div>
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-text">
-              Você não tem viagens ativas no momento
-            </h2>
-            <p className="text-xs max-w-md mx-auto text-text-muted">
-              Busque um motorista que passe perto de você ou ofereça os assentos livres do seu
-              carro rumo à UFRGS.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
+          <p className="text-sm font-medium text-text-secondary">
+            Nenhuma viagem ativa no momento.
+          </p>
+          <div className="flex items-center justify-center gap-2.5 flex-wrap">
             <Link to="/find" className="no-underline">
               <Button variant="primary" size="sm">
-                Pedir Carona
+                Pedir carona
               </Button>
             </Link>
             <Link to="/offer" className="no-underline">
               <Button variant="secondary" size="sm">
-                Oferecer Carona
+                Oferecer carona
               </Button>
             </Link>
           </div>
@@ -317,10 +309,10 @@ export const MyRidesPage: React.FC = () => {
 
       {/* Section 1: Active Rides as Driver */}
       {upcomingRides.length > 0 && (
-        <section className="space-y-3.5">
+        <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-400">
-              Como Motorista ({upcomingRides.length})
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-accent-text">
+              Como motorista · {upcomingRides.length}
             </span>
           </div>
 
@@ -334,18 +326,20 @@ export const MyRidesPage: React.FC = () => {
               return (
                 <div
                   key={ride.id}
-                  className={`rounded-3xl p-5 border bg-gradient-card flex flex-col justify-between gap-4 shadow-md ${
+                  className={`rounded-[10px] p-4 sm:p-5 border bg-surface flex flex-col justify-between gap-4 ${
                     counts.pending > 0 ? "border-primary" : "border-border"
                   }`}
                 >
-                  <div className="space-y-3.5">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                          className={`px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase ${
                             ride.status === "full"
-                              ? "bg-amber-500/20 text-amber-400"
-                              : "bg-emerald-500/20 text-emerald-400"
+                              ? "bg-warning-bg text-warning-text border border-warning/40"
+                              : ride.status === "in_progress"
+                              ? "bg-primary/15 text-accent-text border border-primary/40"
+                              : "bg-secondary/15 text-secondary border border-secondary/35"
                           }`}
                         >
                           {ride.status === "full"
@@ -355,23 +349,23 @@ export const MyRidesPage: React.FC = () => {
                             : "Ativa"}
                         </span>
                         {campus && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-border bg-surface-2 text-text-secondary">
+                          <span className="px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold border border-border bg-surface-2 text-text-secondary">
                             {campus.shortName}
                           </span>
                         )}
                       </div>
 
-                      <span className="text-xs font-bold text-text">
+                      <span className="font-mono text-xs font-semibold text-text">
                         {formatDate(ride.departure_at)}
                       </span>
                     </div>
 
-                    {/* Route Timeline */}
-                    <div className="p-3.5 rounded-2xl border border-border bg-surface-2 space-y-2.5">
-                      <div className="flex items-start gap-2.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                    {/* Route Block */}
+                    <div className="p-3 rounded-md border border-border bg-surface-2 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase block text-text-muted">
+                          <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
                             Saída
                           </span>
                           <p className="text-sm font-semibold truncate text-text">
@@ -379,10 +373,10 @@ export const MyRidesPage: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-start gap-2.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
+                      <div className="flex items-start gap-2">
+                        <span className="size-2 rounded-full bg-secondary mt-1.5 shrink-0" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase block text-text-muted">
+                          <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
                             Destino
                           </span>
                           <p className="text-sm font-semibold truncate text-text">
@@ -394,19 +388,16 @@ export const MyRidesPage: React.FC = () => {
 
                     {/* Stats Row */}
                     <div className="flex items-center justify-between text-xs text-text-secondary flex-wrap gap-2">
-                      <span className="inline-flex items-center gap-1.5">
-                        <UsersIcon size={14} className="text-emerald-400" />
-                        <strong>{ride.available_seats}</strong>/{ride.total_seats} livres
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <NavigationIcon size={13} className="text-indigo-400" />
+                      <SeatMeter available={ride.available_seats} total={ride.total_seats} />
+                      <span className="inline-flex items-center gap-1 font-mono text-[11px] text-text-muted">
+                        <NavigationIcon size={12} className="text-accent-text" />
                         {formatDistance(ride.route_distance_meters)} ·{" "}
                         {formatDuration(ride.route_duration_seconds)}
                       </span>
                       <button
                         type="button"
                         onClick={() => setExpandedMapId(isMapOpen ? null : mapKey)}
-                        className="text-indigo-400 font-semibold hover:underline"
+                        className="text-xs font-semibold text-accent-text hover:underline"
                       >
                         {isMapOpen ? "Ocultar mapa" : "Ver mapa"}
                       </button>
@@ -414,7 +405,7 @@ export const MyRidesPage: React.FC = () => {
 
                     {isMapOpen && (
                       <InteractiveMap
-                        height="200px"
+                        height="190px"
                         origin={
                           ride.origin_lat != null && ride.origin_lng != null
                             ? { lat: ride.origin_lat, lng: ride.origin_lng, label: ride.origin_label }
@@ -435,41 +426,66 @@ export const MyRidesPage: React.FC = () => {
                   </div>
 
                   {/* Driver Actions */}
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" size="sm" disabled={counts.accepted === 0}
-                      title={counts.accepted === 0 ? "Confirme um passageiro para liberar as mensagens" : "Criar ou abrir o grupo da carona"}
-                      loading={openingChat === ride.id} onClick={() => openChat(ride.id)}>
-                      <MessageIcon size={16} /> Mensagens
-                    </Button>
-                    <Button variant="secondary" size="sm" loading={changingRide === ride.id} onClick={() => changeRideStatus(ride)}>
-                      {ride.status === "in_progress" ? "Concluir carona" : "Iniciar carona"}
-                    </Button>
-                  </div>
-                  <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setModalRide(ride)}
-                      className={`flex-1 inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        counts.pending > 0
-                          ? "bg-gradient-primary text-white"
-                          : "bg-surface-2 text-text border border-border-strong"
-                      }`}
-                    >
-                      <UsersIcon size={15} />
-                      <span>
-                        Solicitações ({counts.pending} pendentes • {counts.accepted} confirmados)
-                      </span>
-                    </button>
+                  <div className="space-y-2 pt-3 border-t border-border">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={counts.accepted === 0}
+                        title={
+                          counts.accepted === 0
+                            ? "Confirme um passageiro para liberar mensagens"
+                            : "Abrir grupo da carona"
+                        }
+                        loading={openingChat === ride.id}
+                        onClick={() => openChat(ride.id)}
+                      >
+                        <MessageIcon size={14} /> Mensagens
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={changingRide === ride.id}
+                        onClick={() => changeRideStatus(ride)}
+                      >
+                        {ride.status === "in_progress" ? "Concluir carona" : "Iniciar carona"}
+                      </Button>
+                    </div>
 
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      loading={cancellingId === ride.id}
-                      disabled={ride.status === "in_progress"}
-                      onClick={() => handleCancelRide(ride)}
-                    >
-                      Cancelar
-                    </Button>
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setModalRide(ride)}
+                        className={`flex-1 inline-flex items-center justify-between gap-2 px-3 py-2 rounded-md text-xs font-semibold border transition-colors ${
+                          counts.pending > 0
+                            ? "border-primary bg-primary/10 text-text hover:bg-primary/15"
+                            : "border-border bg-surface-2 text-text-secondary hover:border-border-strong"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <UsersIcon size={14} />
+                          <span>Solicitações</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[11px]">
+                          {counts.pending > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-[2px] bg-primary text-on-primary font-bold">
+                              {counts.pending}
+                            </span>
+                          )}
+                          <span className="text-text-muted">{counts.accepted} conf.</span>
+                        </span>
+                      </button>
+
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={cancellingId === ride.id}
+                        disabled={ride.status === "in_progress"}
+                        onClick={() => handleCancelRide(ride)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
@@ -480,17 +496,14 @@ export const MyRidesPage: React.FC = () => {
 
       {/* Section 2: Active Rides as Passenger */}
       {activeMatches.length > 0 && (
-        <section className="space-y-3.5">
+        <section className="space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">
-              Como Passageiro ({activeMatches.length})
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-secondary">
+              Como passageiro · {activeMatches.length}
             </span>
             {supersededCount > 0 && (
-              <span className="px-3 py-1 rounded-full text-[11px] font-medium border border-border bg-surface-2 text-text-muted">
-                {supersededCount}{" "}
-                {supersededCount === 1
-                  ? "solicitação em lote encerrada automaticamente após confirmação"
-                  : "solicitações em lote encerradas automaticamente após confirmação"}
+              <span className="px-2 py-0.5 rounded-[2px] font-mono text-[11px] border border-border bg-surface-2 text-text-muted">
+                {supersededCount} encerrada(s) no lote
               </span>
             )}
           </div>
@@ -516,7 +529,7 @@ export const MyRidesPage: React.FC = () => {
               });
               const estimatedPickupDate = format(
                 new Date(estimatedPickupIso),
-                "dd 'de' MMM",
+                "dd MMM",
                 { locale: ptBR }
               );
               const passengerDestinationLabel =
@@ -525,57 +538,48 @@ export const MyRidesPage: React.FC = () => {
               return (
                 <div
                   key={match.id}
-                  className={`rounded-3xl p-5 border bg-gradient-card flex flex-col justify-between gap-4 shadow-md ${
-                    isAccepted ? "border-emerald-500/50" : "border-border"
+                  className={`rounded-[10px] p-4 sm:p-5 border bg-surface flex flex-col justify-between gap-4 ${
+                    isAccepted ? "border-secondary/50" : "border-border"
                   }`}
                 >
-                  <div className="space-y-3.5">
+                  <div className="space-y-3">
                     {/* Status Badge */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       {isAccepted ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          <CheckCircleIcon size={13} />{" "}
-                          {isRideInProgress ? "Carona em andamento!" : "Carona Confirmada!"}
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase bg-secondary/15 text-secondary border border-secondary/35">
+                          <CheckCircleIcon size={12} />
+                          <span>{isRideInProgress ? "Em andamento" : "Confirmada"}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                          ⏳ Aguardando aprovação do motorista
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase bg-warning-bg text-warning-text border border-warning/40">
+                          Pendente
                         </span>
                       )}
 
                       {campus && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-border bg-surface-2 text-text-secondary">
+                        <span className="px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold border border-border bg-surface-2 text-text-secondary">
                           {campus.shortName}
                         </span>
                       )}
                     </div>
 
-                    {/* Highlighted ETA at Meeting Point */}
-                    <div className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-center justify-between gap-3">
-                      <div className="space-y-0.5">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block">
-                          Previsão no ponto de encontro
-                        </span>
-                        <p className="text-xs text-text-muted">
-                          {isRideInProgress
-                            ? "O motorista iniciou a viagem — fique atento às mensagens"
-                            : isAccepted
-                            ? "Horário estimado para o motorista chegar ao seu embarque"
-                            : "Previsão calculada para o seu ponto de encontro"}
-                        </p>
-                      </div>
+                    {/* Telemetry ETA Block */}
+                    <div className="p-3 rounded-md border border-border bg-surface-2 flex items-center justify-between gap-3">
+                      <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                        Embarque previsto
+                      </span>
                       <div className="text-right shrink-0">
-                        <span className="text-2xl font-extrabold tabular-nums text-text block leading-none">
+                        <span className="font-mono text-2xl font-bold tabular-nums text-text block leading-none">
                           {estimatedPickupTime}
                         </span>
-                        <span className="text-[11px] font-semibold text-text-muted block mt-1">
+                        <span className="font-mono text-[11px] text-text-muted block mt-1">
                           {estimatedPickupDate}
                         </span>
                       </div>
                     </div>
 
-                    {/* Driver Profile Row + Vehicle Identification */}
-                    <div className="p-3 rounded-2xl border border-border bg-surface-2 flex items-center justify-between gap-3 flex-wrap">
+                    {/* Driver Profile Row */}
+                    <div className="p-3 rounded-md border border-border bg-surface-2 flex items-center justify-between gap-3 flex-wrap">
                       <div
                         className="flex items-center gap-3 cursor-pointer group min-w-0"
                         onClick={() => setSelectedUser(driver)}
@@ -585,21 +589,20 @@ export const MyRidesPage: React.FC = () => {
                           photoUrl={driver.photo_url}
                           rating={driver.avg_rating}
                           size="md"
-                          ring
                         />
                         <div className="min-w-0">
-                          <p className="font-bold text-sm text-text group-hover:text-indigo-400 truncate">
+                          <p className="font-bold text-sm text-text group-hover:text-accent-text truncate transition-colors">
                             {driver.name ?? "Motorista UFRGS"}
                           </p>
                           <p className="text-xs text-text-muted truncate">
                             {driver.course ?? "Estudante UFRGS"}
                           </p>
                           {(carModel || carColor) && (
-                            <p className="text-[11px] font-medium text-indigo-400 mt-0.5 flex items-center gap-1 flex-wrap">
-                              <CarIcon size={12} />
-                              <span>
+                            <p className="font-mono text-[11px] text-text-secondary mt-0.5 flex items-center gap-1">
+                              <CarIcon size={11} className="text-accent-text shrink-0" />
+                              <span className="truncate">
                                 {carModel ?? "Veículo"}
-                                {carColor ? ` • ${carColor}` : ""}
+                                {carColor ? ` · ${carColor}` : ""}
                               </span>
                             </p>
                           )}
@@ -607,24 +610,24 @@ export const MyRidesPage: React.FC = () => {
                       </div>
 
                       {isAccepted && carPlate && (
-                        <div className="px-2.5 py-1 rounded-lg border border-border-strong bg-surface text-right shrink-0">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted block">
+                        <div className="px-2 py-1 rounded-[2px] border border-border-strong bg-surface text-right shrink-0">
+                          <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-text-muted block">
                             Placa
                           </span>
-                          <span className="font-mono text-xs font-extrabold tracking-widest text-text">
+                          <span className="font-mono text-xs font-bold tracking-widest text-text">
                             {carPlate}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* Passenger's Own Pickup & Dropoff Summary (Driver's origin is never exposed) */}
-                    <div className="p-3.5 rounded-2xl border border-border bg-surface-2 space-y-2.5 text-xs">
-                      <div className="flex items-start gap-2.5">
-                        <MapPinIcon size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                    {/* Pickup & Dropoff */}
+                    <div className="p-3 rounded-md border border-border bg-surface-2 space-y-2 text-xs">
+                      <div className="flex items-start gap-2">
+                        <MapPinIcon size={14} className="text-primary shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase block text-text-muted">
-                            Seu ponto de encontro (Embarque)
+                          <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
+                            Embarque
                           </span>
                           <p className="text-sm font-semibold text-text wrap-anywhere">
                             {match.pickup_label}
@@ -632,11 +635,11 @@ export const MyRidesPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-2.5">
-                        <NavigationIcon size={15} className="text-indigo-400 shrink-0 mt-0.5" />
+                      <div className="flex items-start gap-2">
+                        <NavigationIcon size={14} className="text-secondary shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase block text-text-muted">
-                            Seu destino (Desembarque)
+                          <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
+                            Destino
                           </span>
                           <p className="text-sm font-semibold text-text wrap-anywhere">
                             {passengerDestinationLabel}
@@ -645,65 +648,50 @@ export const MyRidesPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Communication & Messages Panel (Replaces Map View) */}
+                    {/* Communication */}
                     {isAccepted ? (
-                      <div className="p-3.5 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 space-y-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-text flex items-center gap-1.5">
-                            <MessageIcon size={15} className="text-indigo-400 shrink-0" />
-                            Combine o embarque com o motorista
-                          </span>
-                          {driverPhone && (
-                            <span className="text-[11px] text-text-muted">
-                              Tel.: <strong className="text-text-secondary">{driverPhone}</strong>
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-text-secondary leading-relaxed">
-                          Por privacidade, a rota e o endereço de origem do motorista não são exibidos. Use o chat da carona para combinar detalhes do ponto de encontro.
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            loading={openingChat === match.ride.id}
-                            onClick={() => openChat(match.ride.id)}
-                          >
-                            <MessageIcon size={15} />
-                            <span>Abrir Mensagens da Carona</span>
-                          </Button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          loading={openingChat === match.ride.id}
+                          onClick={() => openChat(match.ride.id)}
+                        >
+                          <MessageIcon size={14} />
+                          <span>Mensagens</span>
+                        </Button>
 
-                          {driverPhone && (
-                            <a
-                              href={buildWhatsAppUrl(
-                                driverPhone,
-                                `Olá ${driver.name ?? ""}! Tudo certo para o nosso encontro em "${match.pickup_label}" às ${estimatedPickupTime} pelo Carona Aí?`
-                              )}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md no-underline"
-                            >
-                              <WhatsAppIcon size={14} />
-                              <span>WhatsApp</span>
-                            </a>
-                          )}
-                        </div>
+                        {driverPhone && (
+                          <a
+                            href={buildWhatsAppUrl(
+                              driverPhone,
+                              `Olá ${driver.name ?? ""}! Tudo certo para o nosso encontro em "${match.pickup_label}" às ${estimatedPickupTime} pelo Carona Aí?`
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-secondary text-on-primary hover:opacity-90 transition-opacity no-underline"
+                          >
+                            <WhatsAppIcon size={13} />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
                       </div>
                     ) : (
-                      <div className="p-3 rounded-2xl border border-border bg-surface-2 text-xs text-text-muted leading-relaxed">
-                        🔒 O chat de mensagens da carona, a placa do veículo e o contato do motorista serão liberados assim que sua solicitação for aceita.
+                      <div className="p-2.5 rounded-md border border-border bg-surface-2 flex items-center gap-2 text-xs text-text-muted">
+                        <LockIcon size={13} className="shrink-0" />
+                        <span>Chat e placa liberados após aceite.</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Passenger Footer Actions */}
+                  {/* Footer */}
                   <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedUser(driver)}
-                      className="text-xs font-semibold text-text-muted hover:underline"
+                      className="text-xs font-semibold text-text-muted hover:text-text hover:underline"
                     >
-                      Ver perfil do motorista
+                      Ver perfil
                     </button>
 
                     <Button
@@ -712,7 +700,7 @@ export const MyRidesPage: React.FC = () => {
                       loading={cancellingId === match.id}
                       onClick={() => handleCancelMatch(match)}
                     >
-                      {isAccepted ? "Cancelar participação" : "Retirar solicitação"}
+                      {isAccepted ? "Cancelar vaga" : "Retirar pedido"}
                     </Button>
                   </div>
                 </div>

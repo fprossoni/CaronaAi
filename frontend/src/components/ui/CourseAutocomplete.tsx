@@ -17,8 +17,8 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
   error,
   required = false,
   label = "Curso",
-  placeholder = "Digite para buscar seu curso (ex: Ciência da Computação)",
-  hint = "Selecione na lista ou escolha 'Outro' para digitar manualmente",
+  placeholder = "Ex.: Ciência da Computação",
+  hint,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -26,15 +26,12 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
 
-  // Filter courses based on current query
   const matches = useMemo(() => {
     return filterCourses(value).slice(0, 20);
   }, [value]);
 
-  // Total selectable items = matches + 1 ("Outro" option)
   const totalOptions = matches.length + 1;
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -64,8 +61,6 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
   };
 
   const handleInputBlur = () => {
-    // If the entered value canonical-matches an official course (case/accent insensitive),
-    // normalize it to the official capitalized form
     const canonical = findCanonicalCourseName(value);
     if (canonical && canonical !== value) {
       onChange(canonical);
@@ -105,7 +100,7 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
     <div className="relative flex flex-col gap-1.5" ref={containerRef}>
       {label && (
         <label
-          className="text-[13px] font-medium tracking-[0.02em] text-text-muted"
+          className="text-xs font-semibold uppercase tracking-wider text-text-muted"
           htmlFor={inputId}
         >
           {label} {required && <span className="text-danger">*</span>}
@@ -117,10 +112,10 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
           id={inputId}
           ref={inputRef}
           type="text"
-          className={`w-full rounded-xl border bg-surface-2 px-4 py-3 text-[15px] text-text placeholder:text-text-muted outline-none transition-all duration-150 ${
+          className={`w-full rounded-md border bg-surface-2 px-3.5 py-2.5 text-sm text-text placeholder:text-text-muted outline-none transition-colors duration-150 ${
             error
-              ? "border-danger focus:ring-3 focus:ring-red-500/20"
-              : "border-border focus:border-primary focus:ring-3 focus:ring-indigo-500/20"
+              ? "border-danger focus:ring-1 focus:ring-danger/30"
+              : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30"
           }`}
           placeholder={placeholder}
           value={value}
@@ -134,7 +129,7 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
 
       {isOpen && (
         <ul
-          className="absolute top-[calc(100%+4px)] left-0 right-0 z-60 m-0 max-h-55 list-none overflow-y-auto rounded-xl border border-border bg-surface py-1 shadow-md"
+          className="absolute top-[calc(100%+4px)] left-0 right-0 z-60 m-0 max-h-55 list-none overflow-y-auto rounded-md border border-border-strong bg-surface py-1 shadow-lg"
           role="listbox"
         >
           {matches.map((course, idx) => {
@@ -145,38 +140,38 @@ export const CourseAutocomplete: React.FC<CourseAutocompleteProps> = ({
                 key={course}
                 role="option"
                 aria-selected={isSelected}
-                className={`flex cursor-pointer items-center justify-between px-3.5 py-2.5 text-sm transition-colors duration-150 hover:bg-indigo-500/15 ${
-                  isActive ? "bg-indigo-500/15" : ""
-                } ${isSelected ? "font-semibold text-primary" : "text-text"}`}
+                className={`flex cursor-pointer items-center justify-between px-3.5 py-2 text-sm transition-colors duration-100 hover:bg-surface-hover ${
+                  isActive ? "bg-surface-hover" : ""
+                } ${isSelected ? "font-semibold text-accent-text" : "text-text"}`}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   handleSelectCourse(course);
                 }}
               >
                 <span>{course}</span>
-                {isSelected && <span>✓</span>}
+                {isSelected && <span className="font-mono text-xs text-accent-text">✓</span>}
               </li>
             );
           })}
 
           {matches.length === 0 && (
-            <li className="px-3.5 py-3 text-center text-[13px] text-text-muted">
-              Nenhum curso oficial encontrado com esse nome.
+            <li className="px-3.5 py-2.5 text-center text-xs text-text-muted">
+              Curso não encontrado na lista.
             </li>
           )}
 
           <li
             role="option"
             aria-selected={activeIndex === matches.length}
-            className={`mt-1 flex cursor-pointer items-center justify-between border-t border-border px-3.5 py-2.5 text-sm font-medium text-primary transition-colors duration-150 hover:bg-indigo-500/25 ${
-              activeIndex === matches.length ? "bg-indigo-500/15" : ""
+            className={`mt-1 flex cursor-pointer items-center justify-between border-t border-border px-3.5 py-2 text-xs font-semibold text-accent-text transition-colors duration-100 hover:bg-surface-hover ${
+              activeIndex === matches.length ? "bg-surface-hover" : ""
             }`}
             onMouseDown={(e) => {
               e.preventDefault();
               handleSelectOther();
             }}
           >
-            <span>Outro (digite seu curso)</span>
+            <span>Outro (digitar manualmente)</span>
           </li>
         </ul>
       )}

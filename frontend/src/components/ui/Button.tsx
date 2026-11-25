@@ -9,20 +9,20 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const SIZE_CLASSES: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "px-4 py-2 text-[13px]",
-  md: "px-6 py-3 text-[15px]",
-  lg: "px-8 py-4 text-base",
+  sm: "px-3 py-1.5 text-xs",
+  md: "px-4 py-2.5 text-sm",
+  lg: "px-6 py-3 text-sm",
 };
 
 const VARIANT_CLASSES: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "bg-gradient-primary text-white shadow-[0_4px_15px_rgba(99,102,241,0.4)] enabled:hover:-translate-y-px enabled:hover:shadow-[0_6px_20px_rgba(99,102,241,0.55)]",
+    "bg-primary text-on-primary font-bold border border-primary enabled:hover:bg-primary-light shadow-sm",
   secondary:
-    "bg-surface-2 text-text border border-border enabled:hover:bg-surface-hover",
+    "bg-surface-2 text-text border border-border enabled:hover:border-border-strong enabled:hover:bg-surface-hover",
   ghost:
-    "bg-transparent text-primary-light enabled:hover:bg-indigo-500/10",
+    "bg-transparent text-text-secondary enabled:hover:text-text enabled:hover:bg-surface-2",
   danger:
-    "bg-danger text-white shadow-[0_4px_15px_rgba(239,68,68,0.3)] enabled:hover:-translate-y-px enabled:hover:shadow-[0_6px_20px_rgba(239,68,68,0.45)]",
+    "bg-danger/15 text-danger border border-danger/40 enabled:hover:bg-danger enabled:hover:text-white",
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -38,7 +38,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       className={[
-        "inline-flex items-center justify-center gap-2 font-semibold rounded-full transition-all duration-150 whitespace-nowrap tracking-[0.01em] disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 font-semibold rounded-md transition-colors duration-150 whitespace-nowrap tracking-[0.01em] disabled:opacity-45 disabled:cursor-not-allowed",
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],
         fullWidth ? "w-full" : "",
@@ -52,7 +52,7 @@ export const Button: React.FC<ButtonProps> = ({
     >
       {loading && (
         <span
-          className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin"
+          className="size-3.5 rounded-full border-2 border-current/25 border-t-current animate-spin"
           aria-hidden
         />
       )}

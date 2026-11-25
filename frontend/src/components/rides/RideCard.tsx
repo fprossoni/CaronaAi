@@ -1,20 +1,20 @@
 /**
  * RideCard Component
  *
- * Combines BlaBlaCar/Uber route & detour clarity with Instagram/LinkedIn
- * academic social trust (clickable driver profile, course, rating, and vehicle badge).
+ * Technical Bento card with tabular pickup/dropoff times, telemetry delta,
+ * vertical bar SeatMeter, and crisp driver identity.
  */
 
 import React, { useState } from "react";
 import type { RideSearchResult } from "@/types/ride";
 import type { MatchStatus } from "@/types/match";
 import { Avatar } from "@/components/ui/Avatar";
+import { SeatMeter } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import {
   CarIcon,
   GraduationCapIcon,
   StarIcon,
-  UsersIcon,
 } from "@/components/ui/Icons";
 import { UserProfileModal } from "@/components/users/UserProfileModal";
 
@@ -23,7 +23,6 @@ interface RideCardProps {
   onRequestMatch?: (ride: RideSearchResult) => void;
   isRequesting?: boolean;
   existingMatchStatus?: MatchStatus | null;
-  /** Optional Multi-Matching batch selection support */
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (rideId: number) => void;
@@ -45,9 +44,10 @@ function formatDateShort(isoDate: string): string {
 }
 
 function formatPickupDifference(seconds: number): string {
-  if (seconds === 0) return "Embarque no horário desejado";
-  const difference = Math.abs(seconds) < 60 ? "Menos de 1 min" : `${Math.round(Math.abs(seconds) / 60)} min`;
-  return `${difference} ${seconds < 0 ? "antes" : "depois"} do horário desejado`;
+  if (seconds === 0) return "No horário";
+  const absMin = Math.round(Math.abs(seconds) / 60);
+  if (absMin === 0) return "< 1 min";
+  return `${seconds < 0 ? "-" : "+"}${absMin} min`;
 }
 
 export const RideCard: React.FC<RideCardProps> = ({
@@ -74,130 +74,153 @@ export const RideCard: React.FC<RideCardProps> = ({
   return (
     <>
       <div
-        className={`rounded-3xl border bg-gradient-card p-5 transition-all hover:shadow-xl animate-fade-in ${
+        className={`rounded-[10px] border bg-surface p-4 sm:p-5 transition-colors animate-fade-in ${
           selected
-            ? "border-primary shadow-[0_0_0_2px_rgba(99,102,241,0.35),var(--shadow-sm)]"
-            : "border-border shadow-sm"
+            ? "border-primary shadow-[0_0_0_1px_var(--color-primary)]"
+            : "border-border hover:border-border-strong"
         }`}
       >
-        <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface-2 p-3 sm:p-4">
+        {/* Top Bento Time Block */}
+        <dl className="grid grid-cols-2 gap-3 rounded-md border border-border bg-surface-2 p-3 sm:p-3.5 relative">
           {[
-            { label: "Previsão no seu ponto de encontro", estimate: ride.estimated_pickup_at, color: "bg-emerald-400" },
-            { label: "Previsão de chegada ao destino", estimate: ride.estimated_dropoff_at, color: "bg-indigo-400" },
+            { label: "EMBARQUE", estimate: ride.estimated_pickup_at, color: "bg-primary" },
+            { label: "CHEGADA", estimate: ride.estimated_dropoff_at, color: "bg-secondary" },
           ].map(({ label, estimate, color }) => (
-            <div key={label} className="min-w-0 space-y-1">
-              <dt className="flex items-start gap-2 text-xs font-semibold text-text-secondary">
-                <span aria-hidden="true" className={`mt-1 size-2 shrink-0 rounded-full ${color}`} />
+            <div key={label} className="min-w-0 space-y-0.5">
+              <dt className="flex items-center gap-1.5 font-mono text-[10px] font-bold tracking-wider text-text-muted">
+                <span aria-hidden="true" className={`size-1.5 rounded-full shrink-0 ${color}`} />
                 {label}
               </dt>
-              <dd className="pl-4">
+              <dd className="pl-3">
                 {estimate ? (
                   <time dateTime={estimate} className="block tabular-nums">
-                    <span className="block text-2xl font-extrabold text-text">{formatTime(estimate)}</span>
-                    <span className="block text-xs text-text-muted">{formatDateShort(estimate)}</span>
+                    <span className="block font-mono text-xl sm:text-2xl font-bold text-text leading-tight">
+                      {formatTime(estimate)}
+                    </span>
+                    <span className="block text-[11px] text-text-muted">
+                      {formatDateShort(estimate)}
+                    </span>
                   </time>
-                ) : <span className="text-xs text-text-muted">Sem previsão</span>}
+                ) : (
+                  <span className="text-xs text-text-muted">—</span>
+                )}
               </dd>
             </div>
           ))}
         </dl>
 
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
-          {ride.pickup_difference_seconds != null && <span>{formatPickupDifference(ride.pickup_difference_seconds)}</span>}
-          {ride.detour_meters != null && (
-            <span>Desvio do motorista · {(ride.detour_meters / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} km</span>
-          )}
-        </div>
+        {/* Telemetry Strip */}
+        {(ride.pickup_difference_seconds != null || ride.detour_meters != null) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
+            {ride.pickup_difference_seconds != null && (
+              <span className="text-text-secondary">
+                {formatPickupDifference(ride.pickup_difference_seconds)}
+              </span>
+            )}
+            {ride.detour_meters != null && (
+              <span>
+                Desvio{" "}
+                <strong className="text-text-secondary">
+                  +{(ride.detour_meters / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} km
+                </strong>
+              </span>
+            )}
+          </div>
+        )}
 
+        {/* Driver Row */}
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <Avatar
               name={ride.driver.name}
               photoUrl={ride.driver.photo_url}
               size="md"
-              ring
+              onClick={() => setShowDriverProfile(true)}
             />
             <div className="min-w-0 space-y-1">
-              <h3 className="break-words text-sm font-bold text-text">{driverName}</h3>
-              <p className="flex items-start gap-1 text-xs text-text-muted">
-                <GraduationCapIcon size={13} className="text-indigo-400 shrink-0" />
-                <span className="break-words">{ride.driver.course || "Curso não informado"}</span>
-              </p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
-                <span className="inline-flex items-center gap-1" title={`${ride.driver.rating_count} avaliações`}>
-                  <StarIcon size={13} filled className="text-amber-400" />
-                  {ride.driver.rating_count ? `Nota ${rating} de 5` : "Sem avaliações"}
-                </span>
-                <span>{completedRides} {completedRides === 1 ? "viagem concluída" : "viagens concluídas"}</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowDriverProfile(true)}
+                  aria-label={`Ver perfil de ${driverName}`}
+                  className="text-sm font-bold text-text hover:text-accent-text text-left break-words transition-colors"
+                >
+                  {driverName}
+                </button>
+                {ride.women_only && (
+                  <span className="rounded-[2px] border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-accent-text">
+                    Mulheres
+                  </span>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setShowDriverProfile(true)}
-                aria-label={`Ver perfil de ${driverName}`}
-                className="text-xs font-semibold text-primary-light hover:underline"
-              >
-                Ver perfil
-              </button>
+
+              <p className="flex items-center gap-1 text-xs text-text-muted">
+                <GraduationCapIcon size={12} className="text-text-secondary shrink-0" />
+                <span className="truncate">{ride.driver.course || "Curso não informado"}</span>
+              </p>
+
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11px] text-text-secondary">
+                <span
+                  className="inline-flex items-center gap-1"
+                  title={`${ride.driver.rating_count} avaliações`}
+                >
+                  <StarIcon size={12} filled className="text-accent-text" />
+                  {ride.driver.rating_count ? rating : "Novo"}
+                </span>
+                <span className="text-border-strong">·</span>
+                <span>
+                  {completedRides} {completedRides === 1 ? "viagem" : "viagens"}
+                </span>
+              </div>
             </div>
           </div>
 
-          {ride.women_only && (
-            <span className="rounded-full bg-pink-500/15 px-2.5 py-1 text-xs font-semibold text-pink-400">
-              Exclusiva para mulheres
-            </span>
-          )}
-        </div>
-
-        <div className="mt-3.5 flex items-center justify-between gap-2 flex-wrap text-xs text-text-secondary">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="inline-flex items-center gap-1.5">
-              <UsersIcon size={14} className="text-emerald-400" />
-              <strong>{ride.available_seats}</strong> de {ride.total_seats} vagas livres
-            </span>
-
+          {/* SeatMeter + Vehicle Tag */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <SeatMeter available={ride.available_seats} total={ride.total_seats} />
             {ride.driver.car_model && (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border border-border">
-                <CarIcon size={13} className="text-indigo-400" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] border border-border bg-surface-2 font-mono text-[10px] text-text-secondary">
+                <CarIcon size={11} className="text-text-muted" />
                 <span>
                   {ride.driver.car_model}
-                  {ride.driver.car_color ? ` (${ride.driver.car_color})` : ""}
+                  {ride.driver.car_color ? ` · ${ride.driver.car_color}` : ""}
                 </span>
               </span>
             )}
           </div>
         </div>
 
-        {/* Action Button / Existing Match Status / Multi-Match Selection */}
+        {/* Footer Actions */}
         {onRequestMatch && (
-          <div className="mt-4 pt-3.5 border-t border-border flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
+          <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
               {canSelectForBatch && (
                 <button
                   type="button"
                   onClick={() => onToggleSelect?.(ride.id)}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-xs font-semibold border transition-colors ${
                     selected
-                      ? "bg-indigo-500 text-white border-indigo-500"
-                      : "bg-surface-2 border-border text-text-secondary hover:border-indigo-500/50"
+                      ? "bg-primary text-on-primary border-primary"
+                      : "bg-surface-2 border-border text-text-secondary hover:border-border-strong"
                   }`}
-                  title="Selecionar carona para enviar pedido em lote (Multi-Matching)"
+                  title="Selecionar para solicitação em lote"
                 >
-                  <span>{selected ? "✓ No lote" : "+ Lote"}</span>
+                  <span>{selected ? "✓ Lote" : "+ Lote"}</span>
                 </button>
               )}
             </div>
 
             {resolvedMatchStatus === "accepted" ? (
-              <span className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                ✓ Carona Confirmada
+              <span className="px-2.5 py-1 rounded-[2px] font-mono text-[11px] font-bold uppercase bg-secondary/15 text-secondary border border-secondary/35">
+                Confirmada
               </span>
             ) : resolvedMatchStatus === "pending" ? (
-              <span className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">
-                ⏳ Aguardando aprovação
+              <span className="px-2.5 py-1 rounded-[2px] font-mono text-[11px] font-bold uppercase bg-warning-bg text-warning-text border border-warning/40">
+                Aguardando
               </span>
             ) : resolvedMatchStatus === "superseded" ? (
-              <span className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/30">
-                Substituída por outra carona
+              <span className="px-2.5 py-1 rounded-[2px] font-mono text-[11px] font-semibold uppercase bg-surface-2 text-text-muted border border-border">
+                Substituída
               </span>
             ) : (
               <Button
@@ -207,7 +230,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 disabled={ride.available_seats <= 0}
                 onClick={() => onRequestMatch(ride)}
               >
-                Solicitar Carona
+                Solicitar
               </Button>
             )}
           </div>

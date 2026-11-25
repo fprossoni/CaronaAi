@@ -1,10 +1,5 @@
 /**
  * UserProfileModal Component
- *
- * Displays a LinkedIn + Instagram + BlaBlaCar inspired social profile card
- * for any user in the platform (drivers or passengers).
- * Supports viewing academic course, UFRGS verification badge, bio, frequented campuses,
- * social media handle, vehicle details, and blocking/unblocking the user.
  */
 
 import React, { useEffect, useState } from "react";
@@ -40,18 +35,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   onBlockedChange,
 }) => {
-  const { user: currentUser, isUserBlocked, setUserBlocked } = useAuthStore();
+  const { user: currentUser, blockedByUser, setUserBlocked } = useAuthStore();
   const toast = useToastStore();
   const [profile, setProfile] = useState<UserPublic>(initialUser);
   const [blocking, setBlocking] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(() => isUserBlocked(initialUser.id));
 
   const isSelf = currentUser?.id === profile.id;
+  const isBlocked = Boolean(
+    currentUser?.id && (blockedByUser[currentUser.id] ?? []).includes(profile.id)
+  );
   const affiliation = extractUfrgsAffiliation(profile.email);
   const socialHandle = profile.instagram || profile.social_link;
 
   useEffect(() => {
-    setIsBlocked(isUserBlocked(initialUser.id));
     let active = true;
     usersApi
       .getUser(initialUser.id)
@@ -64,7 +60,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     return () => {
       active = false;
     };
-  }, [initialUser.id, isUserBlocked]);
+  }, [initialUser.id]);
 
   const handleToggleBlock = async () => {
     if (isSelf) return;
@@ -72,9 +68,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     if (!isBlocked) {
       const ok = await toast.confirm({
         title: `Bloquear ${profile.name ?? "este usuário"}?`,
-        description:
-          "Vocês não verão mais as caronas ou solicitações um do outro nas buscas do Carona Aí.",
-        confirmLabel: "Bloquear usuário",
+        description: "Caronas e solicitações deste perfil não aparecerão mais para você.",
+        confirmLabel: "Bloquear",
         variant: "danger",
       });
       if (!ok) return;
@@ -84,21 +79,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     try {
       if (isBlocked) {
         await usersApi.unblockUser(profile.id);
-        setIsBlocked(false);
         setUserBlocked(profile.id, false);
         toast.info("Usuário desbloqueado.");
       } else {
         await usersApi.blockUser(profile.id);
-        setIsBlocked(true);
         setUserBlocked(profile.id, true);
-        toast.success(
-          "Usuário bloqueado",
-          "As caronas deste perfil não aparecerão mais para você."
-        );
+        toast.success("Usuário bloqueado");
       }
       onBlockedChange?.();
     } catch (err: unknown) {
-      toast.error("Não foi possível concluir a ação", getErrorMessage(err));
+      toast.error("Erro ao atualizar bloqueio", getErrorMessage(err));
     } finally {
       setBlocking(false);
     }
@@ -106,107 +96,93 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-3xl overflow-hidden border border-border bg-surface shadow-2xl animate-slide-up"
+        className="w-full max-w-md rounded-[10px] overflow-hidden border border-border-strong bg-surface shadow-lg animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* LinkedIn-style Cover Banner */}
-        <div className="h-28 relative bg-gradient-cover">
+        {/* Topographic Cover Banner */}
+        <div className="h-24 relative z-0 bg-bg-elevated bg-topo-pattern border-b border-border">
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+            className="absolute top-3 right-3 w-8 h-8 rounded-md border border-border bg-surface/90 text-text flex items-center justify-center hover:border-border-strong transition-colors"
             aria-label="Fechar perfil"
           >
-            <XIcon size={16} />
+            <XIcon size={15} />
           </button>
 
-          <div className="absolute bottom-3 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md text-emerald-300 text-[11px] font-semibold border border-emerald-400/30">
-            <ShieldCheckIcon size={13} />
+          <div className="absolute bottom-2.5 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] bg-surface/90 backdrop-blur-md text-secondary font-mono text-[10px] font-semibold border border-border-strong">
+            <ShieldCheckIcon size={12} />
             <span>{affiliation.fullBadge}</span>
           </div>
         </div>
 
         {/* Profile Header & Avatar */}
-        <div className="px-6 pb-6">
-          <div className="-mt-12 mb-3 flex items-end justify-between">
-            <Avatar
-              name={profile.name}
-              photoUrl={profile.photo_url}
-              size="xl"
-              ring
-            />
+        <div className="px-5 pb-5 relative z-10">
+          <div className="-mt-10 mb-3 flex items-end justify-between gap-3">
+            <Avatar name={profile.name} photoUrl={profile.photo_url} size="xl" ring />
 
-            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl border border-border bg-surface-2">
+            <div className="flex items-center gap-3 px-3 py-1.5 rounded-md border border-border bg-surface-2">
               <div className="text-center">
-                <div className="flex items-center gap-1 text-amber-400 font-bold text-sm">
-                  <StarIcon size={15} filled />
+                <div className="flex items-center gap-1 text-accent-text font-mono font-bold text-sm">
+                  <StarIcon size={13} filled />
                   <span>{profile.avg_rating.toFixed(1)}</span>
                 </div>
-                <span className="text-[10px] block text-text-muted">
-                  Nota média
-                </span>
+                <span className="font-mono text-[9px] uppercase block text-text-muted">Nota</span>
               </div>
-              <div className="w-px h-6 bg-border" />
+              <div className="w-px h-5 bg-border" />
               <div className="text-center">
-                <span className="font-bold text-sm block text-text">
+                <span className="font-mono font-bold text-sm block text-text">
                   {profile.rating_count}
                 </span>
-                <span className="text-[10px] block text-text-muted">
-                  Avaliações
+                <span className="font-mono text-[9px] uppercase block text-text-muted">
+                  Aval.
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Name & Academic Course */}
+          {/* Name & Course */}
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xl font-bold text-text">
+              <h3 className="font-display text-lg font-bold text-text">
                 {profile.name ?? "Estudante UFRGS"}
               </h3>
               {profile.age != null && (
-                <span className="text-xs font-semibold text-text-muted">
-                  • {profile.age} anos
-                </span>
+                <span className="font-mono text-xs text-text-muted">· {profile.age} anos</span>
               )}
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                className={`px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase ${
                   profile.is_driver
-                    ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
-                    : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                    ? "bg-primary/15 text-accent-text border border-primary/35"
+                    : "bg-secondary/15 text-secondary border border-secondary/35"
                 }`}
               >
-                {profile.is_driver ? "Motorista & Passageiro" : "Passageiro"}
+                {profile.is_driver ? "Motorista" : "Passageiro"}
               </span>
             </div>
 
-            <p className="text-sm mt-1 flex items-center gap-1.5 font-medium text-text-secondary">
-              <GraduationCapIcon size={16} className="text-indigo-400 shrink-0" />
+            <p className="text-xs mt-1 flex items-center gap-1.5 font-medium text-text-secondary">
+              <GraduationCapIcon size={14} className="text-accent-text shrink-0" />
               <span>{profile.course ?? "Curso não informado"}</span>
             </p>
           </div>
 
-          {/* Bio Section */}
-          {profile.bio ? (
-            <div className="mt-4 p-3.5 rounded-2xl text-sm leading-relaxed border border-border bg-surface-2 text-text-secondary">
+          {profile.bio && (
+            <div className="mt-3.5 p-3 rounded-md text-xs leading-relaxed border border-border bg-surface-2 text-text-secondary">
               “{profile.bio}”
             </div>
-          ) : (
-            <p className="mt-3 text-xs italic text-text-muted">
-              Este estudante ainda não adicionou uma bio.
-            </p>
           )}
 
-          {/* Campuses & Social Handle */}
-          <div className="mt-4 space-y-3">
+          {/* Campuses & Vehicle */}
+          <div className="mt-3.5 space-y-2.5">
             {profile.campuses && profile.campuses.length > 0 && (
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider block mb-1.5 text-text-muted">
-                  Campi que frequenta
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-text-muted">
+                  Campi
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {profile.campuses.map((cId) => {
@@ -214,9 +190,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     return (
                       <span
                         key={cId}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-border bg-surface-2 text-text-secondary"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] font-mono text-[11px] font-medium border border-border bg-surface-2 text-text-secondary"
                       >
-                        <MapPinIcon size={12} className="text-indigo-400" />
+                        <MapPinIcon size={11} className="text-accent-text" />
                         {c.shortName}
                       </span>
                     );
@@ -226,18 +202,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             )}
 
             {profile.is_driver && (profile.car_model || profile.car_color) && (
-              <div className="flex items-center gap-3 p-3 rounded-2xl border border-border bg-surface-2">
-                <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-400">
-                  <CarIcon size={18} />
+              <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-border bg-surface-2">
+                <div className="p-1.5 rounded-md bg-surface text-accent-text border border-border">
+                  <CarIcon size={15} />
                 </div>
                 <div className="text-xs">
                   <span className="block font-semibold text-text">
-                    {profile.car_model ?? "Veículo cadastrado"}
+                    {profile.car_model ?? "Veículo"}
                   </span>
                   {profile.car_color && (
-                    <span className="text-text-muted">
-                      Cor: {profile.car_color}
-                    </span>
+                    <span className="text-text-muted">{profile.car_color}</span>
                   )}
                 </div>
               </div>
@@ -248,36 +222,30 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 href={buildSocialUrl(socialHandle)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border border-border-strong bg-surface-2 text-primary-light transition-all hover:scale-[1.01]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-xs font-semibold border border-border bg-surface-2 text-accent-text hover:border-border-strong transition-colors no-underline"
               >
-                <InstagramIcon size={15} className="text-pink-400" />
-                <span>Instagram: {socialHandle}</span>
+                <InstagramIcon size={13} />
+                <span>{socialHandle}</span>
               </a>
             )}
           </div>
 
-          {/* Actions Footer */}
-          <div className="mt-6 pt-4 border-t border-border flex items-center justify-between gap-3">
+          {/* Footer */}
+          <div className="mt-5 pt-3.5 border-t border-border flex items-center justify-between gap-3">
             {!isSelf ? (
               <button
                 type="button"
                 disabled={blocking}
                 onClick={handleToggleBlock}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-danger hover:underline"
               >
-                <BanIcon size={14} />
+                <BanIcon size={13} />
                 <span>
-                  {blocking
-                    ? "Processando..."
-                    : isBlocked
-                    ? "Desbloquear usuário"
-                    : "Bloquear usuário"}
+                  {blocking ? "Processando…" : isBlocked ? "Desbloquear" : "Bloquear"}
                 </span>
               </button>
             ) : (
-              <span className="text-xs text-text-muted">
-                Visualização pública do seu perfil
-              </span>
+              <span className="font-mono text-[11px] text-text-muted">Seu perfil</span>
             )}
 
             <Button variant="secondary" size="sm" onClick={onClose}>

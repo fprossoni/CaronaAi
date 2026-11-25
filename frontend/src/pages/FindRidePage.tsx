@@ -11,9 +11,10 @@ import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
 import { RideCard } from "@/components/rides/RideCard";
 import { TripRouteFields } from "@/components/rides/TripRouteFields";
+import { KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { CheckCircleIcon } from "@/components/ui/Icons";
+import { CheckCircleIcon, LockIcon } from "@/components/ui/Icons";
 
 type SearchResult = { params: SearchRidesParams } & ({ rides: RideSearchResult[] } | { error: string });
 
@@ -39,7 +40,10 @@ export const FindRidePage: React.FC = () => {
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [submittedSearch, setSubmittedSearch] = useState<SubmittedSearch | null>(null);
   const [myMatchesByRide, setMyMatchesByRide] = useState<Record<number, MatchStatus>>({});
-  const [selection, setSelection] = useState<{ params: SearchRidesParams | null; ids: number[] }>({ params: null, ids: [] });
+  const [selection, setSelection] = useState<{ params: SearchRidesParams | null; ids: number[] }>({
+    params: null,
+    ids: [],
+  });
   const [requestingId, setRequestingId] = useState<number | null>(null);
   const [batchRequesting, setBatchRequesting] = useState(false);
 
@@ -80,22 +84,24 @@ export const FindRidePage: React.FC = () => {
   const searchError = result && "error" in result ? result.error : null;
   const loading = params !== null && result === null;
   const selectedRideIds = selection.params === params ? selection.ids : [];
-  const matchPoints = searched && submittedSearch ? {
-    pickup_campus_id: submittedSearch.params.pickup_campus_id,
-    dropoff_campus_id: submittedSearch.params.dropoff_campus_id,
-    desired_pickup_at: submittedSearch.params.desired_pickup_at,
-    pickup_address_id: submittedSearch.params.pickup_address_id,
-    pickup_lat: submittedSearch.params.pickup_lat,
-    pickup_lng: submittedSearch.params.pickup_lng,
-    pickup_label: submittedSearch.pickup.label,
-    pickup_region: submittedSearch.pickup.region || "Região próxima",
-    dropoff_address_id: submittedSearch.params.dropoff_address_id,
-    dropoff_lat: submittedSearch.params.dropoff_lat,
-    dropoff_lng: submittedSearch.params.dropoff_lng,
-    dropoff_label: submittedSearch.dropoff.label,
-  } : null;
+  const matchPoints =
+    searched && submittedSearch
+      ? {
+          pickup_campus_id: submittedSearch.params.pickup_campus_id,
+          dropoff_campus_id: submittedSearch.params.dropoff_campus_id,
+          desired_pickup_at: submittedSearch.params.desired_pickup_at,
+          pickup_address_id: submittedSearch.params.pickup_address_id,
+          pickup_lat: submittedSearch.params.pickup_lat,
+          pickup_lng: submittedSearch.params.pickup_lng,
+          pickup_label: submittedSearch.pickup.label,
+          pickup_region: submittedSearch.pickup.region || "Região próxima",
+          dropoff_address_id: submittedSearch.params.dropoff_address_id,
+          dropoff_lat: submittedSearch.params.dropoff_lat,
+          dropoff_lng: submittedSearch.params.dropoff_lng,
+          dropoff_label: submittedSearch.dropoff.label,
+        }
+      : null;
 
-  // Load passenger's existing match requests so cards show real-time status
   useEffect(() => {
     matchesApi
       .getMyMatches()
@@ -116,13 +122,17 @@ export const FindRidePage: React.FC = () => {
   useEffect(() => {
     if (!params) return;
     const controller = new AbortController();
-    ridesApi.search(params, controller.signal)
+    ridesApi
+      .search(params, controller.signal)
       .then(({ data }) => {
         if (!controller.signal.aborted) setSearchResult({ params, rides: data });
       })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) {
-          setSearchResult({ params, error: getErrorMessage(err, "Não foi possível buscar caronas.") });
+          setSearchResult({
+            params,
+            error: getErrorMessage(err, "Não foi possível buscar caronas."),
+          });
         }
       });
     return () => controller.abort();
@@ -168,11 +178,11 @@ export const FindRidePage: React.FC = () => {
       setMyMatchesByRide((prev) => ({ ...prev, [ride.id]: "pending" }));
       setSelectedRideIds((prev) => prev.filter((id) => id !== ride.id));
       toast.success(
-        "Solicitação enviada ao motorista!",
-        `Apenas a região "${matchPoints.pickup_region}" foi compartilhada. Seu endereço exato só será revelado quando o motorista aceitar.`
+        "Solicitação enviada",
+        `Bairro "${matchPoints.pickup_region}" compartilhado.`
       );
     } catch (err: unknown) {
-      toast.error("Não foi possível solicitar a carona", getErrorMessage(err));
+      toast.error("Não foi possível solicitar", getErrorMessage(err));
     } finally {
       setRequestingId(null);
     }
@@ -197,81 +207,80 @@ export const FindRidePage: React.FC = () => {
       setSelectedRideIds([]);
 
       const createdCount = data.created.length;
-      const skippedCount = data.skipped.length;
       if (createdCount > 0) {
         toast.success(
-          `Multi-Matching enviado (${createdCount} ${createdCount === 1 ? "carona" : "caronas"})!`,
-          skippedCount > 0
-            ? `Assim que 1 motorista aceitar, as demais são encerradas automaticamente. (${skippedCount} ignorada(s)).`
-            : "Assim que o primeiro motorista aceitar sua vaga, as demais solicitações do lote são encerradas automaticamente."
+          `Lote enviado (${createdCount})`,
+          "O primeiro aceite encerra as demais solicitações."
         );
       } else {
         toast.info(
-          "Nenhuma nova solicitação criada",
-          data.skipped[0]?.reason ?? "As caronas selecionadas não puderam receber o pedido."
+          "Nenhuma solicitação criada",
+          data.skipped[0]?.reason ?? "Caronas indisponíveis."
         );
       }
     } catch (err: unknown) {
-      toast.error("Erro ao enviar Multi-Matching", getErrorMessage(err));
+      toast.error("Erro no Multi-Matching", getErrorMessage(err));
     } finally {
       setBatchRequesting(false);
     }
   };
 
   const results = loading ? (
-    <p role="status" className="text-sm text-text-muted">Buscando caronas compatíveis…</p>
+    <p role="status" className="font-mono text-xs text-text-muted py-6">
+      Buscando caronas…
+    </p>
   ) : searchError !== null ? (
     <div className="space-y-2">
-      <p role="alert" className="text-sm text-red-400">{searchError}</p>
-      <Button type="button" size="sm" variant="secondary" onClick={() => {
-        setSearchResult(null);
-        setSubmittedSearch((current) => current && { ...current, params: { ...current.params } });
-      }}>Tentar novamente</Button>
+      <p role="alert" className="text-sm text-danger">
+        {searchError}
+      </p>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        onClick={() => {
+          setSearchResult(null);
+          setSubmittedSearch((current) => current && { ...current, params: { ...current.params } });
+        }}
+      >
+        Tentar novamente
+      </Button>
     </div>
   ) : searched ? (
-    <section className="space-y-4 pt-2 animate-fade-in" aria-label="Resultados da busca">
+    <section className="space-y-4 pt-1 animate-fade-in" aria-label="Resultados da busca">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-lg font-extrabold flex items-center gap-2 text-text">
-          <span>
-            {rides.length === 0
-              ? "Nenhuma carona disponível para esse trajeto e horário"
-              : `${rides.length} ${
-                  rides.length === 1 ? "carona encontrada" : "caronas encontradas"
-                }`}
-          </span>
+        <h2 className="font-display text-lg font-bold text-text">
+          {rides.length === 0
+            ? "Nenhuma carona compatível"
+            : `${rides.length} ${rides.length === 1 ? "carona" : "caronas"}`}
         </h2>
         {rides.length > 1 && (
-          <p className="text-xs text-text-muted">Ordenadas por relevância</p>
+          <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+            Por relevância
+          </span>
         )}
       </div>
 
-      {/* Multi-Matching Batch Bar (shown when 2+ eligible rides exist) */}
+      {/* Multi-Matching Batch Bar */}
       {(eligibleBatchRides.length >= 2 || selectedRideIds.length > 0) && (
         <div
-          className={`p-4 rounded-2xl border bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          className={`p-3.5 rounded-[10px] border bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
             selectedRideIds.length > 0 ? "border-primary" : "border-border"
           }`}
         >
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2 text-xs font-extrabold text-text">
-              <CheckCircleIcon size={15} className="text-indigo-400 shrink-0" />
-              <span>Solicitar várias caronas</span>
-            </div>
-            <p className="text-xs text-text-muted">
-              As outras solicitações são encerradas quando um motorista aceita.
-            </p>
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <CheckCircleIcon size={15} className="text-accent-text shrink-0" />
+            <span>
+              <strong className="text-text">Multi-Matching</strong> · O primeiro aceite cancela os
+              demais pedidos
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={handleToggleSelectAll}
-            >
+            <Button type="button" size="sm" variant="secondary" onClick={handleToggleSelectAll}>
               {eligibleBatchRides.length > 0 &&
               eligibleBatchRides.every((r) => selectedRideIds.includes(r.id))
-                ? "Limpar seleção"
+                ? "Limpar"
                 : `Selecionar todas (${eligibleBatchRides.length})`}
             </Button>
 
@@ -283,7 +292,7 @@ export const FindRidePage: React.FC = () => {
                 loading={batchRequesting}
                 onClick={handleRequestBatch}
               >
-                Solicitar em Lote ({selectedRideIds.length})
+                Solicitar lote ({selectedRideIds.length})
               </Button>
             )}
           </div>
@@ -291,7 +300,7 @@ export const FindRidePage: React.FC = () => {
       )}
 
       {rides.length > 0 && (
-        <div className="grid gap-4">
+        <div className="grid gap-3.5">
           {rides.map((ride) => (
             <RideCard
               key={ride.id}
@@ -311,20 +320,36 @@ export const FindRidePage: React.FC = () => {
 
   return (
     <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
-      <h1 className="text-2xl font-extrabold text-text">Pedir carona</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-text">Pedir carona</h1>
       {submittedSearch && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4">
-          <dl className="min-w-0 space-y-1 text-xs text-text-secondary wrap-anywhere">
-            <div><dt className="inline font-bold">Origem</dt>{" · "}<dd className="inline">{submittedSearch.pickup.label}</dd></div>
-            <div><dt className="inline font-bold">Destino</dt>{" · "}<dd className="inline">{submittedSearch.dropoff.label}</dd></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-border bg-surface px-4 py-3">
+          <dl className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary wrap-anywhere">
+            <div className="inline-flex items-center gap-1.5">
+              <dt className="sr-only">Origem</dt>
+              <span className="size-2 rounded-full bg-primary shrink-0" aria-hidden="true" />
+              <dd className="font-semibold text-text">{submittedSearch.pickup.label}</dd>
+            </div>
+            <span className="font-mono text-text-muted" aria-hidden="true">
+              →
+            </span>
+            <div className="inline-flex items-center gap-1.5">
+              <dt className="sr-only">Destino</dt>
+              <span className="size-2 rounded-full bg-secondary shrink-0" aria-hidden="true" />
+              <dd className="font-semibold text-text">{submittedSearch.dropoff.label}</dd>
+            </div>
           </dl>
-          <Button type="button" size="sm" variant="secondary" disabled={batchRequesting || requestingId !== null}
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={batchRequesting || requestingId !== null}
             onClick={() => {
               setSubmittedSearch(null);
               setSearchResult(null);
               setSelection({ params: null, ids: [] });
-            }}>
-            Nova busca
+            }}
+          >
+            Alterar
           </Button>
         </div>
       )}
@@ -337,28 +362,53 @@ export const FindRidePage: React.FC = () => {
           showRoutePreview={false}
           allowMeetingPoint
           initialQueries={{
-            origin: prefill?.originQuery ?? (prefill?.direction !== "from_campus" ? prefill?.addressQuery : undefined),
-            destination: prefill?.destinationQuery ?? (prefill?.direction === "from_campus" ? prefill.addressQuery : undefined),
+            origin:
+              prefill?.originQuery ??
+              (prefill?.direction !== "from_campus" ? prefill?.addressQuery : undefined),
+            destination:
+              prefill?.destinationQuery ??
+              (prefill?.direction === "from_campus" ? prefill.addressQuery : undefined),
           }}
         >
           <div className="space-y-3">
-            <p className="text-sm font-bold text-text">Quando você quer embarcar?</p>
+            <p className="font-mono text-xs font-bold uppercase tracking-wider text-text-muted">
+              Horário
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input label="Data" type="date" value={date} onChange={(event) => setSchedule({ date: event.target.value, startTime })} required />
-              <Input label="Horário desejado" type="time" value={startTime} onChange={(event) => setSchedule({ date, startTime: event.target.value })} required />
+              <Input
+                label="Data"
+                type="date"
+                value={date}
+                onChange={(event) => setSchedule({ date: event.target.value, startTime })}
+                required
+              />
+              <Input
+                label="Horário desejado"
+                type="time"
+                value={startTime}
+                onChange={(event) => setSchedule({ date, startTime: event.target.value })}
+                required
+              />
             </div>
           </div>
           {canSearchWomenOnly && (
-            <label className="flex items-start gap-2 text-sm text-text">
-              <input type="checkbox" className="mt-0.5 accent-indigo-500" checked={womenOnly} onChange={(event) => setWomenOnly(event.target.checked)} />
-              Mostrar apenas caronas exclusivas para mulheres
+            <label className="flex items-center gap-2 text-sm text-text cursor-pointer">
+              <input
+                type="checkbox"
+                className="accent-primary w-4 h-4 rounded-[2px]"
+                checked={womenOnly}
+                onChange={(event) => setWomenOnly(event.target.checked)}
+              />
+              <span>Apenas caronas exclusivas para mulheres</span>
             </label>
           )}
-          <p className="text-xs text-text-muted">
-            🔒 Apenas sua região aproximada (bairro) é visível antes do aceite. Caso queira ocultar seu endereço exato, você pode editar a origem acima e marcar um ponto de encontro próximo.
+          <p className="flex items-center gap-1.5 text-xs text-text-muted">
+            <LockIcon size={13} className="shrink-0 text-text-secondary" />
+            <span>Apenas seu bairro fica visível antes do aceite.</span>
           </p>
           <Button type="submit" fullWidth size="lg" disabled={!canSearch}>
-            Procurar caronas
+            <span>Procurar caronas</span>
+            <KineticChevrons />
           </Button>
         </TripRouteFields>
       </div>

@@ -1,4 +1,13 @@
-import { useEffect, useId, useRef, useState, type Dispatch, type FormEventHandler, type ReactNode, type SetStateAction } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type Dispatch,
+  type FormEventHandler,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { createPortal } from "react-dom";
 import { addressesApi } from "@/api/addresses";
 import { ridesApi } from "@/api/rides";
@@ -7,7 +16,12 @@ import { LocationField } from "@/components/map/LocationField";
 import { SavedAddressForm } from "@/components/profile/SavedAddressForm";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { CheckCircleIcon, MapPinIcon, ShieldCheckIcon } from "@/components/ui/Icons";
+import {
+  CheckCircleIcon,
+  MapPinIcon,
+  ShieldCheckIcon,
+  SwapIcon,
+} from "@/components/ui/Icons";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { AddressCreate, AddressPublic } from "@/types/address";
 import { campusToLocation, geocodingService, type LocationValue } from "@/lib/geocoding";
@@ -16,29 +30,28 @@ import { hasTripCampus, type TripRoute } from "@/lib/tripRoute";
 type Endpoint = keyof TripRoute;
 type WizardStep = 1 | 2 | 3;
 
-const endpointMeta: Record<Endpoint, { label: string; color: string; stepTitle: string; stepSubtitle: string }> = {
+const endpointMeta: Record<Endpoint, { label: string; color: string; stepTitle: string }> = {
   origin: {
     label: "Origem",
-    color: "#10b981",
-    stepTitle: "1. Qual é o ponto de origem?",
-    stepSubtitle: "Escolha de onde você vai sair (endereço, local salvo ou campus da UFRGS).",
+    color: "#fa952d",
+    stepTitle: "Origem",
   },
   destination: {
     label: "Destino",
-    color: "#6366f1",
-    stepTitle: "2. Qual é o ponto de destino?",
-    stepSubtitle: "Escolha para onde você vai (lembre-se: origem ou destino deve ser um campus da UFRGS).",
+    color: "#22c55e",
+    stepTitle: "Destino",
   },
 };
 
 const modes = [
-  { key: "address", label: "Endereço avulso" },
-  { key: "saved", label: "Endereço salvo" },
-  { key: "campus", label: "Campus UFRGS" },
+  { key: "address", label: "Endereço" },
+  { key: "saved", label: "Salvos" },
+  { key: "campus", label: "Campus" },
 ] as const;
-type Mode = typeof modes[number]["key"];
+type Mode = (typeof modes)[number]["key"];
 
-const selectClass = "w-full rounded-xl border border-border bg-surface-2 p-3 text-sm text-text outline-none focus:border-primary";
+const selectClass =
+  "w-full rounded-md border border-border bg-surface-2 px-3 py-2.5 text-sm text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/30";
 
 function detectPointMode(point: LocationValue | null): Mode {
   if (point?.campusId) return "campus";
@@ -118,9 +131,11 @@ function SaveAddressDialog({
       ref={dialog}
       aria-labelledby={titleId}
       onClose={onClose}
-      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border border-border bg-surface p-5 text-text shadow-xl backdrop:bg-black/60 sm:p-6"
+      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-[10px] border border-border-strong bg-surface p-5 text-text shadow-lg backdrop:bg-black/70 sm:p-6"
     >
-      <h2 id={titleId} className="mb-4 text-lg font-bold">Salvar novo endereço</h2>
+      <h2 id={titleId} className="mb-4 font-display text-lg font-bold">
+        Salvar endereço
+      </h2>
       <SavedAddressForm
         initialValues={initialValues}
         onCancel={onClose}
@@ -129,7 +144,7 @@ function SaveAddressDialog({
         }}
       />
     </dialog>,
-    document.body,
+    document.body
   );
 }
 
@@ -150,25 +165,46 @@ function TripRoutePreview({ origin, destination }: { origin: LocationValue; dest
 
   useEffect(() => {
     const controller = new AbortController();
-    ridesApi.previewRoute(
-      { lat: originLat, lng: originLng },
-      { lat: destinationLat, lng: destinationLng },
-      controller.signal,
-    ).then(({ data }) => {
-      if (!controller.signal.aborted) setGeometry(data.route_geojson);
-    }).catch(() => {
-      if (!controller.signal.aborted) setGeometry(null);
-    });
+    ridesApi
+      .previewRoute(
+        { lat: originLat, lng: originLng },
+        { lat: destinationLat, lng: destinationLng },
+        controller.signal
+      )
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setGeometry(data.route_geojson);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setGeometry(null);
+      });
     return () => controller.abort();
   }, [originLat, originLng, destinationLat, destinationLng]);
 
   return (
     <section aria-label="Prévia do trajeto" className="space-y-2">
-      <h2 className="text-sm font-bold text-text">Prévia da rota calculada</h2>
-      <InteractiveMap origin={origin} destination={destination} routeGeoJson={geometry}
-        approximateRoute={!geometry} scrollWheelZoom={false} height="240px" />
-      {geometry === undefined && <p role="status" className="text-xs text-text-muted">Calculando trajeto pelas ruas…</p>}
-      {geometry === null && <p role="status" className="text-xs text-text-muted">Trajeto pelas ruas indisponível. A linha no mapa é aproximada.</p>}
+      <div className="flex items-center justify-between">
+        <h2 className="font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted">
+          Prévia do trajeto
+        </h2>
+        {geometry === undefined && (
+          <span role="status" className="font-mono text-[11px] text-text-muted animate-pulse">
+            Calculando…
+          </span>
+        )}
+        {geometry === null && (
+          <span role="status" className="font-mono text-[11px] text-text-muted">
+            Linha aproximada
+          </span>
+        )}
+      </div>
+      <InteractiveMap
+        origin={origin}
+        destination={destination}
+        routeGeoJson={geometry}
+        approximateRoute={!geometry}
+        scrollWheelZoom={false}
+        height="220px"
+      />
     </section>
   );
 }
@@ -229,18 +265,23 @@ export function TripRouteFields({
 
   useEffect(() => {
     let active = true;
-    addressesApi.list().then(({ data }) => {
-      if (active) setAddresses((current) => [
-        ...data,
-        ...(current ?? []).filter((address) => !data.some(({ id }) => id === address.id)),
-      ]);
-    }).catch(() => {
-      if (active) setAddressError(true);
-    });
-    return () => { active = false; };
+    addressesApi
+      .list()
+      .then(({ data }) => {
+        if (active)
+          setAddresses((current) => [
+            ...data,
+            ...(current ?? []).filter((address) => !data.some(({ id }) => id === address.id)),
+          ]);
+      })
+      .catch(() => {
+        if (active) setAddressError(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // Automatically resolve text queries passed from HomePage if not yet resolved
   useEffect(() => {
     let active = true;
     (["origin", "destination"] as const).forEach((endpoint) => {
@@ -275,7 +316,6 @@ export function TripRouteFields({
     return () => {
       active = false;
     };
-    // Only run on mount for initial prefill queries
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -304,7 +344,9 @@ export function TripRouteFields({
     if (resolvedMode !== mode[endpoint]) {
       setMode((curr) => ({ ...curr, [endpoint]: resolvedMode }));
     }
-    onChange((current) => current[endpoint] === point ? current : { ...current, [endpoint]: point });
+    onChange((current) =>
+      current[endpoint] === point ? current : { ...current, [endpoint]: point }
+    );
   }
 
   function handleSwapEndpoints() {
@@ -417,17 +459,17 @@ export function TripRouteFields({
         }}
         className="min-w-0"
       >
-        <fieldset disabled={disabled} className="min-w-0 space-y-5">
-          {/* ─── Stepper Progress Bar ────────────────────────────────────────── */}
+        <fieldset disabled={disabled} className="min-w-0 space-y-4">
+          {/* ─── Stepper Progress Bar ────────────────────────────────────── */}
           <nav
             aria-label="Etapas do preenchimento"
-            className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-2"
+            className="grid grid-cols-3 gap-1.5 rounded-md border border-border bg-surface p-1.5"
           >
             {(
               [
-                { id: 1 as const, label: "1. Origem", done: Boolean(origin), enabled: true },
-                { id: 2 as const, label: "2. Destino", done: Boolean(destination), enabled: canGoStep2 },
-                { id: 3 as const, label: "3. Horário e Dia", done: false, enabled: canGoStep3 },
+                { id: 1 as const, code: "01", label: "Origem", done: Boolean(origin), enabled: true },
+                { id: 2 as const, code: "02", label: "Destino", done: Boolean(destination), enabled: canGoStep2 },
+                { id: 3 as const, code: "03", label: "Horário", done: false, enabled: canGoStep3 },
               ]
             ).map((item) => {
               const isCurrent = step === item.id;
@@ -437,47 +479,51 @@ export function TripRouteFields({
                   type="button"
                   disabled={!item.enabled}
                   onClick={() => item.enabled && goToStep(item.id)}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                  className={`flex items-center justify-center gap-1.5 rounded-md px-2.5 py-2 text-xs font-semibold transition-colors disabled:opacity-35 disabled:cursor-not-allowed ${
                     isCurrent
-                      ? "bg-primary text-white shadow-sm"
+                      ? "bg-primary text-on-primary font-bold"
                       : item.done
-                      ? "bg-surface-2 text-emerald-400 hover:bg-surface-hover"
+                      ? "bg-surface-2 text-secondary hover:bg-surface-hover"
                       : "text-text-muted hover:text-text"
                   }`}
                 >
-                  {item.done && !isCurrent && <CheckCircleIcon size={14} className="shrink-0" />}
+                  {item.done && !isCurrent ? (
+                    <CheckCircleIcon size={13} className="shrink-0" />
+                  ) : (
+                    <span className="font-mono text-[11px] opacity-80">{item.code}</span>
+                  )}
                   <span className="truncate">{item.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* ─── STEP 1 & STEP 2: Origin or Destination Selection ───────────── */}
+          {/* ─── STEP 1 & STEP 2 ─────────────────────────────────────────── */}
           {(step === 1 || step === 2) && (
-            <div className="space-y-5 animate-fade-in">
-              {/* When on Step 2, show compact summary of confirmed Origin */}
+            <div className="space-y-4 animate-fade-in">
               {step === 2 && origin && (
-                <div className="flex items-center justify-between gap-3 flex-wrap rounded-2xl border border-border bg-surface px-4 py-3">
-                  <div className="flex items-center gap-2.5 min-w-0 text-xs">
-                    <span className="size-2.5 rounded-full bg-emerald-400 shrink-0" />
-                    <span className="text-text-muted font-semibold">Origem confirmada:</span>
+                <div className="flex items-center justify-between gap-3 flex-wrap rounded-md border border-border bg-surface px-3.5 py-2.5">
+                  <div className="flex items-center gap-2 min-w-0 text-xs">
+                    <span className="size-2 rounded-full bg-primary shrink-0" />
+                    <span className="font-mono text-[11px] uppercase text-text-muted">Origem:</span>
                     <strong className="text-text truncate">{origin.label}</strong>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-3 shrink-0">
                     <button
                       type="button"
                       onClick={() => goToStep(1)}
-                      className="text-xs font-semibold text-indigo-400 hover:underline"
+                      className="text-xs font-semibold text-accent-text hover:underline"
                     >
-                      Editar origem
+                      Alterar
                     </button>
                     {destination && (
                       <button
                         type="button"
                         onClick={handleSwapEndpoints}
-                        className="text-xs font-semibold text-text-secondary hover:text-text"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-text-secondary hover:text-text"
                       >
-                        · ⇄ Inverter
+                        <SwapIcon size={12} />
+                        <span>Inverter</span>
                       </button>
                     )}
                   </div>
@@ -485,20 +531,16 @@ export function TripRouteFields({
               )}
 
               {/* Active Step Card */}
-              <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 space-y-5 shadow-sm">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-extrabold text-text flex items-center gap-2">
-                      <span
-                        className="size-3 rounded-full shrink-0"
-                        style={{ backgroundColor: activeMeta.color }}
-                      />
-                      <span>{activeMeta.stepTitle}</span>
-                    </h2>
-                    <p className="text-xs text-text-muted">{activeMeta.stepSubtitle}</p>
-                  </div>
+              <div className="rounded-[10px] border border-border bg-surface p-5 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <h2 className="font-display text-lg font-bold text-text flex items-center gap-2">
+                    <span
+                      className="size-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: activeMeta.color }}
+                    />
+                    <span>{activeMeta.stepTitle}</span>
+                  </h2>
 
-                  {/* Mode Switcher Pills */}
                   <div className="flex flex-wrap gap-1.5">
                     {modes.map(({ key: option, label: optionLabel }) => (
                       <Button
@@ -521,11 +563,10 @@ export function TripRouteFields({
                   </div>
                 </div>
 
-                {/* Mode Content */}
                 {mode[activeKey] === "address" && !meetingPointMode[activeKey] && (
                   <LocationField
-                    label={`Endereço de ${activeMeta.label.toLowerCase()}`}
-                    placeholder="Digite rua, número, bairro ou campus"
+                    label={activeMeta.label}
+                    placeholder="Rua, número, bairro ou campus"
                     value={activePoint}
                     initialQuery={initialQueries?.[activeKey]}
                     onQueryChange={(q) => setTypedQueries((prev) => ({ ...prev, [activeKey]: q }))}
@@ -541,9 +582,9 @@ export function TripRouteFields({
                 )}
 
                 {mode[activeKey] === "saved" && !meetingPointMode[activeKey] && (
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary">
-                      Escolha um endereço salvo ({activeMeta.label.toLowerCase()})
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      Endereço salvo ({activeMeta.label.toLowerCase()})
                     </label>
                     <select
                       aria-label={`Endereço salvo de ${activeMeta.label.toLowerCase()}`}
@@ -551,7 +592,9 @@ export function TripRouteFields({
                       value={activePoint?.addressId ?? ""}
                       disabled={!addresses?.length}
                       onChange={(event) => {
-                        const address = addresses?.find(({ id }) => id === Number(event.target.value));
+                        const address = addresses?.find(
+                          ({ id }) => id === Number(event.target.value)
+                        );
                         if (address) selectPoint(activeKey, savedLocation(address), "saved");
                       }}
                     >
@@ -559,7 +602,7 @@ export function TripRouteFields({
                         {addresses?.length
                           ? "Selecione um endereço"
                           : addressError
-                          ? "Erro ao carregar endereços"
+                          ? "Erro ao carregar"
                           : addresses
                           ? "Nenhum endereço salvo"
                           : "Carregando…"}
@@ -574,9 +617,9 @@ export function TripRouteFields({
                 )}
 
                 {mode[activeKey] === "campus" && (
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary">
-                      Escolha o Campus da UFRGS ({activeMeta.label.toLowerCase()})
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      Campus UFRGS ({activeMeta.label.toLowerCase()})
                     </label>
                     <select
                       aria-label={`Campus de ${activeMeta.label.toLowerCase()}`}
@@ -598,18 +641,18 @@ export function TripRouteFields({
                   </div>
                 )}
 
-                {/* Meeting Point Privacy Box (Passenger only) */}
+                {/* Meeting Point Privacy Box */}
                 {mode[activeKey] !== "campus" && meetingPointMode[activeKey] && (
-                  <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-3">
+                  <div className="rounded-md border border-secondary/40 bg-secondary/10 p-3.5 space-y-3">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div className="flex items-start gap-2">
-                        <ShieldCheckIcon size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                        <ShieldCheckIcon size={15} className="text-secondary shrink-0 mt-0.5" />
                         <div>
-                          <span className="text-xs font-bold text-emerald-400 block">
-                            Ponto de encontro próximo (Endereço residencial oculto)
+                          <span className="text-xs font-bold text-secondary block">
+                            Ponto de encontro
                           </span>
-                          <p className="text-[11px] text-text-secondary leading-relaxed mt-0.5">
-                            Seu endereço exato, número e complemento não serão compartilhados. Toque no mapa abaixo para posicionar o ponto de encontro em uma esquina ou local próximo.
+                          <p className="text-[11px] text-text-secondary mt-0.5">
+                            Endereço exato oculto; marque uma esquina próxima no mapa.
                           </p>
                         </div>
                       </div>
@@ -618,14 +661,14 @@ export function TripRouteFields({
                         onClick={() => disableMeetingPoint(activeKey)}
                         className="text-xs font-semibold text-text-muted hover:text-text hover:underline"
                       >
-                        Voltar ao endereço exato
+                        Usar endereço exato
                       </button>
                     </div>
 
                     {activePoint ? (
                       <Input
-                        label={`Referência do ponto de encontro (${activeMeta.label.toLowerCase()})`}
-                        placeholder="Ex.: Ponto de encontro · Esquina Av. Osvaldo Aranha (em frente à farmácia)"
+                        label="Referência"
+                        placeholder="Ex.: Esquina Av. Osvaldo Aranha"
                         value={activePoint.label}
                         onChange={(e) => {
                           onChange((prev) => ({
@@ -640,24 +683,24 @@ export function TripRouteFields({
                         }}
                       />
                     ) : (
-                      <p className="text-xs font-medium text-amber-400">
-                        📍 Toque em um ponto no mapa abaixo para definir o local de encontro.
+                      <p className="font-mono text-xs text-warning-text">
+                        Toque no mapa para definir o ponto.
                       </p>
                     )}
                   </div>
                 )}
 
-                {/* Secondary Actions Row (Meeting Point toggle + Save new address) */}
+                {/* Secondary Actions Row */}
                 {mode[activeKey] !== "campus" && !meetingPointMode[activeKey] && (
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     {allowMeetingPoint ? (
                       <button
                         type="button"
                         onClick={() => enableMeetingPoint(activeKey)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:underline text-left"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-secondary hover:underline text-left"
                       >
                         <ShieldCheckIcon size={14} className="shrink-0" />
-                        <span>Marcar ponto de encontro próximo (esconder meu endereço)</span>
+                        <span>Ponto de encontro</span>
                       </button>
                     ) : (
                       <span />
@@ -673,23 +716,27 @@ export function TripRouteFields({
                         setSavingFor(activeKey);
                       }}
                     >
-                      + Salvar novo endereço
+                      + Salvar endereço
                     </Button>
                   </div>
                 )}
 
-                {/* ─── Map & "Ajustar no Mapa" Button Positioned Right Next to the Map ─── */}
-                <section ref={mapSection} aria-label="Mapa de localização" className="space-y-2.5 pt-2 border-t border-border">
+                {/* Map Section */}
+                <section
+                  ref={mapSection}
+                  aria-label="Mapa de localização"
+                  className="space-y-2.5 pt-3 border-t border-border"
+                >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                    <div className="min-w-0">
+                      <h3 className="font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted">
                         {picking === activeKey
-                          ? `Toque no mapa para definir ${activeMeta.label.toLowerCase()}`
-                          : `Visualização de ${activeMeta.label.toLowerCase()} no mapa`}
+                          ? `Marcar ${activeMeta.label.toLowerCase()} no mapa`
+                          : "Mapa"}
                       </h3>
                       {activePoint && (
-                        <p className="text-xs text-text truncate max-w-md mt-0.5">
-                          Selecionado: <strong>{activePoint.label}</strong>
+                        <p className="text-xs text-text truncate max-w-md mt-0.5 font-medium">
+                          {activePoint.label}
                         </p>
                       )}
                     </div>
@@ -704,10 +751,10 @@ export function TripRouteFields({
                           setPicking(picking === activeKey ? null : activeKey);
                         }}
                       >
-                        <MapPinIcon size={14} />
+                        <MapPinIcon size={13} />
                         <span>
                           {picking === activeKey
-                            ? "Concluir / Cancelar ajuste no mapa"
+                            ? "Concluir mapa"
                             : activePoint
                             ? "Ajustar no mapa"
                             : "Marcar no mapa"}
@@ -717,8 +764,8 @@ export function TripRouteFields({
                   </div>
 
                   <InteractiveMap
-                    height="260px"
-                    origin={step === 1 ? origin : origin}
+                    height="250px"
+                    origin={origin}
                     destination={step === 2 ? destination : null}
                     interactivePickMode={picking}
                     onMapClick={picking === activeKey ? pickOnMap : undefined}
@@ -727,21 +774,19 @@ export function TripRouteFields({
                   />
                 </section>
 
-                {/* Validation Alert on Step 2 if neither Origin nor Destination is a UFRGS campus */}
                 {step === 2 && origin && destination && !hasTripCampus(route) && (
                   <div
                     role="alert"
-                    className="p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-red-400 font-medium"
+                    className="p-3 rounded-md border border-danger/30 bg-danger/10 text-xs text-danger font-medium"
                   >
-                    Selecione pelo menos um <strong>Campus da UFRGS</strong> como origem ou destino para prosseguir.
+                    Origem ou destino deve ser um Campus da UFRGS.
                   </div>
                 )}
 
-                {/* Step Navigation Footer */}
                 <div className="pt-2 flex items-center justify-between gap-3 flex-wrap">
                   {step === 2 ? (
                     <Button type="button" variant="secondary" onClick={() => goToStep(1)}>
-                      ← Voltar para Origem
+                      ← Origem
                     </Button>
                   ) : (
                     <span />
@@ -754,7 +799,7 @@ export function TripRouteFields({
                       disabled={!canGoStep2}
                       onClick={() => goToStep(2)}
                     >
-                      Confirmar origem e escolher destino →
+                      Continuar →
                     </Button>
                   ) : (
                     <Button
@@ -763,7 +808,7 @@ export function TripRouteFields({
                       disabled={!canGoStep3}
                       onClick={() => goToStep(3)}
                     >
-                      Confirmar destino e definir horário →
+                      Continuar →
                     </Button>
                   )}
                 </div>
@@ -771,26 +816,26 @@ export function TripRouteFields({
             </div>
           )}
 
-          {/* ─── STEP 3: Schedule & Final Action ────────────────────────────── */}
+          {/* ─── STEP 3: Schedule & Final Action ──────────────────────────── */}
           {step === 3 && (
-            <div className="space-y-5 animate-fade-in">
-              {/* Confirmed Route Summary Card */}
-              <div className="rounded-3xl border border-border bg-surface p-5 space-y-4 shadow-sm">
+            <div className="space-y-4 animate-fade-in">
+              <div className="rounded-[10px] border border-border bg-surface p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-text">
-                    Trajeto confirmado
+                  <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-text-muted">
+                    Trajeto
                   </h2>
                   <Button type="button" size="sm" variant="secondary" onClick={handleSwapEndpoints}>
-                    ⇄ Inverter origem e destino
+                    <SwapIcon size={13} />
+                    <span>Inverter</span>
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <span className="size-2.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="p-3 rounded-md border border-border bg-surface-2 flex items-start justify-between gap-2.5">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <span className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block">
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-muted block">
                           Origem (A)
                         </span>
                         <p className="text-sm font-semibold text-text wrap-anywhere">
@@ -801,17 +846,17 @@ export function TripRouteFields({
                     <button
                       type="button"
                       onClick={() => goToStep(1)}
-                      className="text-xs font-semibold text-indigo-400 hover:underline shrink-0"
+                      className="text-xs font-semibold text-accent-text hover:underline shrink-0"
                     >
                       Editar
                     </button>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <span className="size-2.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
+                  <div className="p-3 rounded-md border border-border bg-surface-2 flex items-start justify-between gap-2.5">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <span className="size-2 rounded-full bg-secondary mt-1.5 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block">
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-muted block">
                           Destino (B)
                         </span>
                         <p className="text-sm font-semibold text-text wrap-anywhere">
@@ -822,7 +867,7 @@ export function TripRouteFields({
                     <button
                       type="button"
                       onClick={() => goToStep(2)}
-                      className="text-xs font-semibold text-indigo-400 hover:underline shrink-0"
+                      className="text-xs font-semibold text-accent-text hover:underline shrink-0"
                     >
                       Editar
                     </button>
@@ -838,29 +883,19 @@ export function TripRouteFields({
                 )}
               </div>
 
-              {/* Step 3 Schedule & Submit Card */}
-              <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 space-y-5 shadow-sm">
+              <div className="rounded-[10px] border border-border bg-surface p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between gap-2 flex-wrap border-b border-border pb-3">
-                  <div>
-                    <h2 className="text-lg font-extrabold text-text">
-                      3. Data, Horário e Detalhes
-                    </h2>
-                    <p className="text-xs text-text-muted">
-                      Defina o dia e o horário para concluir.
-                    </p>
-                  </div>
+                  <h2 className="font-display text-lg font-bold text-text">Horário e vagas</h2>
                   <button
                     type="button"
                     onClick={() => goToStep(2)}
                     className="text-xs font-semibold text-text-secondary hover:text-text hover:underline"
                   >
-                    ← Voltar para Destino
+                    ← Destino
                   </button>
                 </div>
 
-                <div className="space-y-4">
-                  {children}
-                </div>
+                <div className="space-y-4">{children}</div>
               </div>
             </div>
           )}

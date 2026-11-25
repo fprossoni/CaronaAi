@@ -1,12 +1,8 @@
 /**
- * InteractiveMap Component (Leaflet + OpenStreetMap / Carto tiles)
+ * InteractiveMap Component (Leaflet + CARTO / OSM monochrome tiles)
  *
- * Provides an Uber/BlaBlaCar-style interactive map that:
- * - Uses CARTO styles for dark and light mode when a key is configured
- * - Renders custom vector HTML pins (`L.divIcon`) for Origin, Destination, and Pickup
- * - Displays an anonymized privacy circle when `pickupRegionCircle` is provided (before match confirmation)
- * - Renders OSRM route geometry (`GeoJSON.LineString`) and auto-fits bounds
- * - Supports click-to-select coordinates when `onMapClick` is active
+ * Technical mobility map with architectural square pins, Signal Orange route polyline,
+ * and 650m privacy circle before match confirmation.
  */
 
 import React, { useEffect, useMemo } from "react";
@@ -46,12 +42,17 @@ export interface InteractiveMapProps {
   className?: string;
 }
 
-const PORTO_ALEGRE_CENTER: [number, number] = [-30.0349, -51.2177]; // Campus Centro UFRGS
+const PORTO_ALEGRE_CENTER: [number, number] = [-30.0349, -51.2177];
 const OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const CARTO_ATTRIBUTION = `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>`;
 
-function createCustomPin(color: string, badgeText: string): L.DivIcon {
+function createCustomPin(
+  bgColor: string,
+  borderColor: string,
+  textColor: string,
+  badgeText: string
+): L.DivIcon {
   return L.divIcon({
     className: "carona-custom-pin",
     html: `
@@ -59,29 +60,29 @@ function createCustomPin(color: string, badgeText: string): L.DivIcon {
         display:flex;
         align-items:center;
         justify-content:center;
-        width:30px;
-        height:30px;
-        border-radius:9999px;
-        background:${color};
-        color:#fff;
+        width:28px;
+        height:28px;
+        border-radius:5px;
+        background:${bgColor};
+        color:${textColor};
+        font-family:'JetBrains Mono',monospace;
         font-weight:700;
         font-size:12px;
-        border:3px solid #ffffff;
-        box-shadow:0 4px 14px rgba(0,0,0,0.45);
-        transform:translate(-3px, -3px);
+        border:2px solid ${borderColor};
+        box-shadow:0 4px 12px rgba(0,0,0,0.45);
       ">
         ${badgeText}
       </div>
     `,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   });
 }
 
-const ORIGIN_ICON = createCustomPin("#10b981", "A");
-const DEST_ICON = createCustomPin("#6366f1", "B");
-const DROPOFF_ICON = createCustomPin("#0e7490", "D");
-const PICKUP_ICON = createCustomPin("#f59e0b", "P");
+const ORIGIN_ICON = createCustomPin("#0b0c0d", "#fa952d", "#fa952d", "A");
+const DEST_ICON = createCustomPin("#fa952d", "#0b0c0d", "#0b0c0d", "B");
+const PICKUP_ICON = createCustomPin("#141619", "#f3f536", "#f3f536", "P");
+const DROPOFF_ICON = createCustomPin("#141619", "#22c55e", "#22c55e", "D");
 
 const MapClickHandler: React.FC<{ onMapClick?: (lat: number, lng: number) => void }> = ({
   onMapClick,
@@ -129,7 +130,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 }) => {
   const { theme } = useThemeStore();
 
-  // Convert GeoJSON [lng, lat] coordinates to Leaflet [lat, lng]
   const polylinePositions = useMemo<[number, number][]>(() => {
     if (routeGeoJson && routeGeoJson.coordinates?.length > 0) {
       return routeGeoJson.coordinates.map(([lng, lat]) => [lat, lng]);
@@ -142,8 +142,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     return fallback;
   }, [routeGeoJson, origin, destination, pickup, dropoff, pickupIsApproximate]);
 
-  const comparisonPositions = useMemo<[number, number][]>(() =>
-    comparisonRoute?.coordinates.map(([lng, lat]) => [lat, lng]) ?? [], [comparisonRoute]);
+  const comparisonPositions = useMemo<[number, number][]>(
+    () => comparisonRoute?.coordinates.map(([lng, lat]) => [lat, lng]) ?? [],
+    [comparisonRoute]
+  );
 
   const boundPoints = useMemo<[number, number][]>(() => {
     const pts: [number, number][] = [...polylinePositions, ...comparisonPositions];
@@ -155,22 +157,22 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   }, [polylinePositions, comparisonPositions, origin, destination, pickup, dropoff]);
 
   const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY?.trim();
-  const cartoStyle = theme === "dark" ? "dark_all" : "voyager";
+  const cartoStyle = theme === "dark" ? "dark_all" : "light_all";
   const tileUrl = cartoApiKey
     ? `https://basemaps.cartocdn.com/rastertiles/${cartoStyle}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoApiKey)}`
     : OSM_TILE_URL;
 
   return (
     <div
-      className={`relative rounded-2xl overflow-hidden border ${
+      className={`relative rounded-[10px] overflow-hidden border ${
         interactivePickMode ? "border-primary" : "border-border"
-      } ${className}`}
+      } ${!cartoApiKey ? "map-osm-fallback" : ""} ${className}`}
       style={{ height }}
     >
       {interactivePickMode && (
-        <div className="absolute top-3 right-3 z-500 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between border border-primary bg-glass text-text shadow-lg backdrop-blur-md">
+        <div className="absolute top-2.5 right-2.5 z-500 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center border border-primary bg-glass text-text shadow-md backdrop-blur-md">
           <span>
-            📍 Toque em qualquer ponto do mapa para definir{" "}
+            Toque no mapa para marcar{" "}
             {interactivePickMode === "destination" ? "o destino" : "a origem"}
           </span>
         </div>
@@ -193,19 +195,22 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         <BoundsUpdater points={boundPoints} />
 
         {comparisonPositions.length >= 2 && (
-          <Polyline positions={comparisonPositions} pathOptions={{ color: "#64748b", weight: 4, dashArray: "6 8" }} />
+          <Polyline
+            positions={comparisonPositions}
+            pathOptions={{ color: "#6e747e", weight: 3, dashArray: "6 8" }}
+          />
         )}
 
         {polylinePositions.length >= 2 && (
           <Polyline
             positions={polylinePositions}
             pathOptions={{
-              color: "#6366f1",
-              weight: 5,
-              opacity: 0.9,
+              color: "#fa952d",
+              weight: 4,
+              opacity: 0.95,
               dashArray: approximateRoute ? "6 6" : undefined,
-              lineCap: "round",
-              lineJoin: "round",
+              lineCap: "square",
+              lineJoin: "miter",
             }}
           />
         )}
@@ -214,7 +219,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <Marker position={[origin.lat, origin.lng]} icon={ORIGIN_ICON}>
             <Popup>
               <div className="text-xs">
-                <strong className="block text-emerald-400">Origem (A)</strong>
+                <strong className="block font-mono text-accent-text">ORIGEM (A)</strong>
                 <span>{origin.label || "Ponto de partida"}</span>
               </div>
             </Popup>
@@ -225,7 +230,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <Marker position={[destination.lat, destination.lng]} icon={DEST_ICON}>
             <Popup>
               <div className="text-xs">
-                <strong className="block text-indigo-400">Destino (B)</strong>
+                <strong className="block font-mono text-accent-text">DESTINO (B)</strong>
                 <span>{destination.label || "Ponto de chegada"}</span>
               </div>
             </Popup>
@@ -236,8 +241,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <Marker position={[pickup.lat, pickup.lng]} icon={PICKUP_ICON}>
             <Popup>
               <div className="text-xs">
-                <strong className="block text-amber-400">Origem do passageiro (P)</strong>
-                <span>{pickup.label || "Origem confirmada"}</span>
+                <strong className="block font-mono text-warning-text">EMBARQUE (P)</strong>
+                <span>{pickup.label || "Ponto de encontro"}</span>
               </div>
             </Popup>
           </Marker>
@@ -245,7 +250,12 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
         {dropoff && (
           <Marker position={[dropoff.lat, dropoff.lng]} icon={DROPOFF_ICON}>
-            <Popup><strong>Destino do passageiro (D)</strong><br />{dropoff.label}</Popup>
+            <Popup>
+              <div className="text-xs">
+                <strong className="block font-mono text-secondary">DESEMBARQUE (D)</strong>
+                <span>{dropoff.label}</span>
+              </div>
+            </Popup>
           </Marker>
         )}
 
@@ -254,17 +264,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             center={[pickup.lat, pickup.lng]}
             radius={650}
             pathOptions={{
-              color: "#f59e0b",
-              fillColor: "#f59e0b",
-              fillOpacity: 0.2,
+              color: "#f3f536",
+              fillColor: "#f3f536",
+              fillOpacity: 0.16,
               weight: 2,
               dashArray: "4 4",
             }}
           >
             <Popup>
               <div className="text-xs">
-                <strong className="block text-amber-400">Região Aproximada</strong>
-                <span>{pickup.label || "Local exato oculto até confirmação"}</span>
+                <strong className="block font-mono text-warning-text">BAIRRO APROXIMADO</strong>
+                <span>{pickup.label || "Local exato oculto até o aceite"}</span>
               </div>
             </Popup>
           </Circle>

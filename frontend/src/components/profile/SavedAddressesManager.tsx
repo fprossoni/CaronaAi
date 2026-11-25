@@ -1,9 +1,7 @@
 /**
  * SavedAddressesManager Component
  *
- * Allows students to save personal recurring addresses (e.g. "Casa", "Trabalho", "República")
- * with automatic Brazilian postal code lookup (ViaCEP via `/addresses/cep/{cep}`)
- * and backend Nominatim geocoding (`POST /addresses/`).
+ * Manages personal recurring addresses with CEP lookup and map adjustment.
  */
 
 import React, { useEffect, useState } from "react";
@@ -30,7 +28,7 @@ export const SavedAddressesManager: React.FC = () => {
         if (active) setAddresses(res.data);
       })
       .catch(() => {
-        // Silent fallback if backend is unreachable
+        // Silent fallback
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -43,8 +41,8 @@ export const SavedAddressesManager: React.FC = () => {
   const handleDelete = async (addr: AddressPublic) => {
     const ok = await toast.confirm({
       title: `Remover "${addr.label}"?`,
-      description: `${addr.street}, ${addr.number} deixará de aparecer nos seus atalhos rápidos.`,
-      confirmLabel: "Remover endereço",
+      description: `${addr.street}, ${addr.number}`,
+      confirmLabel: "Remover",
       variant: "danger",
     });
     if (!ok) return;
@@ -54,37 +52,29 @@ export const SavedAddressesManager: React.FC = () => {
       setAddresses((prev) => prev.filter((item) => item.id !== addr.id));
       toast.info("Endereço removido.");
     } catch (err: unknown) {
-      toast.error("Não foi possível remover", getErrorMessage(err));
+      toast.error("Erro ao remover", getErrorMessage(err));
     }
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-gradient-card p-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-400 shrink-0 mt-0.5">
-            <MapPinIcon size={20} />
+    <div className="rounded-[10px] border border-border bg-surface p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-md border border-border bg-surface-2 text-accent-text shrink-0">
+            <MapPinIcon size={17} />
           </div>
-          <div>
-            <h3 className="text-base font-extrabold text-text">
-              Meus Endereços Salvos
-            </h3>
-            <p className="text-xs mt-0.5 text-text-muted">
-              Cadastre Casa, Trabalho ou República por CEP para pedir e oferecer caronas com 1 clique.
-            </p>
-          </div>
+          <h3 className="font-display text-base font-bold text-text">Endereços salvos</h3>
         </div>
 
         {!showAddForm && (
           <Button size="sm" variant="secondary" onClick={() => setShowAddForm(true)}>
-            + Novo Endereço
+            + Novo
           </Button>
         )}
       </div>
 
       {showAddForm && (
-        <div className="p-4 rounded-2xl border border-border">
+        <div className="p-4 rounded-md border border-border bg-surface-2">
           <SavedAddressForm
             onCancel={() => setShowAddForm(false)}
             onSaved={(address) => {
@@ -95,49 +85,44 @@ export const SavedAddressesManager: React.FC = () => {
         </div>
       )}
 
-      {/* Saved List */}
       {loading ? (
-        <p className="text-xs py-4 text-center text-text-muted animate-pulse">
-          Carregando endereços salvos...
+        <p className="font-mono text-xs py-4 text-center text-text-muted animate-pulse">
+          Carregando…
         </p>
       ) : addresses.length === 0 ? (
-        <div className="p-4 rounded-2xl border border-dashed border-border text-center">
-          <p className="text-xs text-text-muted">
-            Você ainda não possui endereços salvos. Adicione sua casa ou trabalho para agilizar suas próximas caronas!
-          </p>
+        <div className="p-4 rounded-md border border-dashed border-border text-center">
+          <p className="text-xs text-text-muted">Nenhum endereço salvo.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {addresses.map((addr) => (
             <div
               key={addr.id}
-              className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-start justify-between gap-3 transition hover:border-indigo-500/40"
+              className="p-3 rounded-md border border-border bg-surface-2 flex items-start justify-between gap-3 transition-colors hover:border-border-strong"
             >
               <div className="min-w-0 space-y-0.5">
                 <div className="flex items-center gap-1.5">
-                  <NavigationIcon size={13} className="text-emerald-400 shrink-0" />
-                  <span className="text-sm font-bold truncate text-text">
-                    {addr.label}
-                  </span>
+                  <NavigationIcon size={12} className="text-accent-text shrink-0" />
+                  <span className="text-sm font-bold truncate text-text">{addr.label}</span>
                 </div>
                 <p className="text-xs truncate text-text-secondary">
                   {addr.street}, {addr.number}
                   {addr.complement ? ` (${addr.complement})` : ""}
                 </p>
-                <p className="text-[11px] truncate text-text-muted">
-                  {addr.neighborhood ? `${addr.neighborhood} • ` : ""}
-                  {addr.city}/{addr.state} • CEP {addr.postal_code}
+                <p className="font-mono text-[10px] truncate text-text-muted">
+                  {addr.neighborhood ? `${addr.neighborhood} · ` : ""}
+                  {addr.city}/{addr.state} · {addr.postal_code}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => handleDelete(addr)}
-                className="p-1.5 rounded-xl text-red-400 hover:bg-red-500/15 transition shrink-0"
+                className="p-1.5 rounded-md text-danger hover:bg-danger/10 transition-colors shrink-0"
                 title="Remover endereço"
                 aria-label={`Remover ${addr.label}`}
               >
-                <XIcon size={15} />
+                <XIcon size={14} />
               </button>
             </div>
           ))}

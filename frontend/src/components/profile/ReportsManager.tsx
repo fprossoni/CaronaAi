@@ -1,8 +1,5 @@
 /**
  * ReportsManager Component
- *
- * Lists the moderation reports the current user has filed
- * (`GET /users/me/reports`), showing status and reported user.
  */
 
 import React, { useEffect, useState } from "react";
@@ -17,9 +14,9 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
 };
 
 const STATUS_CLASS: Record<ReportStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  reviewed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  dismissed: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  pending: "bg-warning-bg text-warning-text border-warning/40",
+  reviewed: "bg-secondary/15 text-secondary border-secondary/35",
+  dismissed: "bg-surface-2 text-text-muted border-border",
 };
 
 function formatReportDate(value: string): string {
@@ -44,7 +41,7 @@ export const ReportsManager: React.FC = () => {
         if (active) setReports(res.data);
       })
       .catch(() => {
-        // Silent fallback if backend is unreachable
+        // Silent fallback
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -55,57 +52,47 @@ export const ReportsManager: React.FC = () => {
   }, []);
 
   return (
-    <div className="rounded-3xl border border-border bg-gradient-card p-6 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-bold text-text">
-            Denúncias enviadas
-          </h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Acompanhe as ocorrências registradas e o status da análise.
-          </p>
+    <div className="rounded-[10px] border border-border bg-surface p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-md border border-danger/30 bg-danger/10 text-danger shrink-0">
+            <AlertTriangleIcon size={16} />
+          </div>
+          <h2 className="font-display text-base font-bold text-text">Denúncias</h2>
         </div>
-        <div className="p-2 rounded-xl bg-red-500/15 text-red-400">
-          <AlertTriangleIcon size={18} />
-        </div>
+        <span className="font-mono text-xs text-text-muted">{reports.length}</span>
       </div>
 
       {loading ? (
-        <p className="text-sm text-text-muted">
-          Carregando denúncias...
-        </p>
+        <p className="font-mono text-xs text-text-muted">Carregando…</p>
       ) : reports.length === 0 ? (
-        <p className="text-sm text-text-muted">
-          Você ainda não registrou nenhuma denúncia.
-        </p>
+        <p className="text-xs text-text-muted">Nenhuma denúncia enviada.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {reports.map((report) => (
             <li
               key={report.id}
-              className="rounded-2xl border border-border bg-surface-2 p-4 space-y-2"
+              className="rounded-md border border-border bg-surface-2 p-3.5 space-y-1.5"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate text-text">
                     {report.reported_name ?? `Usuário #${report.reported_id}`}
                   </p>
-                  <p className="text-xs text-text-muted">
+                  <p className="font-mono text-[10px] text-text-muted">
                     {formatReportDate(report.created_at)}
-                    {report.ride_id ? ` • Carona #${report.ride_id}` : ""}
+                    {report.ride_id ? ` · Carona #${report.ride_id}` : ""}
                   </p>
                 </div>
-                <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_CLASS[report.status]}`}>
+                <span
+                  className={`shrink-0 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase border ${STATUS_CLASS[report.status]}`}
+                >
                   {STATUS_LABEL[report.status]}
                 </span>
               </div>
-              <p className="text-sm text-text-secondary">
-                {report.reason}
-              </p>
+              <p className="text-xs text-text-secondary">{report.reason}</p>
               {report.details && (
-                <p className="text-xs whitespace-pre-line text-text-muted">
-                  {report.details}
-                </p>
+                <p className="text-xs whitespace-pre-line text-text-muted">{report.details}</p>
               )}
             </li>
           ))}

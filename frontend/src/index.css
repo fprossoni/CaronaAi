@@ -1,13 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme inline {
   --color-primary: var(--color-primary);
   --color-primary-dark: var(--color-primary-dark);
   --color-primary-light: var(--color-primary-light);
+  --color-on-primary: var(--color-on-primary);
+  --color-accent-text: var(--color-accent-text);
   --color-secondary: var(--color-secondary);
   --color-danger: var(--color-danger);
   --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-warning-text: var(--color-warning-text);
   --color-bg: var(--color-bg);
   --color-bg-elevated: var(--color-bg-elevated);
   --color-surface: var(--color-surface);
@@ -27,74 +30,84 @@
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
   --shadow-glow: var(--shadow-glow);
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ─── Semantic Design Tokens (Dark Mode Default) ─────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --color-primary:        #6366f1;   /* Indigo 500 */
-  --color-primary-dark:   #4f46e5;   /* Indigo 600 */
-  --color-primary-light:  #818cf8;   /* Indigo 400 */
-  --color-secondary:      #10b981;   /* Emerald 500 (BlaBlaCar/Mobility trust green) */
+  --color-primary:        #fa952d;
+  --color-primary-dark:   #e07b14;
+  --color-primary-light:  #ffad57;
+  --color-on-primary:     #0b0c0d;
+  --color-accent-text:    #fa952d;
+  --color-secondary:      #22c55e;
   --color-danger:         #ef4444;
-  --color-warning:        #f59e0b;
+  --color-warning:        #f3f536;
+  --color-warning-bg:     rgba(243, 245, 54, 0.14);
+  --color-warning-text:   #f3f536;
 
-  /* Surfaces & Neutrals (Uber-inspired high-contrast dark surfaces) */
-  --color-bg:             #090a0f;
-  --color-bg-elevated:    #11131c;
-  --color-surface:        #151824;
-  --color-surface-2:      #1d2132;
-  --color-surface-hover:  #252a3f;
-  --color-border:         #292e42;
-  --color-border-strong:  #383f5a;
-  --color-text:           #f4f5fa;
-  --color-text-secondary: #c2c5d6;
-  --color-text-muted:     #858aa6;
+  --color-bg:             #0b0c0d;
+  --color-bg-elevated:    #111214;
+  --color-surface:        #141619;
+  --color-surface-2:      #1b1e22;
+  --color-surface-hover:  #23272d;
+  --color-border:         #272b31;
+  --color-border-strong:  #3a4049;
+  --color-text:           #f4f5f2;
+  --color-text-secondary: #a5aab2;
+  --color-text-muted:     #6e747e;
 
-  /* Gradients (Instagram/LinkedIn social accents + Mobility brand) */
-  --gradient-primary:     linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #ec4899 100%);
-  --gradient-brand:       linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
-  --gradient-card:        linear-gradient(145deg, #171a28 0%, #11131e 100%);
-  --gradient-cover:       linear-gradient(125deg, #1e1b4b 0%, #312e81 45%, #0f766e 100%);
+  --gradient-primary:     linear-gradient(180deg, #fa952d 0%, #f0861c 100%);
+  --gradient-brand:       linear-gradient(180deg, #1b1e22 0%, #141619 100%);
+  --gradient-card:        linear-gradient(180deg, #16181c 0%, #141619 100%);
+  --gradient-cover:       linear-gradient(180deg, #16181c 0%, #0f1113 100%);
 
-  /* Shadows */
-  --shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md:   0 8px 28px rgba(0, 0, 0, 0.45);
-  --shadow-lg:   0 16px 44px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 0 28px rgba(99, 102, 241, 0.25);
-  --glass-bg:    rgba(21, 24, 36, 0.84);
+  --dot-color:            rgba(244, 245, 242, 0.08);
+  --shadow-sm:            0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md:            0 6px 20px rgba(0, 0, 0, 0.45);
+  --shadow-lg:            0 14px 36px rgba(0, 0, 0, 0.6);
+  --shadow-glow:          0 0 0 1px rgba(250, 149, 45, 0.25);
+  --glass-bg:             rgba(18, 20, 23, 0.88);
 }
 
-/* ─── Light Mode Tokens ──────────────────────────────────────────────────── */
+/* ─── Light Mode Tokens (Editorial Warm Monochrome) ──────────────────────── */
 [data-theme="light"] {
-  --color-primary:        #4f46e5;
-  --color-primary-dark:   #4338ca;
-  --color-primary-light:  #6366f1;
-  --color-secondary:      #059669;
+  --color-primary:        #fa952d;
+  --color-primary-dark:   #c96906;
+  --color-primary-light:  #df760b;
+  --color-on-primary:     #0b0c0d;
+  --color-accent-text:    #c96906;
+  --color-secondary:      #16a34a;
   --color-danger:         #dc2626;
-  --color-warning:        #d97706;
+  --color-warning:        #d4d600;
+  --color-warning-bg:     rgba(243, 245, 54, 0.28);
+  --color-warning-text:   #5b5d00;
 
-  --color-bg:             #f4f6fb;
-  --color-bg-elevated:    #eef1f8;
+  --color-bg:             #f2f2ee;
+  --color-bg-elevated:    #eaeae4;
   --color-surface:        #ffffff;
-  --color-surface-2:      #f1f4f9;
-  --color-surface-hover:  #e6ebf4;
-  --color-border:         #dde3ee;
-  --color-border-strong:  #c5cee0;
-  --color-text:           #0f172a;
-  --color-text-secondary: #334155;
-  --color-text-muted:     #64748b;
+  --color-surface-2:      #ededeb;
+  --color-surface-hover:  #e2e2dc;
+  --color-border:         #dcdcd4;
+  --color-border-strong:  #bcbcb2;
+  --color-text:           #0e0f11;
+  --color-text-secondary: #454950;
+  --color-text-muted:     #747982;
 
-  --gradient-primary:     linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #db2777 100%);
-  --gradient-brand:       linear-gradient(135deg, #4f46e5 0%, #0891b2 100%);
-  --gradient-card:        linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
-  --gradient-cover:       linear-gradient(125deg, #312e81 0%, #4f46e5 50%, #0d9488 100%);
+  --gradient-primary:     linear-gradient(180deg, #fa952d 0%, #ef8920 100%);
+  --gradient-brand:       linear-gradient(180deg, #ffffff 0%, #f5f5f1 100%);
+  --gradient-card:        linear-gradient(180deg, #ffffff 0%, #fcfcfa 100%);
+  --gradient-cover:       linear-gradient(180deg, #ffffff 0%, #f2f2ee 100%);
 
-  --shadow-sm:   0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-md:   0 8px 24px rgba(15, 23, 42, 0.08);
-  --shadow-lg:   0 16px 40px rgba(15, 23, 42, 0.12);
-  --shadow-glow: 0 0 24px rgba(79, 70, 229, 0.18);
-  --glass-bg:    rgba(255, 255, 255, 0.86);
+  --dot-color:            rgba(14, 15, 17, 0.085);
+  --shadow-sm:            0 1px 2px rgba(14, 15, 17, 0.05);
+  --shadow-md:            0 6px 18px rgba(14, 15, 17, 0.07);
+  --shadow-lg:            0 14px 32px rgba(14, 15, 17, 0.10);
+  --shadow-glow:          0 0 0 1px rgba(250, 149, 45, 0.35);
+  --glass-bg:             rgba(242, 242, 238, 0.90);
 }
 
 /* ─── Base Elements ──────────────────────────────────────────────────────── */
@@ -108,13 +121,22 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--color-bg);
   color: var(--color-text);
-  line-height: 1.55;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-tech {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 button {
@@ -126,38 +148,62 @@ input, textarea, select {
   font-family: inherit;
 }
 
+/* ─── Brand Surface Motifs ───────────────────────────────────────────────── */
+.bg-topo-pattern {
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none'%3E%3Cpath d='M0 56C64 56 100 32 160 32C220 32 256 56 320 56' stroke='rgba(244,245,242,0.055)' stroke-width='1.1'/%3E%3Cpath d='M0 136C64 136 96 92 160 92C224 92 256 136 320 136' stroke='rgba(244,245,242,0.05)' stroke-width='1.1'/%3E%3Cpath d='M0 184C64 184 96 228 160 228C224 228 256 184 320 184' stroke='rgba(244,245,242,0.055)' stroke-width='1.1'/%3E%3Cpath d='M0 264C64 264 100 288 160 288C220 288 256 264 320 264' stroke='rgba(244,245,242,0.05)' stroke-width='1.1'/%3E%3Cpath d='M106 162C106 132 134 124 162 126C192 128 214 142 214 162C214 184 188 196 158 194C128 192 106 182 106 162Z' stroke='rgba(250,149,45,0.08)' stroke-width='1.1'/%3E%3Cpath d='M128 161C128 145 144 140 161 142C178 144 192 151 192 161C192 173 176 180 159 178C142 176 128 171 128 161Z' stroke='rgba(244,245,242,0.045)' stroke-width='1'/%3E%3C/svg%3E");
+background-size: 320px 320px;
+}
+
+[data-theme="light"] .bg-topo-pattern {
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none'%3E%3Cpath d='M0 56C64 56 100 32 160 32C220 32 256 56 320 56' stroke='rgba(14,15,17,0.065)' stroke-width='1.1'/%3E%3Cpath d='M0 136C64 136 96 92 160 92C224 92 256 136 320 136' stroke='rgba(14,15,17,0.055)' stroke-width='1.1'/%3E%3Cpath d='M0 184C64 184 96 228 160 228C224 228 256 184 320 184' stroke='rgba(14,15,17,0.065)' stroke-width='1.1'/%3E%3Cpath d='M0 264C64 264 100 288 160 288C220 288 256 264 320 264' stroke='rgba(14,15,17,0.055)' stroke-width='1.1'/%3E%3Cpath d='M106 162C106 132 134 124 162 126C192 128 214 142 214 162C214 184 188 196 158 194C128 192 106 182 106 162Z' stroke='rgba(201,105,6,0.11)' stroke-width='1.1'/%3E%3Cpath d='M128 161C128 145 144 140 161 142C178 144 192 151 192 161C192 173 176 180 159 178C142 176 128 171 128 161Z' stroke='rgba(14,15,17,0.05)' stroke-width='1'/%3E%3C/svg%3E");
+background-size: 320px 320px;
+}
+
+.bg-dot-matrix {
+  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
 /* ─── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.animate-fade-in  { animation: fadeIn 0.25s ease forwards; }
-.animate-slide-up { animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in  { animation: fadeIn 0.2s ease forwards; }
+.animate-slide-up { animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 /* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
-::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 9999px; }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 2px; }
 
 /* ─── Leaflet Overrides ──────────────────────────────────────────────────── */
 .leaflet-container {
   background: var(--color-surface-2) !important;
-  border-radius: 16px;
-  font-family: 'Inter', system-ui, sans-serif !important;
+  border-radius: 10px;
+  font-family: var(--font-sans) !important;
   z-index: 10;
+}
+
+[data-theme="dark"] .map-osm-fallback .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(94%) saturate(18%);
+}
+
+[data-theme="light"] .map-osm-fallback .leaflet-tile-pane {
+  filter: grayscale(85%) contrast(104%) brightness(102%);
 }
 
 .leaflet-popup-content-wrapper {
   background: var(--color-surface) !important;
   color: var(--color-text) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 12px !important;
+  border: 1px solid var(--color-border-strong) !important;
+  border-radius: 6px !important;
   box-shadow: var(--shadow-md) !important;
 }
 
@@ -165,14 +211,21 @@ input, textarea, select {
   background: var(--color-surface) !important;
 }
 
+.leaflet-control-zoom a {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+  border-radius: 4px !important;
+}
+
 .leaflet-control-attribution {
   background: var(--glass-bg) !important;
   color: var(--color-text-muted) !important;
   font-size: 10px !important;
   backdrop-filter: blur(6px);
-  border-radius: 6px 0 0 0;
+  border-radius: 4px 0 0 0;
 }
 
 .leaflet-control-attribution a {
-  color: var(--color-primary-light) !important;
+  color: var(--color-accent-text) !important;
 }

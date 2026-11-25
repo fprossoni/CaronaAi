@@ -22,7 +22,7 @@ export const Input: React.FC<InputProps> = ({
     <div className="flex flex-col gap-1.5">
       {label && (
         <label
-          className="text-[13px] font-medium tracking-[0.02em] text-text-muted"
+          className="text-xs font-semibold uppercase tracking-wider text-text-muted"
           htmlFor={inputId}
         >
           {label}
@@ -30,18 +30,18 @@ export const Input: React.FC<InputProps> = ({
       )}
       <div className="relative flex items-center">
         {leftIcon && (
-          <span className="pointer-events-none absolute left-3.5 flex items-center text-text-muted">
+          <span className="pointer-events-none absolute left-3 flex items-center text-text-muted">
             {leftIcon}
           </span>
         )}
         <input
           id={inputId}
           className={[
-            "w-full rounded-xl border bg-surface-2 px-4 py-3 text-[15px] text-text placeholder:text-text-muted outline-none transition-all duration-150 disabled:opacity-60",
-            leftIcon ? "pl-10.5" : "",
+            "w-full rounded-md border bg-surface-2 px-3.5 py-2.5 text-sm text-text placeholder:text-text-muted outline-none transition-colors duration-150 disabled:opacity-60",
+            leftIcon ? "pl-10" : "",
             error
-              ? "border-danger focus:ring-3 focus:ring-red-500/20"
-              : "border-border focus:border-primary focus:ring-3 focus:ring-indigo-500/20",
+              ? "border-danger focus:ring-1 focus:ring-danger/30"
+              : "border-border focus:border-primary focus:ring-1 focus:ring-primary/30",
             className,
           ]
             .filter(Boolean)

@@ -1,9 +1,7 @@
 /**
- * HistoryPage ("Histórico de Caronas")
+ * HistoryPage ("Histórico")
  *
- * Displays past completed and cancelled trips (as Driver or Passenger),
- * enabling post-trip 1–5 star ratings (`RatingModal`), public profile inspection
- * (`UserProfileModal`), and structured safety reporting/blocking (`ReportUserModal`).
+ * Past completed and cancelled trips with role filtering, ratings, and reports.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -28,7 +26,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 function formatDate(iso: string): string {
-  return format(new Date(iso), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR });
+  return format(new Date(iso), "dd MMM yyyy · HH:mm", { locale: ptBR });
 }
 
 type RoleFilter = "all" | "driver" | "passenger";
@@ -40,7 +38,6 @@ export const HistoryPage: React.FC = () => {
   const [error, setError] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
 
-  // Modals state
   const [ratingTarget, setRatingTarget] = useState<{
     matchId: number;
     participant: TripParticipant;
@@ -64,7 +61,7 @@ export const HistoryPage: React.FC = () => {
         if (active) setTrips(data);
       })
       .catch((err: unknown) => {
-        if (active) setError(getErrorMessage(err, "Erro ao carregar o histórico."));
+        if (active) setError(getErrorMessage(err, "Erro ao carregar histórico."));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -76,8 +73,8 @@ export const HistoryPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="py-16 text-center text-sm text-text-muted animate-pulse">
-        Carregando histórico de viagens...
+      <div className="py-16 text-center font-mono text-xs text-text-muted animate-pulse">
+        Carregando histórico…
       </div>
     );
   }
@@ -94,20 +91,14 @@ export const HistoryPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate("/rides")}
-            className="text-xs font-semibold text-indigo-400 hover:underline mb-1 inline-block"
+            className="font-mono text-xs font-semibold text-accent-text hover:underline mb-1 inline-block"
           >
-            ← Voltar para Caronas Ativas
+            ← Caronas ativas
           </button>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-text">
-            Histórico e Avaliações
-          </h1>
-          <p className="text-sm mt-0.5 text-text-muted">
-            Avalie seus colegas de viagem com 1 a 5 estrelas para fortalecer a confiança na comunidade UFRGS.
-          </p>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-text">Histórico</h1>
         </div>
 
-        {/* Role Filter Pills */}
-        <div className="inline-flex p-1 rounded-2xl border border-border bg-surface">
+        <div className="inline-flex p-1 rounded-md border border-border bg-surface">
           {(
             [
               { id: "all", label: "Todas" },
@@ -119,8 +110,10 @@ export const HistoryPage: React.FC = () => {
               key={tab.id}
               type="button"
               onClick={() => setRoleFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                roleFilter === tab.id ? "bg-primary text-white" : "text-text-secondary"
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                roleFilter === tab.id
+                  ? "bg-primary text-on-primary font-bold"
+                  : "text-text-secondary hover:text-text"
               }`}
             >
               {tab.label}
@@ -130,84 +123,76 @@ export const HistoryPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-2xl bg-red-500/15 border border-red-500/30 text-sm text-red-400">
+        <div className="p-3.5 rounded-md bg-danger/10 border border-danger/30 text-xs text-danger">
           {error}
         </div>
       )}
 
       {filteredTrips.length === 0 ? (
-        <div className="rounded-3xl p-10 border border-border bg-gradient-card text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mx-auto mb-2">
-            <HistoryIcon size={24} />
+        <div className="rounded-[10px] p-10 border border-border bg-surface bg-dot-matrix text-center space-y-2">
+          <div className="w-11 h-11 rounded-md border border-border-strong bg-surface-2 text-accent-text flex items-center justify-center mx-auto mb-2">
+            <HistoryIcon size={20} />
           </div>
-          <p className="text-base font-bold text-text">
-            Nenhuma viagem encontrada neste filtro
-          </p>
-          <p className="text-xs max-w-md mx-auto text-text-muted">
-            Assim que suas caronas forem concluídas, elas aparecerão aqui para avaliação.
+          <p className="text-sm font-medium text-text-secondary">
+            Nenhuma viagem encontrada.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {filteredTrips.map((trip) => {
             const isCompleted = trip.status === "completed";
             return (
               <div
                 key={`${trip.role}-${trip.ride_id}`}
-                className="rounded-3xl p-5 md:p-6 border border-border bg-gradient-card space-y-4 shadow-md"
+                className="rounded-[10px] p-4 sm:p-5 border border-border bg-surface space-y-4"
               >
-                {/* Trip Header */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      className={`px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase ${
                         isCompleted
-                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                          : "bg-red-500/15 text-red-400 border border-red-500/30"
+                          ? "bg-secondary/15 text-secondary border border-secondary/35"
+                          : "bg-danger/15 text-danger border border-danger/35"
                       }`}
                     >
-                      {isCompleted ? "✓ Concluída" : "✕ Cancelada"}
+                      {isCompleted ? "Concluída" : "Cancelada"}
                     </span>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold border border-border bg-surface-2 text-text-secondary">
-                      Você foi {trip.role === "driver" ? "Motorista" : "Passageiro"}
+                    <span className="px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold border border-border bg-surface-2 text-text-secondary uppercase">
+                      {trip.role === "driver" ? "Motorista" : "Passageiro"}
                     </span>
                   </div>
 
-                  <span className="text-xs font-semibold text-text-muted">
+                  <span className="font-mono text-xs text-text-muted">
                     {formatDate(trip.departure_at)}
                   </span>
                 </div>
 
                 {/* Route Summary */}
-                <div className="p-3.5 rounded-2xl border border-border bg-surface-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 text-sm font-semibold text-text">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
-                    <span>{trip.origin_label}</span>
-                    <span className="text-text-muted">→</span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 shrink-0" />
-                    <span>{trip.destination_label}</span>
-                  </div>
+                <div className="p-3 rounded-md border border-border bg-surface-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
+                  <span className="size-2 rounded-full bg-primary shrink-0" />
+                  <span>{trip.origin_label}</span>
+                  <span className="font-mono text-text-muted">→</span>
+                  <span className="size-2 rounded-full bg-secondary shrink-0" />
+                  <span>{trip.destination_label}</span>
                 </div>
 
-                {/* Participants & Rating Actions */}
-                <div className="space-y-2.5">
-                  <p className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                    Participantes desta viagem
+                {/* Participants */}
+                <div className="space-y-2">
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                    Participantes
                   </p>
 
                   {trip.participants.length === 0 ? (
-                    <p className="text-xs italic text-text-muted">
-                      Nenhum outro participante confirmado nesta viagem.
-                    </p>
+                    <p className="text-xs text-text-muted">Nenhum participante confirmado.</p>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                       {trip.participants.map((p) => (
                         <div
                           key={p.id}
-                          className="p-3.5 rounded-2xl border border-border bg-surface-2 flex items-center justify-between gap-3"
+                          className="p-3 rounded-md border border-border bg-surface-2 flex items-center justify-between gap-2.5"
                         >
                           <div
-                            className="flex items-center gap-3 cursor-pointer group min-w-0"
+                            className="flex items-center gap-2.5 cursor-pointer group min-w-0"
                             onClick={() =>
                               setProfileUser({
                                 id: p.id,
@@ -233,31 +218,29 @@ export const HistoryPage: React.FC = () => {
                               photoUrl={p.photo_url}
                               rating={p.avg_rating}
                               size="md"
-                              ring
                             />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-sm font-bold truncate text-text group-hover:text-indigo-400">
+                                <span className="text-sm font-bold truncate text-text group-hover:text-accent-text transition-colors">
                                   {p.name ?? "Estudante UFRGS"}
                                 </span>
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  className={`px-1.5 py-0.5 rounded-[2px] font-mono text-[9px] font-bold uppercase ${
                                     p.role === "driver"
-                                      ? "bg-indigo-500/20 text-indigo-400"
-                                      : "bg-emerald-500/20 text-emerald-400"
+                                      ? "bg-primary/15 text-accent-text"
+                                      : "bg-secondary/15 text-secondary"
                                   }`}
                                 >
                                   {p.role === "driver" ? "Motorista" : "Passageiro"}
                                 </span>
                               </div>
                               <p className="text-xs truncate flex items-center gap-1 mt-0.5 text-text-muted">
-                                <GraduationCapIcon size={12} className="shrink-0" />
+                                <GraduationCapIcon size={11} className="shrink-0" />
                                 {p.course ?? "Curso não informado"}
                               </p>
                             </div>
                           </div>
 
-                          {/* Action Buttons: Rate + Report */}
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isCompleted && p.match_id && !p.already_rated && (
                               <Button
@@ -270,14 +253,14 @@ export const HistoryPage: React.FC = () => {
                                   })
                                 }
                               >
-                                <StarIcon size={13} filled />
+                                <StarIcon size={12} filled />
                                 <span>Avaliar</span>
                               </Button>
                             )}
 
                             {p.already_rated && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-400">
-                                <CheckCircleIcon size={13} /> Avaliado
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] font-mono text-[10px] font-bold uppercase bg-secondary/15 text-secondary">
+                                <CheckCircleIcon size={12} /> Avaliado
                               </span>
                             )}
 
@@ -289,11 +272,11 @@ export const HistoryPage: React.FC = () => {
                                   participant: p,
                                 })
                               }
-                              className="p-2 rounded-xl border border-border text-red-400 hover:bg-red-500/10 transition-colors"
+                              className="p-2 rounded-md border border-border text-danger hover:bg-danger/10 transition-colors"
                               title="Reportar ou bloquear usuário"
                               aria-label="Reportar usuário"
                             >
-                              <AlertTriangleIcon size={15} />
+                              <AlertTriangleIcon size={14} />
                             </button>
                           </div>
                         </div>

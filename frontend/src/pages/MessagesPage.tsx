@@ -9,16 +9,25 @@ import { getErrorMessage } from "@/lib/errors";
 import { useAuthStore } from "@/store/authStore";
 import type { ChatMessage, Conversation } from "@/types/chat";
 
-const title = (c: Conversation, userId: number) => c.kind === "group"
-  ? "Grupo da carona"
-  : c.participants.find((p) => p.id !== userId)?.name ?? "Conversa privada";
+const title = (c: Conversation, userId: number) =>
+  c.kind === "group"
+    ? "Grupo da carona"
+    : c.participants.find((p) => p.id !== userId)?.name ?? "Conversa privada";
 
 function mergeMessages(previous: ChatMessage[], incoming: ChatMessage[]) {
-  return [...new Map([...previous, ...incoming].map((m) => [m.id, m])).values()].sort((a, b) => a.id - b.id);
+  return [...new Map([...previous, ...incoming].map((m) => [m.id, m])).values()].sort(
+    (a, b) => a.id - b.id
+  );
 }
 
-function ConversationPanel({ conversation, userId, onPrivate }: {
-  conversation: Conversation; userId: number; onPrivate: (passengerId: number) => Promise<void>;
+function ConversationPanel({
+  conversation,
+  userId,
+  onPrivate,
+}: {
+  conversation: Conversation;
+  userId: number;
+  onPrivate: (passengerId: number) => Promise<void>;
 }) {
   const [items, setItems] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -43,8 +52,10 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
         return;
       }
       try {
-        const { data } = await messagesApi.items(conversation.id,
-          cursor.current === undefined ? undefined : { after: cursor.current });
+        const { data } = await messagesApi.items(
+          conversation.id,
+          cursor.current === undefined ? undefined : { after: cursor.current }
+        );
         if (cancelled) return;
         if (cursor.current === undefined) setHasOlder(data.length === 50);
         cursor.current = data.at(-1)?.id ?? cursor.current ?? 0;
@@ -52,7 +63,7 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
         setError("");
       } catch (err) {
         if (cancelled) return;
-        setError(getErrorMessage(err, "Não foi possível atualizar as mensagens. Tentando novamente…"));
+        setError(getErrorMessage(err, "Erro ao atualizar mensagens."));
         if (axios.isAxiosError(err) && [403, 404, 409].includes(err.response?.status ?? 0)) {
           setClosed(true);
           setItems([]);
@@ -64,7 +75,11 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
       if (!cancelled) timer = setTimeout(poll, 5000);
     };
     void poll();
-    return () => { cancelled = true; mounted.current = false; clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      mounted.current = false;
+      clearTimeout(timer);
+    };
   }, [conversation.id]);
 
   useEffect(() => {
@@ -99,35 +114,46 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
       setItems((prev) => mergeMessages(prev, [data]));
       setDraft("");
     } catch (err) {
-      if (mounted.current) setError(getErrorMessage(err, "Mensagem não enviada. Tente novamente."));
+      if (mounted.current) setError(getErrorMessage(err, "Mensagem não enviada."));
     } finally {
       if (mounted.current) setSending(false);
     }
   };
 
-  const privateParticipants = conversation.kind === "group"
-    ? conversation.participants.filter((p) => userId === conversation.driver_id ? p.id !== userId : p.id === conversation.driver_id)
-    : [];
+  const privateParticipants =
+    conversation.kind === "group"
+      ? conversation.participants.filter((p) =>
+          userId === conversation.driver_id ? p.id !== userId : p.id === conversation.driver_id
+        )
+      : [];
 
   return (
     <section className="flex min-h-0 min-w-0 flex-col" aria-label={title(conversation, userId)}>
-      <header className="max-h-[45%] overflow-auto border-b border-border px-4 py-3 md:px-5.5 md:py-4.5">
+      <header className="max-h-[45%] overflow-auto border-b border-border px-4 py-3 md:px-5 md:py-4">
         <Link
           to="/messages"
-          className="mb-2 inline-block text-xs font-semibold text-primary-light hover:underline md:hidden"
+          className="mb-2 inline-block font-mono text-xs font-semibold text-accent-text hover:underline md:hidden"
         >
           ← Conversas
         </Link>
-        <h2 className="font-bold text-text">{title(conversation, userId)}</h2>
-        <p className="text-[13px] text-text-muted">{conversation.origin_label} → {conversation.destination_label}</p>
-        <p className="text-[13px] text-text-muted">
-          {new Date(conversation.departure_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="font-display font-bold text-text">{title(conversation, userId)}</h2>
+          <time className="font-mono text-[11px] text-text-muted">
+            {new Date(conversation.departure_at).toLocaleString("pt-BR", {
+              dateStyle: "short",
+              timeStyle: "short",
+            })}
+          </time>
+        </div>
+        <p className="text-xs text-text-muted mt-0.5">
+          {conversation.origin_label} → {conversation.destination_label}
         </p>
         <details className="mt-2 text-xs text-text-secondary">
-          <summary className="cursor-pointer select-none">
-            {conversation.participants.length} participantes{conversation.kind === "group" ? " · Conversas privadas" : ""}
+          <summary className="cursor-pointer select-none font-mono text-[11px]">
+            {conversation.participants.length} participantes
+            {conversation.kind === "group" ? " · Privado" : ""}
           </summary>
-          <ul className="space-y-2 pt-2">
+          <ul className="space-y-1.5 pt-2">
             {conversation.participants.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3">
                 <span>
@@ -138,10 +164,10 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
                 {privateParticipants.some((person) => person.id === p.id) && (
                   <button
                     type="button"
-                    className="text-right text-xs font-semibold text-primary-light hover:underline"
+                    className="text-right text-xs font-semibold text-accent-text hover:underline"
                     onClick={() => void onPrivate(p.id === conversation.driver_id ? userId : p.id)}
                   >
-                    Conversar em privado
+                    Privado
                   </button>
                 )}
               </li>
@@ -151,14 +177,16 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
       </header>
 
       <div
-        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg p-3.5 md:p-5"
+        className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto bg-bg p-3.5 md:p-5"
         ref={scroll}
         role="log"
         aria-label="Mensagens da conversa"
         aria-live="polite"
         onScroll={() => {
           if (scroll.current) {
-            follow.current = scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight < 80;
+            follow.current =
+              scroll.current.scrollHeight - scroll.current.scrollTop - scroll.current.clientHeight <
+              80;
           }
         }}
       >
@@ -167,14 +195,13 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
             Carregar anteriores
           </Button>
         )}
-        {loading && <p className="p-5 text-center text-xs text-text-muted">Carregando mensagens…</p>}
+        {loading && (
+          <p className="p-5 text-center font-mono text-xs text-text-muted">Carregando…</p>
+        )}
         {!loading && items.length === 0 && !closed && (
-          <div className="m-auto flex flex-col items-center justify-center gap-3 px-5 py-8 text-center text-text-muted">
-            <MessageIcon size={32} />
-            <p className="text-sm">Combine os detalhes da viagem por aqui.</p>
-            <small className="max-w-75 text-xs">
-              As conversas ficam ativas até o motorista concluir a carona.
-            </small>
+          <div className="m-auto flex flex-col items-center justify-center gap-2.5 px-5 py-8 text-center text-text-muted">
+            <MessageIcon size={28} />
+            <p className="text-sm text-text-secondary">Combine os detalhes da viagem aqui.</p>
           </div>
         )}
         {items.map((message) => {
@@ -182,19 +209,25 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
           return (
             <article
               key={message.id}
-              className={`max-w-[85%] px-3.5 py-2.5 wrap-anywhere ${
+              className={`max-w-[85%] px-3.5 py-2.5 rounded-md wrap-anywhere ${
                 isMine
-                  ? "self-end rounded-2xl rounded-br-sm bg-primary-dark text-white"
-                  : "self-start rounded-2xl rounded-bl-sm bg-surface-2 text-text"
+                  ? "self-end bg-primary text-on-primary"
+                  : "self-start border border-border bg-surface-2 text-text"
               }`}
             >
-              <strong className={`text-[11px] ${isMine ? "text-white/80" : "text-primary-light"}`}>
+              <strong
+                className={`font-mono text-[10px] uppercase tracking-wider block mb-0.5 ${
+                  isMine ? "text-on-primary/75" : "text-accent-text"
+                }`}
+              >
                 {isMine ? "Você" : message.sender.name ?? "Participante"}
               </strong>
               <p className="whitespace-pre-wrap text-sm">{message.body}</p>
               <time
                 dateTime={message.created_at}
-                className="mt-1 block text-right text-[10px] opacity-75"
+                className={`mt-1 block text-right font-mono text-[10px] ${
+                  isMine ? "text-on-primary/70" : "text-text-muted"
+                }`}
               >
                 {new Date(message.created_at).toLocaleString("pt-BR", {
                   day: "2-digit",
@@ -209,14 +242,14 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
       </div>
 
       {error && (
-        <p role="alert" className="px-4 py-2.5 text-xs text-danger">
+        <p role="alert" className="px-4 py-2 text-xs text-danger">
           {error}
         </p>
       )}
 
       <form
         onSubmit={send}
-        className="flex items-end gap-2 border-t border-border p-3 md:gap-3 md:p-4"
+        className="flex items-end gap-2 border-t border-border p-3 md:gap-2.5 md:p-3.5"
       >
         <label className="sr-only" htmlFor="message-body">
           Sua mensagem
@@ -227,9 +260,9 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
           onChange={(e) => setDraft(e.target.value)}
           maxLength={2000}
           rows={2}
-          placeholder="Escreva uma mensagem…"
+          placeholder="Mensagem…"
           disabled={closed || sending}
-          className="max-h-35 min-w-0 flex-1 resize-y rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm text-text focus-visible:outline-2 focus-visible:outline-primary"
+          className="max-h-35 min-w-0 flex-1 resize-y rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text placeholder:text-text-muted outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
         />
         <Button type="submit" loading={sending} disabled={loading || closed || !draft.trim()}>
           Enviar
@@ -241,7 +274,6 @@ function ConversationPanel({ conversation, userId, onPrivate }: {
 
 export function MessagesPage() {
   const userId = useAuthStore((state) => state.user?.id) ?? 0;
-  // Remount on account changes so no previous account's messages remain on screen.
   return <MessagesInbox key={userId} userId={userId} />;
 }
 
@@ -265,7 +297,7 @@ function MessagesInbox({ userId }: { userId: number }) {
             setError("");
           }
         } catch (err) {
-          if (!cancelled) setError(getErrorMessage(err, "Não foi possível carregar as conversas."));
+          if (!cancelled) setError(getErrorMessage(err, "Não foi possível carregar conversas."));
         } finally {
           if (!cancelled) setLoading(false);
         }
@@ -286,51 +318,47 @@ function MessagesInbox({ userId }: { userId: number }) {
       setConversations((prev) => [data, ...prev.filter((c) => c.id !== data.id)]);
       setParams({ conversation: String(data.id) });
     } catch (err) {
-      setError(getErrorMessage(err, "Não foi possível abrir a conversa privada."));
+      setError(getErrorMessage(err, "Erro ao abrir conversa privada."));
     }
   };
 
   return (
     <div className="text-text animate-fade-in">
-      <div className="mb-5.5 flex items-start justify-between gap-4 md:items-center">
-        <div>
-          <h1 className="text-2xl font-extrabold md:text-[26px]">Mensagens</h1>
-          <p className="text-[13px] text-text-muted">Suas conversas nas caronas confirmadas.</p>
-        </div>
-        <Link to="/rides" className="text-xs font-semibold text-primary-light hover:underline">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h1 className="font-display text-2xl font-bold tracking-tight">Mensagens</h1>
+        <Link to="/rides" className="font-mono text-xs font-semibold text-accent-text hover:underline no-underline">
           Minhas caronas →
         </Link>
       </div>
 
       {error && (
-        <p role="alert" className="px-4 py-2.5 text-xs text-danger">
+        <p role="alert" className="px-4 py-2 text-xs text-danger">
           {error}
         </p>
       )}
 
-      <div className="grid h-[calc(100dvh-240px)] min-h-95 grid-cols-1 overflow-hidden rounded-[18px] border border-border bg-surface md:h-[min(740px,calc(100dvh-230px))] md:min-h-110 md:grid-cols-[290px_minmax(0,1fr)] md:rounded-3xl">
+      <div className="grid h-[calc(100dvh-230px)] min-h-95 grid-cols-1 overflow-hidden rounded-[10px] border border-border bg-surface md:h-[min(740px,calc(100dvh-210px))] md:min-h-110 md:grid-cols-[290px_minmax(0,1fr)]">
         <aside
           className={`overflow-y-auto p-3 md:border-r md:border-border ${
             selected ? "hidden md:block" : "block"
           }`}
           aria-label="Conversas ativas"
         >
-          <h2 className="flex justify-between px-2 pt-2 pb-5 text-xs font-bold">
-            <span>Conversas ativas</span>
-            <span className="text-text-muted">{conversations.length}</span>
+          <h2 className="flex justify-between px-2 pt-1 pb-4 font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted">
+            <span>Ativas</span>
+            <span>{conversations.length}</span>
           </h2>
 
-          {loading && <p className="p-5 text-center text-xs text-text-muted">Carregando conversas…</p>}
+          {loading && (
+            <p className="p-5 text-center font-mono text-xs text-text-muted">Carregando…</p>
+          )}
 
           {!loading && conversations.length === 0 && (
-            <div className="m-auto flex flex-col items-center justify-center gap-3 px-5 py-8 text-center text-text-muted">
-              <MessageIcon size={32} />
-              <p className="text-sm">Nenhuma conversa ativa</p>
-              <small className="max-w-75 text-xs">
-                Em Minhas caronas, toque em Mensagens após a confirmação de um passageiro.
-              </small>
-              <Link to="/rides" className="text-xs font-semibold text-primary-light hover:underline">
-                Ver minhas caronas
+            <div className="m-auto flex flex-col items-center justify-center gap-2.5 px-4 py-8 text-center text-text-muted">
+              <MessageIcon size={28} />
+              <p className="text-sm text-text-secondary">Nenhuma conversa ativa.</p>
+              <Link to="/rides" className="text-xs font-semibold text-accent-text hover:underline">
+                Minhas caronas
               </Link>
             </div>
           )}
@@ -341,22 +369,22 @@ function MessagesInbox({ userId }: { userId: number }) {
               <Link
                 key={c.id}
                 to={`/messages?conversation=${c.id}`}
-                className={`mb-1 flex items-center gap-3 rounded-[14px] px-2.5 py-3.5 text-inherit no-underline transition-colors hover:bg-surface-hover ${
+                className={`mb-1 flex items-center gap-3 rounded-md px-2.5 py-3 text-inherit no-underline transition-colors hover:bg-surface-hover ${
                   isSelected ? "bg-surface-2 shadow-[inset_3px_0_var(--color-primary)]" : ""
                 }`}
                 aria-current={isSelected ? "page" : undefined}
               >
                 {c.kind === "group" ? (
-                  <span className="rounded-[14px] bg-surface-2 p-2.5 text-primary-light">
-                    <UsersIcon size={22} />
+                  <span className="rounded-md border border-border bg-surface-2 p-2 text-accent-text shrink-0">
+                    <UsersIcon size={18} />
                   </span>
                 ) : (
                   <Avatar name={title(c, userId)} size="sm" />
                 )}
                 <div className="min-w-0">
-                  <strong className="text-[13px]">{title(c, userId)}</strong>
+                  <strong className="text-[13px] block truncate">{title(c, userId)}</strong>
                   <p className="truncate text-xs text-text-secondary">{c.destination_label}</p>
-                  <small className="text-[11px] text-text-muted">
+                  <small className="font-mono text-[10px] text-text-muted">
                     {c.kind === "group" ? "Grupo" : "Privada"} ·{" "}
                     {new Date(c.departure_at).toLocaleString("pt-BR", {
                       day: "2-digit",
@@ -379,16 +407,11 @@ function MessagesInbox({ userId }: { userId: number }) {
             onPrivate={openPrivate}
           />
         ) : (
-          <div className="hidden flex-col items-center justify-center gap-3 px-5 py-8 text-center text-text-muted md:flex">
-            <MessageIcon size={42} />
-            <h2 className="font-semibold text-text">
-              {selectedId && !loading ? "Conversa indisponível" : "Tudo combinado para a viagem"}
+          <div className="hidden flex-col items-center justify-center gap-2.5 px-5 py-8 text-center text-text-muted bg-dot-matrix md:flex">
+            <MessageIcon size={34} />
+            <h2 className="font-display font-semibold text-text">
+              {selectedId && !loading ? "Conversa indisponível" : "Selecione uma conversa"}
             </h2>
-            <p className="max-w-75 text-xs">
-              {selectedId && !loading
-                ? "A carona pode ter sido encerrada ou sua participação cancelada."
-                : "Selecione um grupo ou uma conversa privada para começar."}
-            </p>
           </div>
         )}
       </div>

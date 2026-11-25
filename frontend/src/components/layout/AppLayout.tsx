@@ -1,10 +1,8 @@
 /**
  * AppLayout Component
  *
- * Provides the responsive application shell combining:
- * - Top sticky glass header with brand identity, desktop navigation,
- *   UFRGS institutional affiliation badge (e.g. `INF • UFRGS`), and Dark/Light theme switcher.
- * - Mobile bottom navigation bar with vector icons.
+ * Responsive application shell with top sticky header, integrated Messages nav,
+ * institutional UFRGS badge, and mobile bottom navigation bar.
  */
 
 import React from "react";
@@ -13,12 +11,13 @@ import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { extractUfrgsAffiliation } from "@/lib/validators";
 import { Avatar } from "@/components/ui/Avatar";
+import { BrandMark } from "@/components/ui/BrandMotifs";
 import {
   CarIcon,
   CompassIcon,
   HistoryIcon,
-  MoonIcon,
   MessageIcon,
+  MoonIcon,
   SearchIcon,
   ShieldCheckIcon,
   SunIcon,
@@ -38,17 +37,18 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const affiliation = extractUfrgsAffiliation(user?.email);
 
   const navItems = [
-    { path: "/find", label: "Pedir Carona", shortLabel: "Pedir", icon: SearchIcon },
-    { path: "/offer", label: "Oferecer", shortLabel: "Oferecer", icon: CarIcon },
-    { path: "/rides", label: "Minhas Caronas", shortLabel: "Caronas", icon: CompassIcon },
-    { path: "/rides/history", label: "Histórico", shortLabel: "Histórico", icon: HistoryIcon },
+    { path: "/find", label: "Pedir", icon: SearchIcon },
+    { path: "/offer", label: "Oferecer", icon: CarIcon },
+    { path: "/rides", label: "Caronas", icon: CompassIcon },
+    { path: "/messages", label: "Mensagens", icon: MessageIcon },
+    { path: "/rides/history", label: "Histórico", icon: HistoryIcon },
   ];
 
   const publicMobileItems = [
-    { path: "/", label: "Início", shortLabel: "Início", icon: CompassIcon },
-    { path: "/find", label: "Pedir Carona", shortLabel: "Pedir", icon: SearchIcon },
-    { path: "/offer", label: "Oferecer", shortLabel: "Oferecer", icon: CarIcon },
-    { path: "/login", label: "Entrar", shortLabel: "Entrar", icon: UserIcon },
+    { path: "/", label: "Início", icon: CompassIcon },
+    { path: "/find", label: "Pedir", icon: SearchIcon },
+    { path: "/offer", label: "Oferecer", icon: CarIcon },
+    { path: "/login", label: "Entrar", icon: UserIcon },
   ];
 
   const isPathActive = (itemPath: string) => {
@@ -61,23 +61,22 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   if (isAuthPage || (!isAuthenticated && !isPublicWithHeader)) {
     return (
       <div className="min-h-screen relative flex flex-col">
-        {/* Floating Controls on Auth Pages */}
         <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
           <button
             type="button"
             onClick={toggleTheme}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold border border-border bg-glass text-text shadow-md backdrop-blur-md transition-transform hover:scale-105"
-            title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold border border-border bg-glass text-text shadow-sm backdrop-blur-md transition-colors hover:border-border-strong"
+            title={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
           >
             {theme === "dark" ? (
               <>
-                <SunIcon size={15} className="text-amber-400" />
-                <span>Tema Claro</span>
+                <SunIcon size={14} className="text-accent-text" />
+                <span>Claro</span>
               </>
             ) : (
               <>
-                <MoonIcon size={15} className="text-indigo-500" />
-                <span>Tema Escuro</span>
+                <MoonIcon size={14} className="text-text" />
+                <span>Escuro</span>
               </>
             )}
           </button>
@@ -85,10 +84,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           {import.meta.env.DEV && (
             <Link
               to="/dev"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border shadow-md backdrop-blur-md no-underline transition-transform hover:scale-105 bg-indigo-500/20 text-indigo-400 border-indigo-500/40"
+              className="inline-flex items-center px-2.5 py-1.5 rounded-md font-mono text-xs font-bold border border-primary/40 bg-primary/15 text-accent-text backdrop-blur-md no-underline transition-colors hover:bg-primary/25"
               title="Contas de teste"
             >
-              <span>Contas de teste</span>
+              Dev
             </Link>
           )}
         </div>
@@ -97,34 +96,39 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     );
   }
 
-  const mobileNavList = isAuthenticated ? [
-    ...navItems,
-    { path: "/profile", label: "Meu Perfil", shortLabel: "Perfil", icon: UserIcon },
-  ] : publicMobileItems;
+  const mobileNavList = isAuthenticated
+    ? [
+        { path: "/find", label: "Pedir", icon: SearchIcon },
+        { path: "/offer", label: "Oferecer", icon: CarIcon },
+        { path: "/rides", label: "Caronas", icon: CompassIcon },
+        { path: "/messages", label: "Mensagens", icon: MessageIcon },
+        { path: "/profile", label: "Perfil", icon: UserIcon },
+      ]
+    : publicMobileItems;
 
   return (
-    <div className="min-h-screen flex flex-col pb-20 md:pb-8">
+    <div className="min-h-screen flex flex-col pb-20 lg:pb-8">
       {/* Top Sticky Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-glass backdrop-blur-xl transition-colors">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-4 h-15 flex items-center justify-between gap-3">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2.5 no-underline group">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-primary text-white shadow-md transition-transform group-hover:scale-105">
-              <CarIcon size={24} />
-            </div>
-
-            <div className="flex flex-col items-baseline">
-              <span className="font-extrabold text-base tracking-tight text-text">
+          <Link to="/" className="flex items-center gap-2.5 no-underline group shrink-0">
+            <BrandMark size="md" />
+            <div className="flex items-center gap-2">
+              <span className="font-display font-bold text-base tracking-tight text-text">
                 Carona Aí
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+              <span className="px-1.5 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold uppercase tracking-wider bg-surface-2 text-accent-text border border-border">
                 {affiliation.shortBadge}
               </span>
             </div>
           </Link>
 
-          {/* Desktop Navigation Pills */}
-          <nav className="hidden lg:flex items-center gap-1 p-1 rounded-xl border border-border bg-surface-2">
+          {/* Desktop Navigation */}
+          <nav
+            aria-label="Navegação principal"
+            className="hidden lg:flex items-center gap-1 p-1 rounded-md border border-border bg-surface-2"
+          >
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isPathActive(item.path);
@@ -132,27 +136,29 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold no-underline transition-all ${
-                    active ? "bg-primary text-white" : "text-text-secondary hover:text-text"
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold no-underline transition-colors ${
+                    active
+                      ? "bg-primary text-on-primary font-bold"
+                      : "text-text-secondary hover:text-text hover:bg-surface-hover/50"
                   }`}
                 >
-                  <Icon size={16} />
+                  <Icon size={15} />
                   <span>{item.label}</span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Right Controls: Dev Shortcut + Theme Toggle + User Pill */}
-          <div className="flex items-center gap-2.5">
+          {/* Right Controls */}
+          <div className="flex items-center gap-2 shrink-0">
             {import.meta.env.DEV && (
               <Link
                 to="/dev"
                 state={isAuthenticated && !isDevRoute ? { returnTo: location.pathname } : undefined}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border no-underline transition-all ${
+                className={`px-2.5 py-1.5 rounded-md font-mono text-xs font-bold border no-underline transition-colors ${
                   isDevRoute
-                    ? "bg-indigo-500 text-white border-indigo-500"
-                    : "bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/25"
+                    ? "bg-primary text-on-primary border-primary"
+                    : "bg-primary/15 text-accent-text border-primary/40 hover:bg-primary/25"
                 }`}
                 aria-label="Contas de teste"
               >
@@ -163,31 +169,31 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl border border-border bg-surface-2 text-text transition-colors hover:border-indigo-500/50"
+              className="p-2 rounded-md border border-border bg-surface-2 text-text transition-colors hover:border-border-strong"
               title={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
               aria-label="Alternar tema"
             >
               {theme === "dark" ? (
-                <SunIcon size={17} className="text-amber-400" />
+                <SunIcon size={16} className="text-accent-text" />
               ) : (
-                <MoonIcon size={17} className="text-indigo-500" />
+                <MoonIcon size={16} className="text-text" />
               )}
             </button>
 
             {isAuthenticated && user ? (
               <Link
                 to="/profile"
-                className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-border bg-surface-2 no-underline transition-colors hover:border-indigo-500/50"
+                className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-md border border-border bg-surface-2 no-underline transition-colors hover:border-border-strong"
               >
-                <Avatar name={user.name} photoUrl={user.photo_url} size="sm" ring />
+                <Avatar name={user.name} photoUrl={user.photo_url} size="sm" />
                 <div className="hidden sm:block text-left">
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-bold leading-none text-text">
                       {user.name?.split(" ")[0] ?? "Estudante"}
                     </span>
-                    <ShieldCheckIcon size={12} className="text-emerald-400" />
+                    <ShieldCheckIcon size={12} className="text-secondary" />
                   </div>
-                  <span className="text-[10px] block truncate max-w-27.5 text-text-muted">
+                  <span className="font-mono text-[10px] block truncate max-w-28 text-text-muted mt-0.5">
                     {user.course ?? affiliation.domain}
                   </span>
                 </div>
@@ -196,13 +202,13 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
               <div className="flex items-center gap-2">
                 <Link
                   to="/login"
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold border border-border bg-surface-2 text-text no-underline transition-colors hover:border-indigo-500/50"
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold border border-border bg-surface-2 text-text no-underline transition-colors hover:border-border-strong"
                 >
                   Entrar
                 </Link>
                 <Link
                   to="/register"
-                  className="hidden sm:inline-flex px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-primary text-white no-underline shadow-md transition-transform hover:scale-[1.02]"
+                  className="hidden sm:inline-flex px-3 py-1.5 rounded-md text-xs font-bold bg-primary text-on-primary border border-primary no-underline transition-colors hover:bg-primary-light"
                 >
                   Criar conta
                 </Link>
@@ -215,19 +221,12 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6">{children}</main>
 
-      {isAuthenticated && location.pathname !== "/messages" && (
-        <Link
-          to="/messages"
-          aria-label="Abrir mensagens ativas"
-          className="fixed right-4 bottom-20 md:bottom-6 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-primary px-5 py-3.5 text-sm font-bold text-white shadow-lg no-underline"
-          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
-        >
-          <MessageIcon size={22} /> Mensagens
-        </Link>
-      )}
-
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-glass backdrop-blur-xl flex items-center justify-around py-1.5 px-2">
+      <nav
+        aria-label="Navegação mobile"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-glass backdrop-blur-xl flex items-center justify-around py-1.5 px-2"
+        style={{ paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))" }}
+      >
         {mobileNavList.map((item) => {
           const Icon = item.icon;
           const active = isPathActive(item.path);
@@ -235,19 +234,19 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl no-underline transition-all ${
-                active ? "text-primary-light" : "text-text-muted"
+              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-md no-underline transition-colors ${
+                active ? "text-accent-text" : "text-text-muted"
               }`}
             >
               <div
-                className={`p-1.5 rounded-xl transition-colors ${
-                  active ? "bg-indigo-500/15" : ""
+                className={`p-1.5 rounded-md transition-colors ${
+                  active ? "bg-primary/15" : ""
                 }`}
               >
-                <Icon size={20} />
+                <Icon size={19} />
               </div>
               <span className={`text-[10px] mt-0.5 ${active ? "font-bold" : "font-medium"}`}>
-                {item.shortLabel}
+                {item.label}
               </span>
             </Link>
           );

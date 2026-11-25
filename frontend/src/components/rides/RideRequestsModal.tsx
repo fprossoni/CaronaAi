@@ -1,11 +1,7 @@
 /**
  * RideRequestsModal Component
  *
- * Driver's match management modal for a specific ride:
- * - Pending Requests: Displays passenger social profile, approximate region (`pickup_region`),
- *   and detour (`+km` / `+min`) while keeping exact coordinates confidential.
- * - Confirmed Passengers (`accepted`): Fetches `MatchConfirmed` (`GET /matches/{id}`) to reveal
- *   the passenger's exact pickup point on the interactive map and direct WhatsApp contact button.
+ * Driver match management modal for pending and confirmed passengers.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -21,9 +17,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import {
   CheckCircleIcon,
+  LockIcon,
   MapPinIcon,
   NavigationIcon,
-  ShieldCheckIcon,
   WhatsAppIcon,
   XIcon,
 } from "@/components/ui/Icons";
@@ -59,7 +55,6 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
     const { data } = await matchesApi.getRideMatches(ride.id);
     const acceptedList = data.filter((m) => m.status === "accepted");
 
-    // Fetch MatchConfirmed details (exact coordinates & phone) for accepted matches
     const detailEntries = await Promise.all(
       acceptedList.map(async (m) => {
         try {
@@ -89,7 +84,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
         }
       })
       .catch((err: unknown) => {
-        if (active) setError(getErrorMessage(err, "Erro ao carregar as solicitações."));
+        if (active) setError(getErrorMessage(err, "Erro ao carregar solicitações."));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -105,10 +100,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
     try {
       const { data: confirmed } = await matchesApi.respond(matchId, action);
       if (action === "accept") {
-        toast.success(
-          "Passageiro confirmado!",
-          "O ponto exato de origem e o contato de WhatsApp foram liberados."
-        );
+        toast.success("Passageiro confirmado", "Embarque e contato liberados.");
         setConfirmedDetails((prev) => ({ ...prev, [matchId]: confirmed }));
       } else {
         toast.info("Solicitação recusada.");
@@ -118,7 +110,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
       setRequests(refreshed.list);
       setConfirmedDetails(refreshed.detailsMap);
     } catch (err: unknown) {
-      toast.error("Erro ao processar a solicitação", getErrorMessage(err));
+      toast.error("Erro ao processar solicitação", getErrorMessage(err));
     } finally {
       setActingId(null);
     }
@@ -131,77 +123,70 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-950 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 z-950 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-3xl p-6 border border-border bg-surface shadow-2xl animate-slide-up"
+          className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-[10px] p-5 sm:p-6 border border-border-strong bg-surface shadow-lg animate-slide-up"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between gap-3 pb-4 border-b border-border">
-            <div>
-              <h3 className="text-lg font-bold text-text">
-                Passageiros & Solicitações
-              </h3>
-              <p className="text-xs mt-0.5 text-text-muted">
-                {ride.origin_label} → {ride.destination_label} • {ride.available_seats}/{ride.total_seats} vagas livres
+          <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-border">
+            <div className="min-w-0">
+              <h3 className="font-display text-lg font-bold text-text">Solicitações</h3>
+              <p className="font-mono text-[11px] mt-0.5 text-text-muted truncate">
+                {ride.origin_label} → {ride.destination_label} · {ride.available_seats}/
+                {ride.total_seats} vagas
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-text-muted hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-md text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
               aria-label="Fechar"
             >
-              <XIcon size={18} />
+              <XIcon size={17} />
             </button>
           </div>
 
           {error && (
-            <div className="mt-4 p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400">
+            <div className="mt-4 p-3 rounded-md bg-danger/10 border border-danger/30 text-xs text-danger">
               {error}
             </div>
           )}
 
           {loading && (
-            <div className="py-10 text-center text-sm text-text-muted animate-pulse">
-              Carregando solicitações...
+            <div className="py-10 text-center font-mono text-xs text-text-muted animate-pulse">
+              Carregando…
             </div>
           )}
 
           {!loading && requests.length === 0 && (
             <div className="py-10 text-center">
-              <p className="text-sm font-medium text-text-secondary">
-                Nenhuma solicitação recebida para esta carona ainda.
-              </p>
-              <p className="text-xs mt-1 text-text-muted">
-                Quando colegas solicitarem vaga, eles aparecerão aqui com o desvio calculado.
-              </p>
+              <p className="text-sm text-text-secondary">Nenhuma solicitação recebida.</p>
             </div>
           )}
 
-          {/* Pending Requests Section */}
+          {/* Pending Requests */}
           {pending.length > 0 && (
             <div className="mt-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                  Aguardando sua resposta ({pending.length})
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-warning-text">
+                  Pendentes · {pending.length}
                 </span>
-                <span className="text-[11px] flex items-center gap-1 text-text-muted">
-                  <ShieldCheckIcon size={12} className="text-indigo-400" />
-                  Endereço exato oculto até aceitar
+                <span className="inline-flex items-center gap-1 font-mono text-[10px] text-text-muted">
+                  <LockIcon size={11} /> Endereço oculto até aceite
                 </span>
               </div>
 
               {pending.map((m) => (
                 <div
                   key={m.id}
-                  className="p-4 rounded-2xl border border-border bg-surface-2 space-y-3"
+                  className="p-3.5 rounded-md border border-border bg-surface-2 space-y-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div
-                      className="flex items-center gap-3 cursor-pointer group"
+                      className="flex items-center gap-3 cursor-pointer group min-w-0"
                       onClick={() => setSelectedUser(m.passenger)}
                     >
                       <Avatar
@@ -209,47 +194,43 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                         photoUrl={m.passenger.photo_url}
                         rating={m.passenger.avg_rating}
                         size="md"
-                        ring
                       />
-                      <div>
-                        <p className="font-bold text-sm text-text group-hover:text-indigo-400 transition-colors">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-text group-hover:text-accent-text truncate transition-colors">
                           {m.passenger.name ?? "Passageiro UFRGS"}
                         </p>
-                        <p className="text-xs text-text-muted">
+                        <p className="text-xs text-text-muted truncate">
                           {[
                             m.passenger.course ?? "Curso não informado",
                             m.passenger.gender ? getGenderLabel(m.passenger.gender) : null,
                             m.passenger.age != null ? `${m.passenger.age} anos` : null,
                           ]
                             .filter(Boolean)
-                            .join(" • ")}
-                        </p>
-                        <p className="text-[11px] mt-0.5 text-text-muted">
-                          Solicitado às {formatTime(m.created_at)} • Toque para ver perfil
+                            .join(" · ")}
                         </p>
                       </div>
                     </div>
 
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shrink-0">
+                    <span className="px-2 py-0.5 rounded-[2px] font-mono text-[11px] font-bold bg-primary/15 text-accent-text border border-primary/30 shrink-0">
                       +{formatDistance(m.detour_meters)} · +{formatDuration(m.detour_seconds)}
                     </span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl border border-border bg-surface text-xs text-text-secondary flex items-center justify-between gap-2 flex-wrap">
-                    <span className="flex items-center gap-2">
-                      <MapPinIcon size={14} className="text-amber-400 shrink-0" />
+                  <div className="p-2.5 rounded-md border border-border bg-surface text-xs text-text-secondary flex items-center justify-between gap-2 flex-wrap">
+                    <span className="flex items-center gap-1.5">
+                      <MapPinIcon size={13} className="text-warning-text shrink-0" />
                       <span>
-                        Região aproximada de origem: <strong>{m.pickup_region}</strong>
+                        Bairro: <strong className="text-text">{m.pickup_region}</strong>
                       </span>
                     </span>
                     {m.offered_pickup_at && (
-                      <span className="text-[11px] font-semibold text-indigo-400">
-                        Previsão no embarque: {formatTime(m.offered_pickup_at)}
+                      <span className="font-mono text-[11px] font-semibold text-accent-text">
+                        Embarque: {formatTime(m.offered_pickup_at)}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                  <div className="flex items-center justify-end gap-2">
                     <Button
                       variant="danger"
                       size="sm"
@@ -265,13 +246,13 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                       disabled={noSeats || actingId !== null}
                       onClick={() => handleRespond(m.id, "accept")}
                     >
-                      Aceitar Passageiro
+                      Aceitar
                     </Button>
                   </div>
 
                   {noSeats && (
-                    <p className="text-xs text-amber-400 text-right">
-                      Todos os assentos desta carona já foram preenchidos.
+                    <p className="font-mono text-[11px] text-warning-text text-right">
+                      Sem vagas disponíveis.
                     </p>
                   )}
                 </div>
@@ -279,11 +260,11 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
             </div>
           )}
 
-          {/* Confirmed Passengers Section (Reveals exact pickup location + WhatsApp) */}
+          {/* Confirmed Passengers */}
           {accepted.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 block">
-                Passageiros Confirmados ({accepted.length})
+            <div className="mt-5 space-y-3">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-secondary block">
+                Confirmados · {accepted.length}
               </span>
 
               {accepted.map((m) => {
@@ -307,11 +288,11 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                 return (
                   <div
                     key={m.id}
-                    className="p-4 rounded-2xl border border-emerald-500/40 bg-surface-2 space-y-3"
+                    className="p-3.5 rounded-md border border-secondary/40 bg-surface-2 space-y-3"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div
-                        className="flex items-center gap-3 cursor-pointer group"
+                        className="flex items-center gap-3 cursor-pointer group min-w-0"
                         onClick={() => setSelectedUser(m.passenger)}
                       >
                         <Avatar
@@ -319,18 +300,17 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                           photoUrl={m.passenger.photo_url}
                           rating={m.passenger.avg_rating}
                           size="md"
-                          ring
                         />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-sm text-text group-hover:text-indigo-400">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-bold text-sm text-text group-hover:text-accent-text truncate">
                               {m.passenger.name ?? "Passageiro"}
                             </p>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
-                              <CheckCircleIcon size={11} /> Confirmado
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase bg-secondary/15 text-secondary">
+                              <CheckCircleIcon size={10} /> OK
                             </span>
                           </div>
-                          <p className="text-xs text-text-muted">
+                          <p className="text-xs text-text-muted truncate">
                             {m.passenger.course ?? "Estudante UFRGS"}
                           </p>
                         </div>
@@ -346,46 +326,41 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold bg-secondary text-on-primary hover:opacity-90 transition-opacity no-underline shrink-0"
                         >
-                          <WhatsAppIcon size={14} />
+                          <WhatsAppIcon size={13} />
                           <span>WhatsApp</span>
                         </a>
                       ) : (
-                        <span className="text-[11px] text-text-muted">
-                          Sem telefone cadastrado
-                        </span>
+                        <span className="font-mono text-[10px] text-text-muted">Sem telefone</span>
                       )}
                     </div>
 
-                    {/* Exact Pickup Point Revealed */}
-                    <div className="p-3 rounded-xl border border-border bg-surface text-xs space-y-1">
-                      <div className="flex items-center justify-between text-emerald-400 font-semibold flex-wrap gap-2">
-                        <span className="flex items-center gap-1.5">
-                          <NavigationIcon size={13} />
-                          Ponto de encontro confirmado
+                    <div className="p-2.5 rounded-md border border-border bg-surface text-xs space-y-1">
+                      <div className="flex items-center justify-between font-mono text-[11px] text-secondary font-semibold flex-wrap gap-2">
+                        <span className="flex items-center gap-1">
+                          <NavigationIcon size={12} />
+                          Embarque
                         </span>
                         <span>
-                          {pickupEta ? `Chegada prevista: ${formatTime(pickupEta)} · ` : ""}
-                          +{formatDistance(m.detour_meters)}
+                          {pickupEta ? `${formatTime(pickupEta)} · ` : ""}+
+                          {formatDistance(m.detour_meters)}
                         </span>
                       </div>
-                      <p className="font-medium text-sm text-text">
-                        {exactLabel}
-                      </p>
+                      <p className="font-medium text-sm text-text">{exactLabel}</p>
                       {detail?.dropoff_label && (
-                        <p className="text-text"><strong>Destino:</strong> {detail.dropoff_label}</p>
+                        <p className="text-text-secondary">
+                          <strong className="text-text">Destino:</strong> {detail.dropoff_label}
+                        </p>
                       )}
                       {passengerPhone && (
-                        <p className="text-text-muted">
-                          Telefone: <strong>{passengerPhone}</strong>
-                        </p>
+                        <p className="font-mono text-[11px] text-text-muted">{passengerPhone}</p>
                       )}
                     </div>
 
                     {exactLat != null && exactLng != null && (
                       <InteractiveMap
-                        height="180px"
+                        height="170px"
                         origin={
                           ride.origin_lat != null && ride.origin_lng != null
                             ? { lat: ride.origin_lat, lng: ride.origin_lng, label: ride.origin_label }
@@ -393,13 +368,23 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
                         }
                         destination={
                           ride.destination_lat != null && ride.destination_lng != null
-                            ? { lat: ride.destination_lat, lng: ride.destination_lng, label: ride.destination_label }
+                            ? {
+                                lat: ride.destination_lat,
+                                lng: ride.destination_lng,
+                                label: ride.destination_label,
+                              }
                             : null
                         }
                         pickup={{ lat: exactLat, lng: exactLng, label: exactLabel }}
-                        dropoff={detail?.dropoff_lat != null && detail.dropoff_lng != null
-                          ? { lat: detail.dropoff_lat, lng: detail.dropoff_lng, label: detail.dropoff_label ?? undefined }
-                          : null}
+                        dropoff={
+                          detail?.dropoff_lat != null && detail.dropoff_lng != null
+                            ? {
+                                lat: detail.dropoff_lat,
+                                lng: detail.dropoff_lng,
+                                label: detail.dropoff_label ?? undefined,
+                              }
+                            : null
+                        }
                         pickupIsApproximate={false}
                         routeGeoJson={ride.route_geojson}
                       />

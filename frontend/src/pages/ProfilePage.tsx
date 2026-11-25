@@ -1,12 +1,8 @@
 /**
  * ProfilePage ("Meu Perfil")
  *
- * LinkedIn + Instagram + BlaBlaCar inspired personal profile & settings page:
- * - View Mode: Cover banner, institutional UFRGS unit badge (including `@*.ufrgs.br` subdomains),
- *   Avatar with gradient ring, academic course, bio, frequented campuses, social handle,
- *   reputation stats, and Mercosul vehicle card.
- * - Edit Mode: Full profile editing integrated with `PATCH /users/me`, including course
- *   autocomplete, driver/passenger preference switcher, and vehicle validation.
+ * Technical academic profile with topographic banner, Mercosul plate card,
+ * saved addresses, and moderation reports.
  */
 
 import React, { useState } from "react";
@@ -57,7 +53,6 @@ export const ProfilePage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Edit form state initialized from current user
   const [course, setCourse] = useState(user?.course ?? "");
   const [birthDate, setBirthDate] = useState(user?.birth_date ?? "");
   const [gender, setGender] = useState<Gender>(user?.gender ?? "prefer_not_to_say");
@@ -101,21 +96,18 @@ export const ProfilePage: React.FC = () => {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!course.trim()) {
-      toast.error("Curso obrigatório", "Informe seu curso de graduação ou pós-graduação na UFRGS.");
+      toast.error("Curso obrigatório", "Informe seu curso na UFRGS.");
       return;
     }
     if (birthDate.trim()) {
       const birthDateErr = validateBirthDate(birthDate);
       if (birthDateErr) {
-        toast.error("Data de nascimento inválida", birthDateErr);
+        toast.error("Data inválida", birthDateErr);
         return;
       }
     }
     if (isDriver && carPlate.trim() && !isValidCarPlate(carPlate)) {
-      toast.error(
-        "Placa inválida",
-        "Utilize o padrão ABC1234 ou Mercosul ABC1C34."
-      );
+      toast.error("Placa inválida", "Use ABC1234 ou ABC1C34.");
       return;
     }
 
@@ -135,16 +127,15 @@ export const ProfilePage: React.FC = () => {
         campuses,
         car_model: isDriver ? carModel.trim() || undefined : undefined,
         car_color: isDriver ? carColor.trim() || undefined : undefined,
-        car_plate:
-          isDriver && carPlate.trim() ? formatCarPlate(carPlate) : undefined,
+        car_plate: isDriver && carPlate.trim() ? formatCarPlate(carPlate) : undefined,
       };
 
       const { data } = await usersApi.updateMe(payload);
       setUser(data);
       setIsEditing(false);
-      toast.success("Perfil atualizado!", "Suas informações foram salvas com sucesso.");
+      toast.success("Perfil atualizado");
     } catch (err: unknown) {
-      toast.error("Erro ao atualizar perfil", getErrorMessage(err));
+      toast.error("Erro ao atualizar", getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -152,8 +143,8 @@ export const ProfilePage: React.FC = () => {
 
   const handleLogout = async () => {
     const ok = await toast.confirm({
-      title: "Sair da sua conta?",
-      description: "Você precisará fazer login novamente para acessar suas caronas.",
+      title: "Sair da conta?",
+      description: "Você precisará entrar novamente para acessar suas caronas.",
       confirmLabel: "Sair",
       variant: "danger",
     });
@@ -162,19 +153,19 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-      {/* Main Social Header Card (LinkedIn / Instagram Inspired) */}
-      <div className="rounded-3xl overflow-hidden border border-border bg-gradient-card shadow-xl">
-        {/* Cover Banner */}
-        <div className="h-32 md:h-36 relative bg-gradient-cover">
-          <div className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/45 backdrop-blur-md text-emerald-300 text-xs font-semibold border border-emerald-400/30">
-            <ShieldCheckIcon size={14} />
+      {/* Main Profile Header Card */}
+      <div className="rounded-[10px] overflow-hidden border border-border-strong bg-surface shadow-md">
+        {/* Topographic Cover Banner */}
+        <div className="h-28 md:h-32 relative z-0 bg-bg-elevated bg-topo-pattern border-b border-border">
+          <div className="absolute top-3 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] bg-surface/90 backdrop-blur-md text-secondary font-mono text-[11px] font-semibold border border-border-strong">
+            <ShieldCheckIcon size={13} />
             <span>{affiliation.fullBadge}</span>
           </div>
         </div>
 
         {/* Avatar + Identity Bar */}
-        <div className="px-6 pb-6">
-          <div className="-mt-12 mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="px-5 sm:px-6 pb-6 relative z-10">
+          <div className="-mt-10 mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div className="flex items-end gap-4">
               <Avatar
                 name={user.name}
@@ -182,75 +173,74 @@ export const ProfilePage: React.FC = () => {
                 size="xl"
                 ring
               />
-              <div className="pb-1">
+              <div className="pb-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl md:text-2xl font-extrabold text-text">
+                  <h1 className="font-display text-xl md:text-2xl font-bold text-text">
                     {user.name}
                   </h1>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    className={`px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase ${
                       user.is_driver
-                        ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
-                        : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        ? "bg-primary/15 text-accent-text border border-primary/35"
+                        : "bg-secondary/15 text-secondary border border-secondary/35"
                     }`}
                   >
-                    {user.is_driver ? "Motorista & Passageiro" : "Passageiro"}
+                    {user.is_driver ? "Motorista" : "Passageiro"}
                   </span>
                 </div>
                 <p className="text-sm font-medium flex items-center gap-1.5 mt-0.5 text-text-secondary">
-                  <GraduationCapIcon size={16} className="text-indigo-400 shrink-0" />
+                  <GraduationCapIcon size={15} className="text-accent-text shrink-0" />
                   <span>{user.course ?? "Curso não informado"}</span>
                 </p>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {!isEditing ? (
                 <Button variant="secondary" size="sm" onClick={startEditing}>
-                  <EditIcon size={15} />
-                  <span>Editar Perfil</span>
+                  <EditIcon size={14} />
+                  <span>Editar</span>
                 </Button>
               ) : (
                 <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
-                  Cancelar Edição
+                  Cancelar
                 </Button>
               )}
 
               <Button variant="danger" size="sm" onClick={handleLogout}>
-                <LogOutIcon size={15} />
+                <LogOutIcon size={14} />
                 <span>Sair</span>
               </Button>
             </div>
           </div>
 
           {/* Stats Strip */}
-          <div className="grid grid-cols-3 gap-3 p-3.5 rounded-2xl border border-border bg-surface-2 text-center">
+          <div className="grid grid-cols-3 gap-2 p-3 rounded-md border border-border bg-surface-2 text-center">
             <div>
-              <div className="flex items-center justify-center gap-1 text-amber-400 font-extrabold text-lg">
-                <StarIcon size={18} filled />
+              <div className="flex items-center justify-center gap-1 text-accent-text font-mono font-bold text-lg">
+                <StarIcon size={15} filled />
                 <span>{user.avg_rating.toFixed(1)}</span>
               </div>
-              <span className="text-[11px] text-text-muted">
-                Avaliação Média
+              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                Nota
               </span>
             </div>
 
             <div className="border-x border-border">
-              <span className="font-extrabold text-lg block text-text">
+              <span className="font-mono font-bold text-lg block text-text">
                 {user.rating_count}
               </span>
-              <span className="text-[11px] text-text-muted">
-                Avaliações Recebidas
+              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                Avaliações
               </span>
             </div>
 
             <div>
-              <span className="font-extrabold text-sm md:text-base block text-indigo-400 truncate px-1">
+              <span className="font-mono font-bold text-sm md:text-base block text-text truncate px-1 leading-7">
                 {affiliation.shortBadge}
               </span>
-              <span className="text-[11px] text-text-muted">
-                Vínculo Institucional
+              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                Vínculo
               </span>
             </div>
           </div>
@@ -259,163 +249,149 @@ export const ProfilePage: React.FC = () => {
 
       {/* View Mode vs Edit Mode */}
       {!isEditing ? (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Left Column: Bio, Contact & Campuses */}
-          <div className="md:col-span-7 rounded-3xl p-6 border border-border bg-gradient-card space-y-5 shadow-md">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+          {/* Left Column */}
+          <div className="md:col-span-7 rounded-[10px] p-5 border border-border bg-surface space-y-5">
             <div>
-              <h2 className="text-xs font-extrabold uppercase tracking-wider mb-2 text-text-muted">
-                Sobre mim / Bio
+              <h2 className="font-mono text-[11px] font-bold uppercase tracking-wider mb-2 text-text-muted">
+                Bio
               </h2>
               {user.bio ? (
-                <p className="text-sm leading-relaxed p-3.5 rounded-2xl border border-border bg-surface-2 text-text-secondary">
+                <p className="text-sm leading-relaxed p-3 rounded-md border border-border bg-surface-2 text-text-secondary">
                   “{user.bio}”
                 </p>
               ) : (
-                <p className="text-xs italic text-text-muted">
-                  Nenhuma apresentação cadastrada. Clique em "Editar Perfil" para contar um pouco
-                  sobre seus horários e estilo de viagem.
-                </p>
+                <p className="text-xs text-text-muted">Sem bio cadastrada.</p>
               )}
             </div>
 
-            {/* Campi Frequentados */}
             <div>
-              <h2 className="text-xs font-extrabold uppercase tracking-wider mb-2 text-text-muted">
-                Campi da UFRGS que frequenta
+              <h2 className="font-mono text-[11px] font-bold uppercase tracking-wider mb-2 text-text-muted">
+                Campi
               </h2>
               {user.campuses && user.campuses.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {user.campuses.map((cId) => {
                     const c = getCampusInfo(cId);
                     return (
                       <span
                         key={cId}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-border bg-surface-2 text-text"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[2px] font-mono text-xs font-medium border border-border bg-surface-2 text-text"
                       >
-                        <MapPinIcon size={13} className="text-indigo-400" />
+                        <MapPinIcon size={12} className="text-accent-text" />
                         {c.name}
                       </span>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-xs italic text-text-muted">
-                  Nenhum campus selecionado ainda.
-                </p>
+                <p className="text-xs text-text-muted">Nenhum campus selecionado.</p>
               )}
             </div>
 
-            {/* Contact & Personal Metadata */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border">
-              <div className="p-3 rounded-2xl border border-border bg-surface-2">
-                <span className="text-[11px] block text-text-muted">
-                  E-mail Institucional
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-border">
+              <div className="p-3 rounded-md border border-border bg-surface-2">
+                <span className="font-mono text-[10px] uppercase tracking-wider block text-text-muted">
+                  E-mail
                 </span>
-                <span className="text-xs font-bold truncate block mt-0.5 text-text">
+                <span className="text-xs font-semibold truncate block mt-0.5 text-text">
                   {user.email}
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl border border-border bg-surface-2">
-                <span className="text-[11px] block text-text-muted">
-                  Telefone / WhatsApp
+              <div className="p-3 rounded-md border border-border bg-surface-2">
+                <span className="font-mono text-[10px] uppercase tracking-wider block text-text-muted">
+                  WhatsApp
                 </span>
-                <span className="text-xs font-bold block mt-0.5 text-text">
-                  {user.phone || "Não informado"}
+                <span className="font-mono text-xs font-semibold block mt-0.5 text-text">
+                  {user.phone || "—"}
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl border border-border bg-surface-2">
-                <span className="text-[11px] block text-text-muted">
-                  Gênero & Idade
+              <div className="p-3 rounded-md border border-border bg-surface-2">
+                <span className="font-mono text-[10px] uppercase tracking-wider block text-text-muted">
+                  Gênero · Idade
                 </span>
-                <span className="text-xs font-bold block mt-0.5 text-text">
+                <span className="text-xs font-semibold block mt-0.5 text-text">
                   {getGenderLabel(user.gender)}
-                  {user.age != null ? ` • ${user.age} anos` : ""}
+                  {user.age != null ? ` · ${user.age} anos` : ""}
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl border border-border bg-surface-2">
-                <span className="text-[11px] block text-text-muted">
-                  Instagram / Rede Social
+              <div className="p-3 rounded-md border border-border bg-surface-2">
+                <span className="font-mono text-[10px] uppercase tracking-wider block text-text-muted">
+                  Instagram
                 </span>
                 {displaySocial ? (
                   <a
                     href={buildSocialUrl(displaySocial)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-bold text-indigo-400 hover:underline inline-flex items-center gap-1 mt-0.5"
+                    className="text-xs font-semibold text-accent-text hover:underline inline-flex items-center gap-1 mt-0.5"
                   >
-                    <InstagramIcon size={13} className="text-pink-400" />
+                    <InstagramIcon size={12} />
                     <span>{displaySocial}</span>
                   </a>
                 ) : (
-                  <span className="text-xs font-bold block mt-0.5 text-text-muted">
-                    Não informada
-                  </span>
+                  <span className="text-xs font-semibold block mt-0.5 text-text-muted">—</span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Right Column: Vehicle & Driver Card */}
-          <div className="md:col-span-5 rounded-3xl p-6 border border-border bg-gradient-card flex flex-col justify-between space-y-5 shadow-md">
+          {/* Right Column: Vehicle */}
+          <div className="md:col-span-5 rounded-[10px] p-5 border border-border bg-surface flex flex-col justify-between space-y-5">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 text-text-muted">
-                  <CarIcon size={15} className="text-indigo-400" />
-                  Meu Veículo
+                <h2 className="font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-text-muted">
+                  <CarIcon size={14} className="text-accent-text" />
+                  Veículo
                 </h2>
                 <span
-                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  className={`px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase ${
                     user.is_driver
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-slate-500/20 text-slate-400"
+                      ? "bg-secondary/15 text-secondary"
+                      : "bg-surface-2 text-text-muted"
                   }`}
                 >
-                  {user.is_driver ? "Motorista Ativo" : "Apenas Passageiro"}
+                  {user.is_driver ? "Ativo" : "Inativo"}
                 </span>
               </div>
 
               {user.is_driver ? (
-                <div className="space-y-4">
-                  {/* Brazilian Mercosul Plate Visual */}
-                  <div className="rounded-2xl overflow-hidden border-2 border-slate-700 bg-white text-slate-900 shadow-md max-w-57.5 mx-auto">
-                    <div className="bg-blue-700 text-white text-[10px] font-extrabold px-3 py-1 flex items-center justify-between tracking-widest">
-                      <span>MERCOSUL</span>
-                      <span>BRASIL 🇧🇷</span>
+                <div className="space-y-3.5">
+                  {/* Minimalist Technical Plate */}
+                  <div className="rounded-[4px] overflow-hidden border border-border-strong bg-white text-[#0b0c0d] shadow-sm max-w-56 mx-auto">
+                    <div className="bg-[#0b0c0d] text-[#f4f5f2] font-mono text-[9px] font-bold px-2.5 py-1 flex items-center justify-between tracking-widest border-b border-border-strong">
+                      <span>BRASIL</span>
+                      <span className="text-[#fa952d]">MERCOSUL</span>
                     </div>
-                    <div className="py-2.5 text-center font-mono text-2xl font-black tracking-[0.22em]">
-                      {user.car_plate || "SEM-PLACA"}
+                    <div className="py-2 text-center font-mono text-2xl font-bold tracking-[0.22em]">
+                      {user.car_plate || "SEM PLACA"}
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl border border-border bg-surface-2 space-y-1.5 text-xs">
+                  <div className="p-3 rounded-md border border-border bg-surface-2 space-y-1.5 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-text-muted">Modelo:</span>
-                      <strong className="text-text">
-                        {user.car_model || "Não informado"}
-                      </strong>
+                      <span className="text-text-muted">Modelo</span>
+                      <strong className="text-text">{user.car_model || "—"}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-text-muted">Cor:</span>
-                      <strong className="text-text">
-                        {user.car_color || "Não informada"}
-                      </strong>
+                      <span className="text-text-muted">Cor</span>
+                      <strong className="text-text">{user.car_color || "—"}</strong>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 rounded-2xl border border-border bg-surface-2 text-xs text-text-muted leading-relaxed">
-                  Você está cadastrado apenas como passageiro. Caso queira oferecer caronas no
-                  futuro, clique em <strong>Editar Perfil</strong> e habilite a opção de motorista.
+                <div className="p-3.5 rounded-md border border-border bg-surface-2 text-xs text-text-muted">
+                  Modo passageiro ativo.
                 </div>
               )}
             </div>
 
             <Button variant="secondary" fullWidth size="sm" onClick={startEditing}>
               <EditIcon size={14} />
-              <span>Atualizar Dados ou Veículo</span>
+              <span>Editar dados</span>
             </Button>
           </div>
         </div>
@@ -423,17 +399,10 @@ export const ProfilePage: React.FC = () => {
         /* Full Edit Mode Form */
         <form
           onSubmit={handleSaveProfile}
-          className="rounded-3xl p-6 md:p-8 border border-border bg-gradient-card space-y-6 shadow-xl animate-fade-in"
+          className="rounded-[10px] p-5 sm:p-7 border border-border-strong bg-surface space-y-5 shadow-md animate-fade-in"
         >
-          <div className="flex items-center justify-between border-b border-border pb-4">
-            <div>
-              <h2 className="text-lg font-extrabold text-text">
-                Editar Meu Perfil
-              </h2>
-              <p className="text-xs text-text-muted">
-                Mantenha seus dados atualizados para facilitar o match com outros estudantes.
-              </p>
-            </div>
+          <div className="border-b border-border pb-3">
+            <h2 className="font-display text-lg font-bold text-text">Editar perfil</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -447,7 +416,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <Input
-              label="Data de Nascimento"
+              label="Nascimento"
               type="date"
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
@@ -456,7 +425,7 @@ export const ProfilePage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
-              label="Telefone / WhatsApp"
+              label="WhatsApp"
               placeholder="(51) 99999-9999"
               value={phone}
               onChange={(e) => setPhone(formatPhone(e.target.value))}
@@ -464,38 +433,39 @@ export const ProfilePage: React.FC = () => {
 
             <Input
               label="Instagram"
-              placeholder="@seu_usuario"
+              placeholder="@usuario"
               value={instagram}
               onChange={(e) => setInstagram(e.target.value)}
             />
 
             <Input
-              label="URL da Foto de Perfil (opcional)"
-              placeholder="https://exemplo.com/sua-foto.jpg"
+              label="URL da foto (opcional)"
+              placeholder="https://..."
               value={photoUrl}
               onChange={(e) => setPhotoUrl(e.target.value)}
             />
           </div>
 
-          {/* Bio */}
           <div>
-            <label className="block text-xs font-semibold mb-1.5 text-text-secondary">
-              Bio / Apresentação curta ({bio.length}/250)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Bio
+              </label>
+              <span className="font-mono text-[11px] text-text-muted">{bio.length}/250</span>
+            </div>
             <textarea
               rows={3}
               maxLength={250}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Conte seus horários habituais, estilo musical no carro, etc."
-              className="w-full p-3 rounded-xl text-sm border border-border bg-surface-2 text-text outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none"
+              placeholder="Horários, campus, preferências..."
+              className="w-full p-3 rounded-md text-sm border border-border bg-surface-2 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-none"
             />
           </div>
 
-          {/* Gender & Role Preference */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold mb-2 text-text-secondary">
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-text-muted">
                 Gênero
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -504,10 +474,10 @@ export const ProfilePage: React.FC = () => {
                     key={opt.value}
                     type="button"
                     onClick={() => setGender(opt.value)}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold border text-text text-left transition-all ${
+                    className={`px-3 py-2 rounded-md text-xs font-semibold border text-text text-left transition-colors ${
                       gender === opt.value
-                        ? "border-primary bg-indigo-500/16"
-                        : "border-border bg-surface-2"
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-surface-2 hover:border-border-strong"
                     }`}
                   >
                     {opt.label}
@@ -517,49 +487,44 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-2 text-text-secondary">
-                Modo de Uso na Plataforma
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-text-muted">
+                Modalidade
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setIsDriver(false)}
-                  className={`p-2.5 rounded-xl text-xs font-semibold border text-text text-left transition-all ${
+                  className={`p-2.5 rounded-md text-xs font-semibold border text-text text-left transition-colors ${
                     !isDriver
-                      ? "border-secondary bg-emerald-500/16"
-                      : "border-border bg-surface-2"
+                      ? "border-secondary bg-secondary/10"
+                      : "border-border bg-surface-2 hover:border-border-strong"
                   }`}
                 >
-                  <span className="block font-bold">Só Passageiro</span>
-                  <span className="text-[10px] text-text-muted">
-                    Apenas pedir caronas
-                  </span>
+                  <span className="block font-bold">Passageiro</span>
+                  <span className="text-[11px] text-text-muted">Pedir caronas</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setIsDriver(true)}
-                  className={`p-2.5 rounded-xl text-xs font-semibold border text-text text-left transition-all ${
+                  className={`p-2.5 rounded-md text-xs font-semibold border text-text text-left transition-colors ${
                     isDriver
-                      ? "border-primary bg-indigo-500/16"
-                      : "border-border bg-surface-2"
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-surface-2 hover:border-border-strong"
                   }`}
                 >
-                  <span className="block font-bold">Motorista & Passageiro</span>
-                  <span className="text-[10px] text-text-muted">
-                    Oferecer e pedir
-                  </span>
+                  <span className="block font-bold">Motorista</span>
+                  <span className="text-[11px] text-text-muted">Oferecer e pedir</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Campuses */}
           <div>
-            <label className="block text-xs font-semibold mb-2 text-text-secondary">
-              Campi da UFRGS que você frequenta
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-text-muted">
+              Campi
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {CAMPUS_LIST.map((c) => {
                 const selected = campuses.includes(c.id);
                 return (
@@ -567,10 +532,10 @@ export const ProfilePage: React.FC = () => {
                     key={c.id}
                     type="button"
                     onClick={() => handleToggleCampus(c.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
                       selected
-                        ? "bg-primary border-primary text-white"
-                        : "bg-surface-2 border-border text-text-secondary"
+                        ? "bg-primary border-primary text-on-primary"
+                        : "bg-surface-2 border-border text-text-secondary hover:border-border-strong"
                     }`}
                   >
                     {c.name}
@@ -580,27 +545,26 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Vehicle Details (when Driver mode is enabled) */}
           {isDriver && (
-            <div className="p-4 rounded-2xl border border-border bg-surface-2 space-y-3">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-                <CarIcon size={15} /> Dados do Veículo
+            <div className="p-4 rounded-md border border-border bg-surface-2 space-y-3">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-accent-text flex items-center gap-1.5">
+                <CarIcon size={14} /> Veículo
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Input
                   label="Modelo"
-                  placeholder="Ex.: VW Gol 2022"
+                  placeholder="VW Gol 2022"
                   value={carModel}
                   onChange={(e) => setCarModel(e.target.value)}
                 />
                 <Input
                   label="Cor"
-                  placeholder="Ex.: Prata"
+                  placeholder="Prata"
                   value={carColor}
                   onChange={(e) => setCarColor(e.target.value)}
                 />
                 <Input
-                  label="Placa (Mercosul / Antiga)"
+                  label="Placa"
                   placeholder="ABC1C34"
                   maxLength={7}
                   value={carPlate}
@@ -610,21 +574,18 @@ export const ProfilePage: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-2.5 pt-2">
             <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
               Cancelar
             </Button>
             <Button type="submit" variant="primary" loading={saving}>
-              Salvar Alterações
+              Salvar
             </Button>
           </div>
         </form>
       )}
 
-      {/* Personal Saved Addresses Manager (CEP / ViaCEP + Nominatim) */}
       <SavedAddressesManager />
-
-      {/* Reports filed by the user (moderation status) */}
       <ReportsManager />
     </div>
   );

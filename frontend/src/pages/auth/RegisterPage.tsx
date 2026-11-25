@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
+import { BrandMark, KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { CarIcon, ShieldCheckIcon } from "@/components/ui/Icons";
+import { ShieldCheckIcon } from "@/components/ui/Icons";
 import { getErrorMessage } from "@/lib/errors";
 import { extractUfrgsAffiliation, isValidUfrgsEmail } from "@/lib/validators";
 import { useToastStore } from "@/store/toastStore";
@@ -33,13 +34,11 @@ export const RegisterPage: React.FC = () => {
     const cleanEmail = form.email.trim().toLowerCase();
 
     if (!isValidUfrgsEmail(cleanEmail)) {
-      setError(
-        "Use um e-mail institucional da rede UFRGS (ex.: @ufrgs.br, @inf.ufrgs.br, @ece.ufrgs.br)."
-      );
+      setError("Use um e-mail institucional UFRGS (@ufrgs.br ou @*.ufrgs.br).");
       return;
     }
     if (form.password !== form.confirmPassword) {
-      setError("As senhas digitadas não coincidem.");
+      setError("As senhas não coincidem.");
       return;
     }
     if (form.password.length < 8) {
@@ -55,8 +54,8 @@ export const RegisterPage: React.FC = () => {
         password: form.password,
       });
       toast.success(
-        "Conta criada!",
-        "Enviamos um código de verificação para o seu e-mail institucional."
+        "Conta criada",
+        "Enviamos um código de verificação para seu e-mail UFRGS."
       );
       navigate("/verify-email", {
         state: {
@@ -65,7 +64,7 @@ export const RegisterPage: React.FC = () => {
         },
       });
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Erro no cadastro. Verifique os dados informados."));
+      setError(getErrorMessage(err, "Erro no cadastro. Verifique os dados."));
     } finally {
       setLoading(false);
     }
@@ -73,28 +72,28 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md rounded-3xl p-8 sm:p-10 border border-border bg-gradient-card shadow-lg animate-fade-in">
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-primary text-white shadow-lg mb-4">
-            <CarIcon size={28} />
+      <div className="w-full max-w-md rounded-[10px] p-7 sm:p-8 border border-border-strong bg-surface bg-topo-pattern shadow-lg animate-fade-in">
+        <div className="flex flex-col items-start mb-7 space-y-3">
+          <div className="flex items-center justify-between w-full">
+            <Link to="/" className="no-underline inline-flex items-center gap-2.5">
+              <BrandMark size="md" />
+              <span className="font-display font-bold text-base text-text">Carona Aí</span>
+            </Link>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold uppercase tracking-wider bg-surface-2 text-accent-text border border-border">
+              <ShieldCheckIcon size={12} /> UFRGS
+            </span>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mb-3">
-            <ShieldCheckIcon size={14} /> Comunidade Exclusiva UFRGS
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text">
-            Criar conta no Carona Aí
+
+          <h1 className="font-display text-2xl font-bold tracking-tight text-text pt-1">
+            Criar conta
           </h1>
-          <p className="text-xs sm:text-sm mt-1.5 text-text-muted">
-            Aceita <code className="text-indigo-400">@ufrgs.br</code> e subdomínios de institutos como{" "}
-            <code className="text-indigo-400">@inf.ufrgs.br</code>
-          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Nome completo"
             type="text"
-            placeholder="Ex.: Pedro Silva"
+            placeholder="Pedro Silva"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
@@ -102,17 +101,17 @@ export const RegisterPage: React.FC = () => {
 
           <div className="space-y-2">
             <Input
-              label="E-mail institucional UFRGS"
+              label="E-mail institucional"
               type="email"
-              placeholder="seu.nome@ufrgs.br ou @inf.ufrgs.br"
+              placeholder="nome@ufrgs.br ou @inf.ufrgs.br"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
             />
             {affiliation && (
-              <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-                <ShieldCheckIcon size={14} className="shrink-0" />
-                <span>Vínculo reconhecido: {affiliation.fullBadge}</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/10 border border-secondary/30 text-secondary font-mono text-[11px] font-semibold">
+                <ShieldCheckIcon size={13} className="shrink-0" />
+                <span>{affiliation.fullBadge}</span>
               </div>
             )}
           </div>
@@ -120,7 +119,7 @@ export const RegisterPage: React.FC = () => {
           <Input
             label="Senha"
             type="password"
-            placeholder="Mínimo de 8 caracteres"
+            placeholder="Mínimo 8 caracteres"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
@@ -129,30 +128,32 @@ export const RegisterPage: React.FC = () => {
           <Input
             label="Confirmar senha"
             type="password"
-            placeholder="Repita sua senha"
+            placeholder="Repita a senha"
             value={form.confirmPassword}
             onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
             required
           />
 
           {error && (
-            <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-medium">
+            <div className="p-3 rounded-md bg-danger/10 border border-danger/30 text-xs text-danger font-medium">
               {error}
             </div>
           )}
 
-          <div className="pt-2">
+          <div className="pt-1">
             <Button type="submit" fullWidth loading={loading} size="lg">
-              Continuar com e-mail UFRGS
+              <span>Continuar</span>
+              <KineticChevrons />
             </Button>
           </div>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-border text-center text-xs text-text-muted">
-          Já faz parte da comunidade?{" "}
-          <Link to="/register" className="hidden" />
-          <Link to="/login" className="font-bold text-indigo-400 hover:underline">
-            Entrar na conta
+        <div className="mt-6 pt-5 border-t border-border flex items-center justify-between gap-2 text-xs text-text-muted">
+          <Link to="/" className="font-medium text-text-secondary hover:text-text no-underline">
+            ← Início
+          </Link>
+          <Link to="/login" className="font-semibold text-accent-text hover:underline no-underline">
+            Já tenho conta →
           </Link>
         </div>
       </div>

@@ -1,8 +1,7 @@
 /**
  * Centralized SVG Icon System
  *
- * Crisp vector icons used across mobility (Uber/BlaBlaCar) and social
- * (Instagram/LinkedIn) UI elements without adding external icon bundle weight.
+ * Crisp vector icons used across mobility and community UI elements.
  */
 
 import React from "react";
@@ -18,7 +17,7 @@ const BaseSvg: React.FC<IconProps> = ({ size = 20, children, ...props }) => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth={2}
+    strokeWidth={1.75}
     strokeLinecap="round"
     strokeLinejoin="round"
     {...props}
@@ -225,5 +224,27 @@ export const ArrowRightLeftIcon: React.FC<IconProps> = (props) => (
     <path d="M20 7H4" />
     <path d="m8 21-4-4 4-4" />
     <path d="M4 17h16" />
+  </BaseSvg>
+);
+
+export const SwapIcon: React.FC<IconProps> = ArrowRightLeftIcon;
+
+export const ArrowUpRightIcon: React.FC<IconProps> = (props) => (
+  <BaseSvg {...props}>
+    <path d="M7 7h10v10" />
+    <path d="M7 17 17 7" />
+  </BaseSvg>
+);
+
+export const LockIcon: React.FC<IconProps> = (props) => (
+  <BaseSvg {...props}>
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </BaseSvg>
+);
+
+export const ChevronRightIcon: React.FC<IconProps> = (props) => (
+  <BaseSvg {...props}>
+    <path d="m9 18 6-6-6-6" />
   </BaseSvg>
 );
