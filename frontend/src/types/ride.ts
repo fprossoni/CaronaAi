@@ -46,6 +46,7 @@ export interface RideSearchResult extends RidePublic {
 
 export interface RideDetail extends RidePublic {
   route_geojson?: GeoJSON.LineString | null;
+  route_is_approximate?: boolean;
 }
 
 export interface RideCreate {

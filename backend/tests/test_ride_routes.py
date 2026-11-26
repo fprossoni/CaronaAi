@@ -251,6 +251,12 @@ class RideRoutesTest(unittest.TestCase):
         self.user_id = 1
         first = self.client.patch(f"/matches/{requests[0]}/respond", json={"action": "accept"})
         self.assertEqual(first.status_code, 200, first.text)
+        matches = {item["id"]: item for item in self.client.get(f"/matches/ride/{ride_id}").json()}
+        self.assertEqual(matches[requests[0]]["pickup_lat"], -30.034)
+        self.assertIsNone(matches[requests[1]]["pickup_lat"])
+        self.assertIsNone(matches[requests[1]]["confirmed_pickup_label"])
+        self.assertEqual(datetime.fromisoformat(matches[requests[0]]["estimated_pickup_at"]),
+                         self.departure + timedelta(seconds=180))
         route = self.client.get(f"/rides/{ride_id}").json()["route_geojson"]
         self.assertEqual(route["coordinates"][1], [-51.219, -30.034])
         second = self.client.patch(f"/matches/{requests[1]}/respond", json={"action": "accept"})
@@ -281,6 +287,9 @@ class RideRoutesTest(unittest.TestCase):
         self.assertIn([-51.213, -30.038], ride["route_geojson"]["coordinates"])
 
         self.user_id = 2
+        match = self.client.get(f"/matches/{requests[0]}").json()
+        self.assertEqual(datetime.fromisoformat(match["estimated_dropoff_at"]),
+                         self.departure + timedelta(seconds=810))
         self.assertEqual(self.client.patch(f"/matches/{requests[0]}/cancel").status_code, 200)
         self.user_id = 1
         ride = self.client.get(f"/rides/{ride_id}").json()

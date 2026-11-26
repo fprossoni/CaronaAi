@@ -132,6 +132,8 @@ class RideSearchResult(RidePublic):
 class RideDetail(RidePublic):
     """Full ride info including geometry — returned to the driver."""
 
+    route_is_approximate: bool = False
+
     model_config = {"from_attributes": True}
 
 

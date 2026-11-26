@@ -49,6 +49,8 @@ def _serialize_ride(ride: Ride, schema_cls: type[RideSchema], *, driver_view: bo
             route_line = ride.planned_route_line
             result.route_distance_meters = ride.planned_route["distance"]
             result.route_duration_seconds = ride.planned_route["duration"]
+            if isinstance(result, RideDetail):
+                result.route_is_approximate = not ride.planned_route["routed"]
         if route_line is not None:
             result.route_geojson = dict(mapping(to_shape(route_line)))
     except Exception:

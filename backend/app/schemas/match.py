@@ -75,6 +75,10 @@ class MatchForDriver(BaseModel):
     created_at: datetime
 
     # Revealed only after acceptance
+    confirmed_pickup_label: str | None = None
+    pickup_lat: float | None = None
+    pickup_lng: float | None = None
+    estimated_pickup_at: datetime | None = None
     pickup_street: str | None = None
     pickup_number: str | None = None
     pickup_complement: str | None = None
@@ -105,6 +109,8 @@ class MatchConfirmed(MatchPublic):
     dropoff_lat: float | None = None
     dropoff_lng: float | None = None
     passenger_phone: str | None = None
+    estimated_pickup_at: datetime | None = None
+    estimated_dropoff_at: datetime | None = None
     pickup_street: str | None = None
     pickup_number: str | None = None
     pickup_complement: str | None = None

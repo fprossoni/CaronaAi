@@ -75,6 +75,32 @@ interface NominatimItem {
   address?: NominatimAddress;
 }
 
+function normalizeCampusText(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function campusSuggestion(campusId: string): GeocodingSuggestion {
+  return {
+    ...campusToLocation(campusId)!,
+    id: `campus-${campusId}`,
+    subtitle: "Campus Oficial da UFRGS",
+    isCampus: true,
+  };
+}
+
+function campusFromSearchResult(item: NominatimItem): CampusId | undefined {
+  // Only identify named campus results, never nearby streets or buildings.
+  const name = normalizeCampusText(item.display_name.split(",")[0]);
+  const description = normalizeCampusText(item.display_name);
+  const isUfrgs = /\bufrgs\b/.test(description) || description.includes("universidade federal do rio grande do sul");
+  if (!isUfrgs) return undefined;
+  return UFRGS_CAMPUS.find((campus) => {
+    const campusName = normalizeCampusText(campus.name.replace(/\s*\(.*\)/, ""));
+    return name.includes(campusName) ||
+      (campus.id === "campus_olimpico" && /\besefid\b/.test(name));
+  })?.id;
+}
+
 /**
  * Extracts a concise street label and an anonymized neighborhood/region
  * from Nominatim address components.
@@ -132,16 +158,7 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
       return target.includes(normalizedQuery);
-    }).map((c) => ({
-      id: `campus-${c.id}`,
-      label: `UFRGS — ${c.name}`,
-      subtitle: "Campus Oficial da UFRGS",
-      region: c.name,
-      lat: c.lat,
-      lng: c.lng,
-      campusId: c.id,
-      isCampus: true,
-    }));
+    }).map((c) => campusSuggestion(c.id));
 
     // 2. Remote search via OpenStreetMap Nominatim
     try {
@@ -169,6 +186,8 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
       const items = (await res.json()) as NominatimItem[];
 
       const osmSuggestions: GeocodingSuggestion[] = items.map((item) => {
+        const campusId = campusFromSearchResult(item);
+        if (campusId) return campusSuggestion(campusId);
         const parsed = parseNominatimAddress(item, 0, 0);
         return {
           id: `osm-${item.place_id}`,
@@ -181,7 +200,7 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
         };
       });
 
-      return [...campusMatches, ...osmSuggestions];
+      return [...new Map([...campusMatches, ...osmSuggestions].map((item) => [item.id, item])).values()];
     } catch {
       return campusMatches;
     }

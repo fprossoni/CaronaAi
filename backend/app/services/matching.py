@@ -136,6 +136,17 @@ def _saved_plan(ride: Ride) -> RoutePlan:
     )
 
 
+def planned_stop_arrival(ride: Ride, point: WKBElement | WKTElement | None) -> datetime | None:
+    if point is None or not ride.planned_route:
+        return None
+    plan = ride.planned_route
+    coordinates = _point_coordinates(point)
+    points = [tuple(item) for item in plan["points"]]
+    if coordinates not in points:
+        return None
+    return ride.departure_at + timedelta(seconds=sum(plan["leg_durations"][:points.index(coordinates)]))
+
+
 def _insertion_index(points: list[Point], stop: Point) -> int:
     def added_distance(index: int) -> float:
         before, after = points[index - 1], points[index]

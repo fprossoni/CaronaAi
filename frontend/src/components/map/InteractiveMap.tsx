@@ -29,6 +29,7 @@ export interface InteractiveMapProps {
   origin?: MapPoint | null;
   destination?: MapPoint | null;
   pickup?: MapPoint | null;
+  stops?: readonly (MapPoint & { id: number; number: number })[];
   dropoff?: MapPoint | null;
   comparisonRoute?: GeoJSON.LineString | null;
   approximateRoute?: boolean;
@@ -43,6 +44,7 @@ export interface InteractiveMapProps {
 }
 
 const PORTO_ALEGRE_CENTER: [number, number] = [-30.0349, -51.2177];
+const NO_STOPS: NonNullable<InteractiveMapProps["stops"]> = [];
 const OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const CARTO_ATTRIBUTION = `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>`;
@@ -117,6 +119,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   origin,
   destination,
   pickup,
+  stops = NO_STOPS,
   dropoff,
   comparisonRoute,
   approximateRoute = false,
@@ -137,10 +140,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const fallback: [number, number][] = [];
     if (origin) fallback.push([origin.lat, origin.lng]);
     if (pickup && !pickupIsApproximate) fallback.push([pickup.lat, pickup.lng]);
+    for (const stop of stops) fallback.push([stop.lat, stop.lng]);
     if (dropoff) fallback.push([dropoff.lat, dropoff.lng]);
     if (destination) fallback.push([destination.lat, destination.lng]);
     return fallback;
-  }, [routeGeoJson, origin, destination, pickup, dropoff, pickupIsApproximate]);
+  }, [routeGeoJson, origin, destination, pickup, stops, dropoff, pickupIsApproximate]);
 
   const comparisonPositions = useMemo<[number, number][]>(
     () => comparisonRoute?.coordinates.map(([lng, lat]) => [lat, lng]) ?? [],
@@ -151,10 +155,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const pts: [number, number][] = [...polylinePositions, ...comparisonPositions];
     if (origin) pts.push([origin.lat, origin.lng]);
     if (pickup) pts.push([pickup.lat, pickup.lng]);
+    for (const stop of stops) pts.push([stop.lat, stop.lng]);
     if (dropoff) pts.push([dropoff.lat, dropoff.lng]);
     if (destination) pts.push([destination.lat, destination.lng]);
     return pts;
-  }, [polylinePositions, comparisonPositions, origin, destination, pickup, dropoff]);
+  }, [polylinePositions, comparisonPositions, origin, destination, pickup, stops, dropoff]);
 
   const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY?.trim();
   const cartoStyle = theme === "dark" ? "dark_all" : "light_all";
@@ -258,6 +263,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             </Popup>
           </Marker>
         )}
+
+        {stops.map((stop) => (
+          <Marker key={stop.id} position={[stop.lat, stop.lng]}
+            icon={createCustomPin("#141619", "#f3f536", "#f3f536", String(stop.number))}>
+            <Popup>
+              <strong className="block">Embarque {stop.number}</strong>
+              {stop.label}
+            </Popup>
+          </Marker>
+        ))}
 
         {pickup && pickupIsApproximate && (
           <Circle

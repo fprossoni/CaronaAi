@@ -45,7 +45,8 @@ from app.services.match_rules import (
     supersede_related_requests,
 )
 from app.services.matching import (
-    IncompatibleCampusError, calculate_ride_candidate, confirmed_matches, remove_cancelled_stop, save_route_plan,
+    IncompatibleCampusError, calculate_ride_candidate, confirmed_matches, planned_stop_arrival,
+    remove_cancelled_stop, save_route_plan,
 )
 from app.services.osrm import InvalidRouteError
 
@@ -339,6 +340,11 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
         driver_view = MatchForDriver.model_validate(m)
         if m.status == MatchStatus.ACCEPTED and ride.status != RideStatus.CANCELLED and not is_blocked_between(db, ride.driver_id, m.passenger_id):
             driver_view.pickup_street = m.pickup_street
+            driver_view.confirmed_pickup_label = m.pickup_label
+            pickup = to_shape(m.pickup_point)
+            driver_view.pickup_lat = pickup.y
+            driver_view.pickup_lng = pickup.x
+            driver_view.estimated_pickup_at = planned_stop_arrival(ride, m.pickup_point)
             driver_view.pickup_number = m.pickup_number
             driver_view.pickup_complement = m.pickup_complement
             driver_view.pickup_postal_code = m.pickup_postal_code
@@ -566,10 +572,14 @@ def get_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> Match
         pickup_shape = to_shape(match.pickup_point)
         result.pickup_lat = pickup_shape.y
         result.pickup_lng = pickup_shape.x
+        result.estimated_pickup_at = planned_stop_arrival(ride, match.pickup_point)
         if match.dropoff_point is not None:
             dropoff_shape = to_shape(match.dropoff_point)
             result.dropoff_lat = dropoff_shape.y
             result.dropoff_lng = dropoff_shape.x
+            result.estimated_dropoff_at = planned_stop_arrival(ride, match.dropoff_point)
+            if not ride.planned_route and to_shape(ride.destination_point).equals(dropoff_shape):
+                result.estimated_dropoff_at = ride.departure_at + timedelta(seconds=ride.route_duration_seconds)
         result.driver = UserConfirmed.model_validate(ride.driver)
         result.passenger = UserConfirmed.model_validate(match.passenger)
         result.driver_car_brand = ride.driver.car_brand

@@ -77,6 +77,7 @@ export default function App() {
           <Route path="/find" element={<ProtectedRoute><FindRidePage /></ProtectedRoute>} />
           <Route path="/offer" element={<ProtectedRoute><OfferRidePage /></ProtectedRoute>} />
           <Route path="/rides" element={<ProtectedRoute><MyRidesPage /></ProtectedRoute>} />
+          <Route path="/rides/:tripRole/:tripId" element={<ProtectedRoute><MyRidesPage /></ProtectedRoute>} />
           <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
           <Route path="/rides/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

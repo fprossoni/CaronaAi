@@ -6,12 +6,12 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
 import { matchesApi } from "@/api/matches";
 import { messagesApi } from "@/api/messages";
 import type { RideDetail, RideStatus } from "@/types/ride";
-import type { MatchConfirmed, MatchWithRide } from "@/types/match";
+import type { MatchConfirmed, MatchForDriver, MatchWithRide } from "@/types/match";
 import type { UserPublic } from "@/types/user";
 import { RideRequestsModal } from "@/components/rides/RideRequestsModal";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
@@ -51,15 +51,41 @@ function formatDate(iso: string): string {
   return format(new Date(iso), "dd MMM · HH:mm", { locale: ptBR });
 }
 
+function passengerPickup(match: MatchForDriver): string {
+  return [match.pickup_street, match.pickup_number, match.pickup_complement, match.pickup_neighborhood]
+    .filter(Boolean).join(", ") || match.confirmed_pickup_label || match.pickup_region;
+}
+
+function RideRow({ to, time, origin, destination, status }: {
+  to: string;
+  time: string;
+  origin: string;
+  destination: string;
+  status: string;
+}) {
+  return (
+    <Link to={to} className="grid gap-2 rounded-md border border-border bg-surface p-4 text-text no-underline hover:border-primary sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-center">
+      <span className="font-mono text-sm font-semibold">{time}</span>
+      <span className="wrap-anywhere font-semibold">{origin} → {destination}</span>
+      <span className="text-sm text-accent-text">{status} <span aria-hidden="true">›</span></span>
+    </Link>
+  );
+}
+
 export const MyRidesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { tripRole, tripId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isDetail = tripId !== undefined;
+  const isDriver = (isDetail ? tripRole : searchParams.get("papel")) === "driver";
+  const role = isDriver ? "driver" : "passenger";
   const toast = useToastStore();
 
   const [rides, setRides] = useState<RideDetail[]>([]);
   const [matches, setMatches] = useState<MatchWithRide[]>([]);
   const [confirmedByMatchId, setConfirmedByMatchId] = useState<Record<number, MatchConfirmed>>({});
   const [rideMatchCounts, setRideMatchCounts] = useState<
-    Record<number, { pending: number; accepted: number }>
+    Record<number, { pending: number; accepted: number; passengers: MatchForDriver[] }>
   >({});
 
   const [loading, setLoading] = useState(true);
@@ -89,7 +115,9 @@ export const MyRidesPage: React.FC = () => {
       matchesApi.getMyMatches(),
     ]);
 
-    const upcoming = ridesRes.data.filter((r) => isActiveRide(r.status));
+    const upcoming = ridesRes.data.filter((r) =>
+      isActiveRide(r.status) && (!tripId || (tripRole === "driver" && String(r.id) === tripId))
+    );
     const countsEntries = await Promise.all(
       upcoming.map(async (r) => {
         try {
@@ -99,15 +127,18 @@ export const MyRidesPage: React.FC = () => {
             {
               pending: data.filter((m) => m.status === "pending").length,
               accepted: data.filter((m) => m.status === "accepted").length,
+              passengers: data,
             },
           ] as const;
         } catch {
-          return [r.id, { pending: 0, accepted: 0 }] as const;
+          throw new Error("Não foi possível carregar as solicitações da viagem.");
         }
       })
     );
 
-    const acceptedPassengerMatches = matchesRes.data.filter((m) => m.status === "accepted");
+    const acceptedPassengerMatches = matchesRes.data.filter(
+      (m) => tripRole === "passenger" && String(m.id) === tripId && m.status === "accepted"
+    );
     const confirmedEntries = await Promise.all(
       acceptedPassengerMatches.map(async (m) => {
         try {
@@ -130,10 +161,11 @@ export const MyRidesPage: React.FC = () => {
       rideMatchCounts: Object.fromEntries(countsEntries),
       confirmedMap,
     };
-  }, []);
+  }, [tripId, tripRole]);
 
   const commit = useCallback((data: Awaited<ReturnType<typeof loadData>>) => {
     setRides(data.rides);
+    setError("");
     setMatches(data.matches);
     setRideMatchCounts(data.rideMatchCounts);
     setConfirmedByMatchId(data.confirmedMap);
@@ -141,6 +173,7 @@ export const MyRidesPage: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
     loadData()
       .then((data) => {
         if (active) commit(data);
@@ -252,21 +285,30 @@ export const MyRidesPage: React.FC = () => {
     .filter((m) => (m.status === "pending" || m.status === "accepted") && isActiveRide(m.ride.status))
     .sort(
       (a, b) =>
-        new Date(a.ride.departure_at).getTime() - new Date(b.ride.departure_at).getTime()
+        Date.parse(a.offered_pickup_at ?? a.ride.departure_at) - Date.parse(b.offered_pickup_at ?? b.ride.departure_at)
     );
 
-  const supersededCount = matches.filter((m) => m.status === "superseded").length;
-  const hasAnyActive = upcomingRides.length > 0 || activeMatches.length > 0;
+  const hasAnyActive = role === "driver" ? upcomingRides.length > 0 : activeMatches.length > 0;
+  const selectedRide = isDriver ? upcomingRides.find((ride) => String(ride.id) === tripId) : undefined;
+  const selectedMatch = tripRole === "passenger"
+    ? activeMatches.find((match) => String(match.id) === tripId)
+    : undefined;
+  const pending = upcomingRides.flatMap((ride) => (rideMatchCounts[ride.id]?.passengers ?? [])
+    .filter((match) => match.status === "pending").map((match) => ({ ride, match })));
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="font-display text-2xl font-bold tracking-tight text-text">
-          Minhas Caronas
+          {isDetail ? "Detalhes da carona" : "Minhas caronas"}
         </h1>
 
-        <Button
+        {isDetail ? (
+          <Link to={isDriver ? "/rides?papel=driver" : "/rides"} className="font-semibold text-accent-text hover:underline">
+            Voltar para Minhas caronas
+          </Link>
+        ) : <Button
           type="button"
           variant="secondary"
           size="sm"
@@ -274,7 +316,7 @@ export const MyRidesPage: React.FC = () => {
         >
           <HistoryIcon size={14} className="text-accent-text" />
           <span>Histórico</span>
-        </Button>
+        </Button>}
       </div>
 
       {error && (
@@ -283,14 +325,33 @@ export const MyRidesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Empty State */}
-      {!hasAnyActive && (
+      {!isDetail && <div className="flex flex-wrap gap-2" role="group" aria-label="Escolher papel na viagem">
+        {(["passenger", "driver"] as const).map((value) => (
+          <Button key={value} variant={role === value ? "primary" : "secondary"}
+            aria-pressed={role === value} onClick={() => setSearchParams(value === "driver" ? { papel: "driver" } : {})}>
+            {value === "driver" ? "Como motorista" : "Como passageiro"}
+          </Button>
+        ))}
+      </div>}
+      {!isDetail && pending.length > 0 && (
+        <section className="space-y-2 rounded-md border border-primary bg-surface p-4">
+          <h2 className="font-bold">Solicitações aguardando sua confirmação</h2>
+          {pending.map(({ ride, match }) => (
+            <button key={match.id} type="button" onClick={() => setModalRide(ride)}
+              className="block w-full rounded-md bg-surface-2 p-3 text-left hover:underline">
+              <strong>{match.passenger.name ?? "Passageiro"}</strong> · {formatDate(ride.departure_at)}
+              <span className="block text-sm">{ride.origin_label} → {ride.destination_label} · Ver solicitação</span>
+            </button>
+          ))}
+        </section>
+      )}
+      {!isDetail && !error && !hasAnyActive && (
         <div className="rounded-[10px] p-10 border border-border bg-surface bg-dot-matrix text-center space-y-4">
           <div className="w-12 h-12 rounded-md border border-border-strong bg-surface-2 text-accent-text flex items-center justify-center mx-auto">
             <CarIcon size={22} />
           </div>
           <p className="text-sm font-medium text-text-secondary">
-            Nenhuma viagem ativa no momento.
+            Nenhuma viagem ativa como {role === "driver" ? "motorista" : "passageiro"}.
           </p>
           <div className="flex items-center justify-center gap-2.5 flex-wrap">
             <Link to="/find" className="no-underline">
@@ -307,24 +368,52 @@ export const MyRidesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Section 1: Active Rides as Driver */}
-      {upcomingRides.length > 0 && (
+      {!isDetail && hasAnyActive && (
+        <div className="space-y-2">
+          {isDriver ? upcomingRides.map((ride) => (
+            <RideRow key={ride.id} to={`/rides/driver/${ride.id}`} time={formatDate(ride.departure_at)}
+              origin={ride.origin_label} destination={ride.destination_label}
+              status={ride.status === "in_progress" ? "Em andamento" : "Ver viagem"} />
+          )) : activeMatches.map((match) => (
+            <RideRow key={match.id} to={`/rides/passenger/${match.id}`}
+              time={match.offered_pickup_at ? formatDate(match.offered_pickup_at) : "Embarque a confirmar"}
+              origin={match.pickup_label} destination={match.dropoff_label ?? match.ride.destination_label}
+              status={match.status === "pending" ? "Aguardando confirmação" : "Confirmada"} />
+          ))}
+        </div>
+      )}
+
+      {isDetail && !error && !selectedRide && !selectedMatch && (
+        <p className="text-text-muted">Esta carona não está disponível entre suas viagens ativas.</p>
+      )}
+
+      {selectedRide && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-bold uppercase tracking-wider text-accent-text">
-              Como motorista · {upcomingRides.length}
+              Como motorista
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {upcomingRides.map((ride) => {
-              const counts = rideMatchCounts[ride.id] ?? { pending: 0, accepted: 0 };
+          <div>
+            {[selectedRide].map((ride) => {
+              const counts = rideMatchCounts[ride.id] ?? { pending: 0, accepted: 0, passengers: [] };
               const campus = ride.campus_point ? getCampusInfo(ride.campus_point) : null;
               const mapKey = `driver-${ride.id}`;
               const isMapOpen = expandedMapId === mapKey;
+              const confirmedPassengers = counts.passengers.filter((m) => m.status === "accepted")
+                .sort((a, b) => Date.parse(a.estimated_pickup_at ?? a.offered_pickup_at ?? ride.departure_at)
+                  - Date.parse(b.estimated_pickup_at ?? b.offered_pickup_at ?? ride.departure_at));
+              const pickupStops = confirmedPassengers.flatMap((match, index) =>
+                match.pickup_lat == null || match.pickup_lng == null ? [] : [{
+                  id: match.id, number: index + 1, lat: match.pickup_lat, lng: match.pickup_lng,
+                  label: passengerPickup(match),
+                }]
+              );
+              const arrival = new Date(Date.parse(ride.departure_at) + ride.route_duration_seconds * 1000);
 
               return (
-                <div
+                <article
                   key={ride.id}
                   className={`rounded-[10px] p-4 sm:p-5 border bg-surface flex flex-col justify-between gap-4 ${
                     counts.pending > 0 ? "border-primary" : "border-border"
@@ -355,9 +444,6 @@ export const MyRidesPage: React.FC = () => {
                         )}
                       </div>
 
-                      <span className="font-mono text-xs font-semibold text-text">
-                        {formatDate(ride.departure_at)}
-                      </span>
                     </div>
 
                     {/* Route Block */}
@@ -366,27 +452,39 @@ export const MyRidesPage: React.FC = () => {
                         <span className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
                         <div className="min-w-0">
                           <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
-                            Saída
+                            Partida · {formatDate(ride.departure_at)}
                           </span>
-                          <p className="text-sm font-semibold truncate text-text">
+                          <p className="text-sm font-semibold wrap-anywhere text-text">
                             {ride.origin_label}
                           </p>
                         </div>
                       </div>
+                      {confirmedPassengers.map((m, index) => {
+                        const pickupAt = m.estimated_pickup_at ?? m.offered_pickup_at;
+                        return (
+                          <div key={m.id} className="rounded-md border border-border p-3 text-sm">
+                            <p className="font-mono text-xs font-bold text-text-muted">
+                              Embarque {index + 1} · {pickupAt ? formatDate(pickupAt) : "Horário a confirmar"}
+                            </p>
+                            <strong>{m.passenger.name ?? "Passageiro"}</strong>
+                            <p>{passengerPickup(m)}</p>
+                            <div className="mt-2 flex flex-wrap gap-3">
+                              <button type="button" className="text-accent-text underline" onClick={() => setSelectedUser(m.passenger)}>Ver perfil</button>
+                              {m.passenger_phone && <a className="text-accent-text underline" href={buildWhatsAppUrl(m.passenger_phone)} target="_blank" rel="noopener noreferrer">WhatsApp · {m.passenger_phone}</a>}
+                            </div>
+                          </div>
+                        );
+                      })}
                       <div className="flex items-start gap-2">
                         <span className="size-2 rounded-full bg-secondary mt-1.5 shrink-0" />
                         <div className="min-w-0">
                           <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
-                            Destino
+                            Chegada prevista · {ride.route_duration_seconds > 0 ? formatDate(arrival.toISOString()) : "Horário a confirmar"}
                           </span>
-                          <p className="text-sm font-semibold truncate text-text">
-                            {ride.destination_label}
-                          </p>
+                          <p className="text-sm font-semibold wrap-anywhere text-text">{ride.destination_label}</p>
                         </div>
                       </div>
                     </div>
-
-                    {/* Stats Row */}
                     <div className="flex items-center justify-between text-xs text-text-secondary flex-wrap gap-2">
                       <SeatMeter available={ride.available_seats} total={ride.total_seats} />
                       <span className="inline-flex items-center gap-1 font-mono text-[11px] text-text-muted">
@@ -399,29 +497,37 @@ export const MyRidesPage: React.FC = () => {
                         onClick={() => setExpandedMapId(isMapOpen ? null : mapKey)}
                         className="text-xs font-semibold text-accent-text hover:underline"
                       >
-                        {isMapOpen ? "Ocultar mapa" : "Ver mapa"}
+                        {isMapOpen ? "Ocultar mapa" : "Ver mapa do trajeto"}
                       </button>
                     </div>
 
                     {isMapOpen && (
-                      <InteractiveMap
-                        height="190px"
-                        origin={
-                          ride.origin_lat != null && ride.origin_lng != null
-                            ? { lat: ride.origin_lat, lng: ride.origin_lng, label: ride.origin_label }
-                            : null
-                        }
-                        destination={
-                          ride.destination_lat != null && ride.destination_lng != null
-                            ? {
-                                lat: ride.destination_lat,
-                                lng: ride.destination_lng,
-                                label: ride.destination_label,
-                              }
-                            : null
-                        }
-                        routeGeoJson={ride.route_geojson}
-                      />
+                      <div className="space-y-2">
+                        {(ride.route_is_approximate || !ride.route_geojson) && (
+                          <p className="text-xs text-text-muted">Trajeto aproximado</p>
+                        )}
+                        <InteractiveMap
+                          height="360px"
+                          scrollWheelZoom={false}
+                          stops={pickupStops}
+                          approximateRoute={ride.route_is_approximate || !ride.route_geojson}
+                          origin={
+                            ride.origin_lat != null && ride.origin_lng != null
+                              ? { lat: ride.origin_lat, lng: ride.origin_lng, label: ride.origin_label }
+                              : null
+                          }
+                          destination={
+                            ride.destination_lat != null && ride.destination_lng != null
+                              ? {
+                                  lat: ride.destination_lat,
+                                  lng: ride.destination_lng,
+                                  label: ride.destination_label,
+                                }
+                              : null
+                          }
+                          routeGeoJson={ride.route_geojson}
+                        />
+                      </div>
                     )}
                   </div>
 
@@ -487,7 +593,7 @@ export const MyRidesPage: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
@@ -495,21 +601,16 @@ export const MyRidesPage: React.FC = () => {
       )}
 
       {/* Section 2: Active Rides as Passenger */}
-      {activeMatches.length > 0 && (
+      {selectedMatch && (
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="font-mono text-xs font-bold uppercase tracking-wider text-secondary">
-              Como passageiro · {activeMatches.length}
+              Como passageiro
             </span>
-            {supersededCount > 0 && (
-              <span className="px-2 py-0.5 rounded-[2px] font-mono text-[11px] border border-border bg-surface-2 text-text-muted">
-                {supersededCount} solicitação(ões) substituída(s)
-              </span>
-            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeMatches.map((match) => {
+          <div>
+            {[selectedMatch].map((match) => {
               const confirmed = confirmedByMatchId[match.id];
               const isAccepted = match.status === "accepted";
               const isRideInProgress = match.ride.status === "in_progress";
@@ -520,23 +621,22 @@ export const MyRidesPage: React.FC = () => {
               const carPlate = confirmed?.driver_car_plate;
               const campus = match.ride.campus_point ? getCampusInfo(match.ride.campus_point) : null;
               const estimatedPickupIso =
+                confirmed?.estimated_pickup_at ??
                 confirmed?.offered_pickup_at ??
-                match.offered_pickup_at ??
-                match.desired_pickup_at ??
-                match.ride.departure_at;
-              const estimatedPickupTime = format(new Date(estimatedPickupIso), "HH:mm", {
+                match.offered_pickup_at;
+              const estimatedPickupTime = estimatedPickupIso ? format(new Date(estimatedPickupIso), "HH:mm", {
                 locale: ptBR,
-              });
-              const estimatedPickupDate = format(
+              }) : "A confirmar";
+              const estimatedPickupDate = estimatedPickupIso ? format(
                 new Date(estimatedPickupIso),
                 "dd MMM",
                 { locale: ptBR }
-              );
+              ) : "";
               const passengerDestinationLabel =
-                match.dropoff_label || campus?.name || "Campus UFRGS";
+                match.dropoff_label || match.ride.destination_label;
 
               return (
-                <div
+                <article
                   key={match.id}
                   className={`rounded-[10px] p-4 sm:p-5 border bg-surface flex flex-col justify-between gap-4 ${
                     isAccepted ? "border-secondary/50" : "border-border"
@@ -639,7 +739,7 @@ export const MyRidesPage: React.FC = () => {
                         <NavigationIcon size={14} className="text-secondary shrink-0 mt-0.5" />
                         <div className="min-w-0">
                           <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
-                            Destino
+                            Desembarque {confirmed?.estimated_dropoff_at && <>· {formatDate(confirmed.estimated_dropoff_at)}</>}
                           </span>
                           <p className="text-sm font-semibold text-text wrap-anywhere">
                             {passengerDestinationLabel}
@@ -665,7 +765,7 @@ export const MyRidesPage: React.FC = () => {
                           <a
                             href={buildWhatsAppUrl(
                               driverPhone,
-                              `Olá ${driver.name ?? ""}! Tudo certo para o nosso encontro em "${match.pickup_label}" às ${estimatedPickupTime} pelo Carona Aí?`
+                              `Olá ${driver.name ?? ""}! Tudo certo para o nosso encontro em "${match.pickup_label}" pelo Carona Aí?`
                             )}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -703,7 +803,7 @@ export const MyRidesPage: React.FC = () => {
                       {isAccepted ? "Cancelar vaga" : "Retirar pedido"}
                     </Button>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>

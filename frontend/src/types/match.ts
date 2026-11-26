@@ -32,6 +32,10 @@ export interface MatchForDriver {
   offered_pickup_at?: string | null;
   created_at: string;
   // Revealed only after acceptance
+  confirmed_pickup_label?: string | null;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
+  estimated_pickup_at?: string | null;
   pickup_street?: string | null;
   pickup_number?: string | null;
   pickup_complement?: string | null;
@@ -42,6 +46,8 @@ export interface MatchForDriver {
 }
 
 export interface MatchConfirmed extends MatchPublic {
+  estimated_pickup_at?: string | null;
+  estimated_dropoff_at?: string | null;
   driver?: UserConfirmed | null;
   passenger?: UserConfirmed | null;
   driver_car_brand?: string | null;
