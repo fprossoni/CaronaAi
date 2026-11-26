@@ -42,18 +42,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   if (isAuthPage || (!isAuthenticated && !isPublicWithHeader)) {
     return (
       <div className="min-h-screen relative flex flex-col">
-        <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
-
-          {import.meta.env.DEV && (
-            <Link
-              to="/dev"
-              className="inline-flex items-center px-2.5 py-1.5 rounded-md font-mono text-xs font-bold border border-primary/40 bg-primary/15 text-accent-text backdrop-blur-md no-underline transition-colors hover:bg-primary/25"
-              title="Contas de teste"
-            >
-              Dev
-            </Link>
-          )}
-        </div>
         <main className="flex-1 flex flex-col">{children}</main>
       </div>
     );
@@ -103,20 +91,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             })}
           </nav>
           <div className="flex items-center gap-2 shrink-0">
-            {import.meta.env.DEV && (
-              <Link
-                to="/dev"
-                state={isAuthenticated && !isDevRoute ? { returnTo: location.pathname } : undefined}
-                className={`px-2.5 py-1.5 rounded-md font-mono text-xs font-bold border no-underline transition-colors ${
-                  isDevRoute
-                    ? "bg-primary text-on-primary border-primary"
-                    : "bg-primary/15 text-accent-text border-primary/40 hover:bg-primary/25"
-                }`}
-                aria-label="Contas de teste"
-              >
-                Dev
-              </Link>
-            )}
 
             {isAuthenticated && user ? (
               <Link
