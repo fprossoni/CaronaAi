@@ -1,9 +1,3 @@
-/**
- * RideRequestsModal Component
- *
- * Driver match management modal for pending and confirmed passengers.
- */
-
 import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { RideDetail } from "@/types/ride";
@@ -151,7 +145,6 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
           className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-[10px] p-5 sm:p-6 border border-border-strong bg-surface shadow-lg animate-slide-up"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-border">
             <div className="min-w-0">
               <h3 className="font-display text-lg font-bold text-text">Solicitações</h3>
@@ -187,8 +180,6 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
               <p className="text-sm text-text-secondary">Nenhuma solicitação recebida.</p>
             </div>
           )}
-
-          {/* Pending Requests */}
           {pending.length > 0 && (
             <div className="mt-5 space-y-3">
               <div className="flex items-center justify-between gap-2">
@@ -280,8 +271,6 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
               ))}
             </div>
           )}
-
-          {/* Confirmed Passengers */}
           {accepted.length > 0 && (
             <div className="mt-5 space-y-3">
               <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-secondary block">

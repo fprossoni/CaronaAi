@@ -1,10 +1,3 @@
-/**
- * InteractiveMap Component (Leaflet + CARTO / OSM monochrome tiles)
- *
- * Technical mobility map with architectural square pins, Signal Orange route polyline,
- * and 650m privacy circle before match confirmation.
- */
-
 import React, { useEffect, useMemo } from "react";
 import {
   MapContainer,
@@ -17,7 +10,6 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
-import { useThemeStore } from "@/store/themeStore";
 
 export interface MapPoint {
   lat: number;
@@ -131,7 +123,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   onMapClick,
   className = "",
 }) => {
-  const { theme } = useThemeStore();
 
   const polylinePositions = useMemo<[number, number][]>(() => {
     if (routeGeoJson && routeGeoJson.coordinates?.length > 0) {
@@ -162,7 +153,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   }, [polylinePositions, comparisonPositions, origin, destination, pickup, stops, dropoff]);
 
   const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY?.trim();
-  const cartoStyle = theme === "dark" ? "dark_all" : "light_all";
+  const cartoStyle = "light_all";
   const tileUrl = cartoApiKey
     ? `https://basemaps.cartocdn.com/rastertiles/${cartoStyle}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoApiKey)}`
     : OSM_TILE_URL;

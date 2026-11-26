@@ -182,7 +182,6 @@ export const ProfileCompletePage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-7">
           <Input label="Nome completo" value={form.name} onChange={(e) => setField("name", e.target.value)} error={errors.name} required />
-          {/* Identity & Avatar */}
           <section className="p-4 rounded-md border border-border bg-surface-2">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="shrink-0 flex justify-center">
@@ -206,8 +205,6 @@ export const ProfileCompletePage: React.FC = () => {
               </div>
             </div>
           </section>
-
-          {/* 01 · Acadêmico */}
           <section className="space-y-4">
             <div className="border-b border-border pb-2">
               <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-accent-text">
@@ -298,8 +295,6 @@ export const ProfileCompletePage: React.FC = () => {
               </div>
             </div>
           </section>
-
-          {/* 02 · Modalidade */}
           <section className="space-y-4">
             <div className="border-b border-border pb-2">
               <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-accent-text">
@@ -375,8 +370,6 @@ export const ProfileCompletePage: React.FC = () => {
               </div>
             )}
           </section>
-
-          {/* 03 · Contato */}
           <section className="space-y-4">
             <div className="border-b border-border pb-2">
               <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-accent-text">

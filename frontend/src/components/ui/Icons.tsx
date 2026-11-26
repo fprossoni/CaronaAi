@@ -1,9 +1,3 @@
-/**
- * Centralized SVG Icon System
- *
- * Crisp vector icons used across mobility and community UI elements.
- */
-
 import React from "react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {

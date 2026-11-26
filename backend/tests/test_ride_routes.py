@@ -216,7 +216,7 @@ class RideRoutesTest(unittest.TestCase):
         ride = self.client.get(f"/rides/{ride_id}").json()
         self.assertEqual(preview.json()["route_geojson"], ride["route_geojson"])
         self.user_id = 2
-        self.assertEqual(self.client.post("/rides/preview", json=points).status_code, 403)
+        self.assertEqual(self.client.post("/rides/preview", json=points).status_code, 200)
 
     def test_acceptance_checks_each_detour_against_the_current_route(self):
         combined_distance = 12500
@@ -425,9 +425,65 @@ class RideRoutesTest(unittest.TestCase):
         self.assertEqual(datetime.fromisoformat(ride["estimated_dropoff_at"]), self.departure + timedelta(minutes=3))
         self.assertEqual(match.status_code, 201, match.text)
         one_campus = {"pickup_address_id": 1, "dropoff_campus_id": "campus_saude", **self.pickup_window()}
-        self.assertEqual(self.client.get("/rides/search", params=one_campus).json(), [])
+        found = self.client.get("/rides/search", params=one_campus)
+        self.assertEqual(found.status_code, 200, found.text)
+        self.assertIn(ride_id, [ride["id"] for ride in found.json()])
+        self.assertEqual(self.client.patch(f"/matches/{match.json()['id']}/cancel").status_code, 200)
         response = self.client.post("/matches/batch", json={"ride_ids": [ride_id], **one_campus})
-        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.status_code, 201, response.text)
+
+    def test_campus_to_campus_offer_accepts_address_dropoff_near_route(self):
+        ride_id = self.create_ride(origin_campus_id="campus_centro")
+        self.user_id = 2
+        trip = {"pickup_campus_id": "campus_centro", "dropoff_address_id": 2, **self.pickup_window()}
+        found = self.client.get("/rides/search", params=trip)
+        self.assertEqual(found.status_code, 200, found.text)
+        self.assertIn(ride_id, [ride["id"] for ride in found.json()])
+        response = self.client.post("/matches/", json={"ride_id": ride_id, **trip})
+        self.assertEqual(response.status_code, 201, response.text)
+
+    def test_campus_to_campus_offer_still_rejects_distant_pickup(self):
+        self.create_ride(origin_campus_id="campus_centro")
+        self.user_id = 2
+        trip = {"pickup_lat": -29.0, "pickup_lng": -50.0,
+                "dropoff_campus_id": "campus_saude", **self.pickup_window()}
+        found = self.client.get("/rides/search", params=trip)
+        self.assertEqual(found.status_code, 200, found.text)
+        self.assertEqual(found.json(), [])
+
+    def test_driver_removal_and_passenger_withdrawal_release_seat_once(self):
+        for cancelling_user in (1, 2):
+            with self.subTest(cancelling_user=cancelling_user):
+                self.user_id = 1
+                ride_id = self.create_ride(total_seats=1)
+                original = self.client.get(f"/rides/{ride_id}").json()["route_geojson"]
+                self.user_id = 2
+                request = self.client.post("/matches/", json={
+                    "ride_id": ride_id, "pickup_address_id": 1,
+                    "dropoff_campus_id": "campus_saude", **self.pickup_window(),
+                })
+                self.assertEqual(request.status_code, 201, request.text)
+                match_id = request.json()["id"]
+                self.user_id = 1
+                pending_removal = self.client.patch(f"/matches/{match_id}/cancel")
+                self.assertEqual(pending_removal.status_code, 400)
+                accepted = self.client.patch(f"/matches/{match_id}/respond", json={"action": "accept"})
+                self.assertEqual(accepted.status_code, 200, accepted.text)
+                full = self.client.get(f"/rides/{ride_id}").json()
+                self.assertEqual(full["available_seats"], 0)
+                self.assertEqual(full["status"], "full")
+                self.user_id = 3
+                self.assertEqual(self.client.patch(f"/matches/{match_id}/cancel").status_code, 403)
+                self.user_id = cancelling_user
+                cancelled = self.client.patch(f"/matches/{match_id}/cancel")
+                self.assertEqual(cancelled.status_code, 200, cancelled.text)
+                self.assertEqual(self.client.patch(f"/matches/{match_id}/cancel").status_code, 400)
+                self.user_id = 1
+                updated = self.client.get(f"/rides/{ride_id}").json()
+                self.assertEqual(updated["available_seats"], 1)
+                self.assertEqual(updated["status"], "active")
+                self.assertEqual(updated["route_geojson"], original)
+                self.assertEqual(self.client.get(f"/matches/ride/{ride_id}").json(), [])
 
     def test_rejects_trips_without_campus(self):
         response = self.client.post("/rides/", json={

@@ -6,6 +6,7 @@ import { matchesApi } from "@/api/matches";
 import type { RideSearchResult, SearchRidesParams } from "@/types/ride";
 import type { MatchPublic } from "@/types/match";
 import { getInitialTripRoute, hasTripCampus, type TripPrefill, type TripRoute } from "@/lib/tripRoute";
+import { hasCompleteLocation } from "@/lib/geocoding";
 import { getErrorMessage } from "@/lib/errors";
 import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
@@ -14,7 +15,7 @@ import { TripRouteFields } from "@/components/rides/TripRouteFields";
 import { KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { LockIcon } from "@/components/ui/Icons";
+
 
 type SearchResult = { params: SearchRidesParams } & ({ rides: RideSearchResult[] } | { error: string });
 
@@ -48,7 +49,7 @@ export const FindRidePage: React.FC = () => {
   const startAt = date && startTime ? Date.parse(date + "T" + startTime) : NaN;
   const validWindow = Number.isFinite(startAt);
   const params = submittedSearch?.params ?? null;
-  const canSearch = Boolean(pickup && dropoff && hasCampus && validWindow);
+  const canSearch = Boolean(hasCompleteLocation(pickup) && hasCompleteLocation(dropoff) && hasCampus && validWindow);
 
   function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,6 +96,9 @@ export const FindRidePage: React.FC = () => {
           pickup_lat: submittedSearch.params.pickup_lat,
           pickup_lng: submittedSearch.params.pickup_lng,
           pickup_label: submittedSearch.pickup.label,
+          pickup_street: submittedSearch.pickup.mapAddress?.street,
+          pickup_number: submittedSearch.pickup.mapAddress?.number,
+          pickup_neighborhood: submittedSearch.pickup.mapAddress?.neighborhood,
           pickup_region: submittedSearch.pickup.region || "Região próxima",
           dropoff_address_id: submittedSearch.params.dropoff_address_id,
           dropoff_lat: submittedSearch.params.dropoff_lat,
@@ -221,7 +225,7 @@ export const FindRidePage: React.FC = () => {
   ) : null;
 
   return (
-    <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
+    <section className="mx-auto w-full min-w-0 space-y-5 animate-fade-in">
       <h1 className="font-display text-2xl font-bold tracking-tight text-text">Pedir carona</h1>
       {submittedSearch && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-border bg-surface px-4 py-3">
@@ -260,8 +264,6 @@ export const FindRidePage: React.FC = () => {
           onChange={setRoute}
           onSubmit={handleSearch}
           disabled={requestingId !== null}
-          showRoutePreview={false}
-          allowMeetingPoint
           initialQueries={{
             origin:
               prefill?.originQuery ??
@@ -304,7 +306,7 @@ export const FindRidePage: React.FC = () => {
             </label>
           )}
           <p className="flex items-center gap-1.5 text-xs text-text-muted">
-            <LockIcon size={13} className="shrink-0 text-text-secondary" />
+
             <span>Apenas seu bairro fica visível antes do aceite.</span>
           </p>
           <Button type="submit" fullWidth size="lg" disabled={!canSearch}>

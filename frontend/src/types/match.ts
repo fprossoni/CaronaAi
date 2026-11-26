@@ -32,6 +32,7 @@ export interface MatchForDriver {
   offered_pickup_at?: string | null;
   created_at: string;
   // Revealed only after acceptance
+  confirmed_dropoff_label?: string | null;
   confirmed_pickup_label?: string | null;
   pickup_lat?: number | null;
   pickup_lng?: number | null;
@@ -83,6 +84,9 @@ interface MatchTrip {
   custom_address?: AddressCreate | null;
   pickup_lat?: number;
   pickup_lng?: number;
+  pickup_street?: string;
+  pickup_number?: string;
+  pickup_neighborhood?: string;
   pickup_label?: string;
   dropoff_lat?: number;
   dropoff_lng?: number;

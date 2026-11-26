@@ -1,9 +1,3 @@
-/**
- * SavedAddressesManager Component
- *
- * Manages personal recurring addresses with CEP lookup and map adjustment.
- */
-
 import React, { useEffect, useState } from "react";
 import { addressesApi } from "@/api/addresses";
 import type { AddressPublic } from "@/types/address";

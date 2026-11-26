@@ -1,7 +1,3 @@
-/**
- * ReportsManager Component
- */
-
 import React, { useEffect, useState } from "react";
 import { usersApi } from "@/api/auth";
 import type { ReportPublic, ReportStatus } from "@/types/report";

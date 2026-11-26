@@ -1,10 +1,3 @@
-/**
- * MyRidesPage ("Minhas Caronas")
- *
- * Active rides dashboard for Driver and Passenger roles with telemetry ETA,
- * vertical bar SeatMeter, and quick access to ride requests and messages.
- */
-
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
@@ -19,17 +12,7 @@ import { UserProfileModal } from "@/components/users/UserProfileModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { SeatMeter } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
-import {
-  CarIcon,
-  CheckCircleIcon,
-  HistoryIcon,
-  LockIcon,
-  MapPinIcon,
-  MessageIcon,
-  NavigationIcon,
-  UsersIcon,
-  WhatsAppIcon,
-} from "@/components/ui/Icons";
+
 import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import {
@@ -52,7 +35,7 @@ function formatDate(iso: string): string {
 }
 
 function passengerPickup(match: MatchForDriver): string {
-  return [match.pickup_street, match.pickup_number, match.pickup_complement, match.pickup_neighborhood]
+  return match.confirmed_pickup_label || [match.pickup_street, match.pickup_number, match.pickup_complement, match.pickup_neighborhood]
     .filter(Boolean).join(", ") || match.confirmed_pickup_label || match.pickup_region;
 }
 
@@ -91,6 +74,7 @@ export const MyRidesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [removingMatchId, setRemovingMatchId] = useState<number | null>(null);
   const [modalRide, setModalRide] = useState<RideDetail | null>(null);
   const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserPublic | null>(null);
@@ -245,7 +229,7 @@ export const MyRidesPage: React.FC = () => {
 
   const handleCancelMatch = async (match: MatchWithRide) => {
     const ok = await toast.confirm({
-      title: "Cancelar participação?",
+      title: match.status === "accepted" ? "Desistir da viagem?" : "Retirar pedido?",
       description:
         match.status === "accepted"
           ? "Sua vaga será liberada para o motorista."
@@ -261,11 +245,33 @@ export const MyRidesPage: React.FC = () => {
       setMatches((prev) =>
         prev.map((m) => (m.id === match.id ? { ...m, status: "cancelled" } : m))
       );
-      toast.info("Solicitação cancelada.");
+      refresh();
+      toast.info(match.status === "accepted" ? "Você desistiu da viagem. Sua vaga foi liberada." : "Solicitação retirada.");
     } catch (err: unknown) {
       toast.error("Erro ao cancelar", getErrorMessage(err));
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const handleRemovePassenger = async (match: MatchForDriver) => {
+    if (removingMatchId !== null) return;
+    const ok = await toast.confirm({
+      title: "Remover passageiro?",
+      description: `${match.passenger.name ?? "O passageiro"} sairá desta viagem e a vaga será liberada.`,
+      confirmLabel: "Remover passageiro",
+      variant: "danger",
+    });
+    if (!ok) return;
+    setRemovingMatchId(match.id);
+    try {
+      await matchesApi.cancel(match.id);
+      refresh();
+      toast.info("Passageiro removido. A vaga foi liberada.");
+    } catch (err: unknown) {
+      toast.error("Não foi possível remover o passageiro", getErrorMessage(err));
+    } finally {
+      setRemovingMatchId(null);
     }
   };
 
@@ -298,7 +304,6 @@ export const MyRidesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="font-display text-2xl font-bold tracking-tight text-text">
           {isDetail ? "Detalhes da carona" : "Minhas caronas"}
@@ -314,7 +319,7 @@ export const MyRidesPage: React.FC = () => {
           size="sm"
           onClick={() => navigate("/rides/history")}
         >
-          <HistoryIcon size={14} className="text-accent-text" />
+
           <span>Histórico</span>
         </Button>}
       </div>
@@ -347,9 +352,7 @@ export const MyRidesPage: React.FC = () => {
       )}
       {!isDetail && !error && !hasAnyActive && (
         <div className="rounded-[10px] p-10 border border-border bg-surface bg-dot-matrix text-center space-y-4">
-          <div className="w-12 h-12 rounded-md border border-border-strong bg-surface-2 text-accent-text flex items-center justify-center mx-auto">
-            <CarIcon size={22} />
-          </div>
+
           <p className="text-sm font-medium text-text-secondary">
             Nenhuma viagem ativa como {role === "driver" ? "motorista" : "passageiro"}.
           </p>
@@ -445,8 +448,6 @@ export const MyRidesPage: React.FC = () => {
                       </div>
 
                     </div>
-
-                    {/* Route Block */}
                     <div className="p-3 rounded-md border border-border bg-surface-2 space-y-2">
                       <div className="flex items-start gap-2">
                         <span className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
@@ -467,11 +468,19 @@ export const MyRidesPage: React.FC = () => {
                               Embarque {index + 1} · {pickupAt ? formatDate(pickupAt) : "Horário a confirmar"}
                             </p>
                             <strong>{m.passenger.name ?? "Passageiro"}</strong>
-                            <p>{passengerPickup(m)}</p>
+                            <p>Embarque: {passengerPickup(m)}</p>
+                            <p>Desembarque: {m.confirmed_dropoff_label || ride.destination_label}</p>
                             <div className="mt-2 flex flex-wrap gap-3">
                               <button type="button" className="text-accent-text underline" onClick={() => setSelectedUser(m.passenger)}>Ver perfil</button>
                               {m.passenger_phone && <a className="text-accent-text underline" href={buildWhatsAppUrl(m.passenger_phone)} target="_blank" rel="noopener noreferrer">WhatsApp · {m.passenger_phone}</a>}
                             </div>
+                            <Button type="button" variant="danger" size="sm"
+                              className="mt-3"
+                              loading={removingMatchId === m.id}
+                              disabled={removingMatchId !== null}
+                              onClick={() => handleRemovePassenger(m)}>
+                              Remover passageiro
+                            </Button>
                           </div>
                         );
                       })}
@@ -488,7 +497,7 @@ export const MyRidesPage: React.FC = () => {
                     <div className="flex items-center justify-between text-xs text-text-secondary flex-wrap gap-2">
                       <SeatMeter available={ride.available_seats} total={ride.total_seats} />
                       <span className="inline-flex items-center gap-1 font-mono text-[11px] text-text-muted">
-                        <NavigationIcon size={12} className="text-accent-text" />
+
                         {formatDistance(ride.route_distance_meters)} ·{" "}
                         {formatDuration(ride.route_duration_seconds)}
                       </span>
@@ -530,8 +539,6 @@ export const MyRidesPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-
-                  {/* Driver Actions */}
                   <div className="space-y-2 pt-3 border-t border-border">
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -546,7 +553,7 @@ export const MyRidesPage: React.FC = () => {
                         loading={openingChat === ride.id}
                         onClick={() => openChat(ride.id)}
                       >
-                        <MessageIcon size={14} /> Mensagens
+                         Mensagens
                       </Button>
                       <Button
                         variant="secondary"
@@ -569,7 +576,7 @@ export const MyRidesPage: React.FC = () => {
                         }`}
                       >
                         <span className="inline-flex items-center gap-1.5">
-                          <UsersIcon size={14} />
+
                           <span>Solicitações</span>
                         </span>
                         <span className="inline-flex items-center gap-1.5 font-mono text-[11px]">
@@ -599,8 +606,6 @@ export const MyRidesPage: React.FC = () => {
           </div>
         </section>
       )}
-
-      {/* Section 2: Active Rides as Passenger */}
       {selectedMatch && (
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -643,11 +648,10 @@ export const MyRidesPage: React.FC = () => {
                   }`}
                 >
                   <div className="space-y-3">
-                    {/* Status Badge */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       {isAccepted ? (
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-bold uppercase bg-secondary/15 text-secondary border border-secondary/35">
-                          <CheckCircleIcon size={12} />
+
                           <span>{isRideInProgress ? "Em andamento" : "Confirmada"}</span>
                         </span>
                       ) : (
@@ -662,8 +666,6 @@ export const MyRidesPage: React.FC = () => {
                         </span>
                       )}
                     </div>
-
-                    {/* Telemetry ETA Block */}
                     <div className="p-3 rounded-md border border-border bg-surface-2 flex items-center justify-between gap-3">
                       <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted">
                         Embarque previsto
@@ -677,8 +679,6 @@ export const MyRidesPage: React.FC = () => {
                         </span>
                       </div>
                     </div>
-
-                    {/* Driver Profile Row */}
                     <div className="p-3 rounded-md border border-border bg-surface-2 flex items-center justify-between gap-3 flex-wrap">
                       <div
                         className="flex items-center gap-3 cursor-pointer group min-w-0"
@@ -699,7 +699,7 @@ export const MyRidesPage: React.FC = () => {
                           </p>
                           {(carModel || carColor) && (
                             <p className="font-mono text-[11px] text-text-secondary mt-0.5 flex items-center gap-1">
-                              <CarIcon size={11} className="text-accent-text shrink-0" />
+
                               <span className="truncate">
                                 {carModel ?? "Veículo"}
                                 {carColor ? ` · ${carColor}` : ""}
@@ -720,11 +720,9 @@ export const MyRidesPage: React.FC = () => {
                         </div>
                       )}
                     </div>
-
-                    {/* Pickup & Dropoff */}
                     <div className="p-3 rounded-md border border-border bg-surface-2 space-y-2 text-xs">
                       <div className="flex items-start gap-2">
-                        <MapPinIcon size={14} className="text-primary shrink-0 mt-0.5" />
+
                         <div className="min-w-0">
                           <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
                             Embarque
@@ -736,7 +734,7 @@ export const MyRidesPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-start gap-2">
-                        <NavigationIcon size={14} className="text-secondary shrink-0 mt-0.5" />
+
                         <div className="min-w-0">
                           <span className="font-mono text-[10px] font-bold uppercase block text-text-muted">
                             Desembarque {confirmed?.estimated_dropoff_at && <>· {formatDate(confirmed.estimated_dropoff_at)}</>}
@@ -747,8 +745,6 @@ export const MyRidesPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-
-                    {/* Communication */}
                     {isAccepted ? (
                       <div className="flex items-center gap-2 flex-wrap">
                         <Button
@@ -757,7 +753,7 @@ export const MyRidesPage: React.FC = () => {
                           loading={openingChat === match.ride.id}
                           onClick={() => openChat(match.ride.id)}
                         >
-                          <MessageIcon size={14} />
+
                           <span>Mensagens</span>
                         </Button>
 
@@ -771,20 +767,18 @@ export const MyRidesPage: React.FC = () => {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-secondary text-on-primary hover:opacity-90 transition-opacity no-underline"
                           >
-                            <WhatsAppIcon size={13} />
+
                             <span>WhatsApp</span>
                           </a>
                         )}
                       </div>
                     ) : (
                       <div className="p-2.5 rounded-md border border-border bg-surface-2 flex items-center gap-2 text-xs text-text-muted">
-                        <LockIcon size={13} className="shrink-0" />
+
                         <span>Chat e placa liberados após aceite.</span>
                       </div>
                     )}
                   </div>
-
-                  {/* Footer */}
                   <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
                     <button
                       type="button"
@@ -800,7 +794,7 @@ export const MyRidesPage: React.FC = () => {
                       loading={cancellingId === match.id}
                       onClick={() => handleCancelMatch(match)}
                     >
-                      {isAccepted ? "Cancelar vaga" : "Retirar pedido"}
+                      {isAccepted ? "Desistir da viagem" : "Retirar pedido"}
                     </Button>
                   </div>
                 </article>

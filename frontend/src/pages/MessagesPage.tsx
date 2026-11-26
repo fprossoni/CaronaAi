@@ -4,8 +4,9 @@ import axios from "axios";
 import { messagesApi } from "@/api/messages";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
-import { MessageIcon, UsersIcon } from "@/components/ui/Icons";
+
 import { getErrorMessage } from "@/lib/errors";
+import { useToastStore } from "@/store/toastStore";
 import { useAuthStore } from "@/store/authStore";
 import type { ChatMessage, Conversation } from "@/types/chat";
 
@@ -198,12 +199,7 @@ function ConversationPanel({
         {loading && (
           <p className="p-5 text-center font-mono text-xs text-text-muted">Carregando…</p>
         )}
-        {!loading && items.length === 0 && !closed && (
-          <div className="m-auto flex flex-col items-center justify-center gap-2.5 px-5 py-8 text-center text-text-muted">
-            <MessageIcon size={28} />
-            <p className="text-sm text-text-secondary">Combine os detalhes da viagem aqui.</p>
-          </div>
-        )}
+
         {items.map((message) => {
           const isMine = message.sender_id === userId;
           return (
@@ -278,6 +274,9 @@ export function MessagesPage() {
 }
 
 function MessagesInbox({ userId }: { userId: number }) {
+  const toast = useToastStore();
+  const [deleting, setDeleting] = useState(false);
+  const deletedIds = useRef(new Set<number>());
   const [params, setParams] = useSearchParams();
   const selectedId = Number(params.get("conversation"));
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -293,7 +292,7 @@ function MessagesInbox({ userId }: { userId: number }) {
         try {
           const { data } = await messagesApi.list();
           if (!cancelled) {
-            setConversations(data);
+            setConversations(data.filter((c) => !deletedIds.current.has(c.id)));
             setError("");
           }
         } catch (err) {
@@ -311,10 +310,28 @@ function MessagesInbox({ userId }: { userId: number }) {
     };
   }, []);
 
+  const deleteSelected = async () => {
+    if (!selected || deleting) return;
+    if (!(await toast.confirm({ title: "Excluir conversa?", description: "A conversa será removida da sua lista. Os outros participantes manterão o histórico.", confirmLabel: "Excluir conversa", variant: "danger" }))) return;
+    setDeleting(true);
+    try {
+      await messagesApi.remove(selected.id);
+      deletedIds.current.add(selected.id);
+      setConversations((prev) => prev.filter((c) => c.id !== selected.id));
+      setParams({});
+      toast.info("Conversa excluída.");
+    } catch (err) {
+      setError(getErrorMessage(err, "Não foi possível excluir a conversa."));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const openPrivate = async (passengerId: number) => {
     if (!selected) return;
     try {
       const { data } = await messagesApi.open(selected.ride_id, passengerId);
+      deletedIds.current.delete(data.id);
       setConversations((prev) => [data, ...prev.filter((c) => c.id !== data.id)]);
       setParams({ conversation: String(data.id) });
     } catch (err) {
@@ -326,6 +343,7 @@ function MessagesInbox({ userId }: { userId: number }) {
     <div className="text-text animate-fade-in">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="font-display text-2xl font-bold tracking-tight">Mensagens</h1>
+        {selected && <Button type="button" variant="danger" size="sm" loading={deleting} onClick={deleteSelected}>Excluir conversa</Button>}
         <Link to="/rides" className="font-mono text-xs font-semibold text-accent-text hover:underline no-underline">
           Minhas caronas →
         </Link>
@@ -355,7 +373,7 @@ function MessagesInbox({ userId }: { userId: number }) {
 
           {!loading && conversations.length === 0 && (
             <div className="m-auto flex flex-col items-center justify-center gap-2.5 px-4 py-8 text-center text-text-muted">
-              <MessageIcon size={28} />
+
               <p className="text-sm text-text-secondary">Nenhuma conversa ativa.</p>
               <Link to="/rides" className="text-xs font-semibold text-accent-text hover:underline">
                 Minhas caronas
@@ -374,11 +392,7 @@ function MessagesInbox({ userId }: { userId: number }) {
                 }`}
                 aria-current={isSelected ? "page" : undefined}
               >
-                {c.kind === "group" ? (
-                  <span className="rounded-md border border-border bg-surface-2 p-2 text-accent-text shrink-0">
-                    <UsersIcon size={18} />
-                  </span>
-                ) : (
+                {c.kind === "group" ? null : (
                   <Avatar name={title(c, userId)} size="sm" />
                 )}
                 <div className="min-w-0">
@@ -408,7 +422,7 @@ function MessagesInbox({ userId }: { userId: number }) {
           />
         ) : (
           <div className="hidden flex-col items-center justify-center gap-2.5 px-5 py-8 text-center text-text-muted bg-dot-matrix md:flex">
-            <MessageIcon size={34} />
+
             <h2 className="font-display font-semibold text-text">
               {selectedId && !loading ? "Conversa indisponível" : "Selecione uma conversa"}
             </h2>

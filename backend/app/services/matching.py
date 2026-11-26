@@ -52,9 +52,15 @@ def validate_campus_match(
     destination_campus = campus_at(driver_destination)
     if not (origin_campus or destination_campus):
         raise IncompatibleCampusError("A carona precisa ter pelo menos um campus da UFRGS.")
-    if (origin_campus and origin_campus != campus_at(pickup)) or (
-        destination_campus and destination_campus != campus_at(dropoff)
-    ):
+    pickup_campus = campus_at(pickup)
+    dropoff_campus = campus_at(dropoff)
+    shares_campus = (origin_campus is not None and origin_campus == pickup_campus) or (
+        destination_campus is not None and destination_campus == dropoff_campus
+    )
+    conflicts = (origin_campus and pickup_campus and origin_campus != pickup_campus) or (
+        destination_campus and dropoff_campus and destination_campus != dropoff_campus
+    )
+    if not shares_campus or conflicts:
         raise IncompatibleCampusError("Use o mesmo campus da carona no lado correspondente do trajeto.")
 
 
@@ -336,12 +342,15 @@ async def find_matching_rides(
         starts_at_campus = and_(
             _campus_filter(Ride.origin_point, pickup_campus), Ride.departure_at >= pickup_after
         )
-        campus_routes.append(and_(starts_at_campus, _campus_filter(Ride.destination_point, None), near(dropoff)))
+        campus_routes.append(and_(starts_at_campus,
+            _campus_filter(Ride.destination_point, None) if dropoff_campus else True,
+            near(dropoff)))
         if dropoff_campus:
             campus_routes.append(and_(starts_at_campus, _campus_filter(Ride.destination_point, dropoff_campus)))
     if dropoff_campus:
         campus_routes.append(and_(
-            _campus_filter(Ride.destination_point, dropoff_campus), _campus_filter(Ride.origin_point, None), near(pickup)
+            _campus_filter(Ride.destination_point, dropoff_campus),
+            _campus_filter(Ride.origin_point, None) if pickup_campus else True, near(pickup)
         ))
 
     earliest_departure = pickup_after

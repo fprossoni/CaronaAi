@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
-import { useThemeStore } from "@/store/themeStore";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { LoginPage } from "@/pages/auth/LoginPage";
@@ -47,11 +46,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 // ─── Application Root ────────────────────────────────────────────────────────
 export default function App() {
   const { fetchUser, isAuthenticated } = useAuthStore();
-  const { theme, setTheme } = useThemeStore();
-
-  useEffect(() => {
-    setTheme(theme);
-  }, [theme, setTheme]);
 
   useEffect(() => {
     if (isAuthenticated) fetchUser();

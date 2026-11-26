@@ -128,11 +128,11 @@ async def _resolve_pickup_address(
             body.pickup_lng,
             body.pickup_label or "Ponto de origem",
             body.pickup_region or "Região próxima",
+            body.pickup_street,
+            body.pickup_number,
             None,
             None,
-            None,
-            None,
-            None,
+            body.pickup_neighborhood,
             None,
         )
     else:
@@ -341,6 +341,7 @@ def get_ride_matches(ride_id: int, current_user: VerifiedUser, db: DbSession) ->
         if m.status == MatchStatus.ACCEPTED and ride.status != RideStatus.CANCELLED and not is_blocked_between(db, ride.driver_id, m.passenger_id):
             driver_view.pickup_street = m.pickup_street
             driver_view.confirmed_pickup_label = m.pickup_label
+            driver_view.confirmed_dropoff_label = m.dropoff_label
             pickup = to_shape(m.pickup_point)
             driver_view.pickup_lat = pickup.y
             driver_view.pickup_lng = pickup.x
@@ -517,14 +518,19 @@ async def respond_to_match(
 
 @router.patch("/{match_id}/cancel")
 async def cancel_match(match_id: int, current_user: VerifiedUser, db: DbSession) -> dict:
-    """Passenger cancels their own pending or accepted match."""
     match = db.get(Match, match_id)
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
-    if match.passenger_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not your match")
     ride = db.get(Ride, match.ride_id, with_for_update=True)
+    if not ride:
+        raise HTTPException(status_code=404, detail="Ride not found")
+    is_passenger = match.passenger_id == current_user.id
+    is_driver = ride.driver_id == current_user.id
+    if not (is_passenger or is_driver):
+        raise HTTPException(status_code=403, detail="Not your match")
     db.refresh(match)
+    if is_driver and not is_passenger and match.status != MatchStatus.ACCEPTED:
+        raise HTTPException(400, "Somente passageiros confirmados podem ser removidos da viagem")
     if not ride or ride.status not in (RideStatus.ACTIVE, RideStatus.FULL, RideStatus.IN_PROGRESS):
         raise HTTPException(409, "Esta carona já foi encerrada")
     if match.status not in (MatchStatus.PENDING, MatchStatus.ACCEPTED):

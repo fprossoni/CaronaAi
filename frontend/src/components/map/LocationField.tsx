@@ -1,9 +1,3 @@
-/**
- * LocationField Component
- *
- * Address picker with autocomplete, UFRGS campus shortcuts, browser GPS, and map pick trigger.
- */
-
 import React, { useEffect, useId, useRef, useState } from "react";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { AddressPublic } from "@/types/address";
@@ -13,6 +7,7 @@ import {
   campusToLocation,
   formatMapAddress,
   geocodingService,
+  resolveNumberedLocation,
   getBrowserCurrentLocation,
   type GeocodingSuggestion,
   type LocationValue,
@@ -35,6 +30,7 @@ interface LocationFieldProps {
   showCampusShortcuts?: boolean;
   showSavedAddresses?: boolean;
   helperText?: string;
+  requireNumber?: boolean;
 }
 
 export const LocationField: React.FC<LocationFieldProps> = ({
@@ -52,6 +48,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   showCampusShortcuts = true,
   showSavedAddresses = true,
   helperText,
+  requireNumber = false,
 }) => {
   const { isAuthenticated, user } = useAuthStore();
   const inputId = useId();
@@ -64,6 +61,7 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   const [searching, setSearching] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState("");
+  const [numberError, setNumberError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const displayedQuery = draft && draft.forValue === value ? draft.text : (value?.label ?? "");
@@ -118,6 +116,26 @@ export const LocationField: React.FC<LocationFieldProps> = ({
       clearTimeout(timer);
     };
   }, [displayedQuery, isOpen]);
+
+  useEffect(() => {
+    if (!value || value.coordinatesVerified !== false || !value.mapAddress?.number.trim()) return;
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        const resolved = await resolveNumberedLocation(value);
+        if (!active) return;
+        if (resolved) {
+          setNumberError("");
+          onChange(resolved);
+        } else {
+          setNumberError("Endereço não localizado. Selecione uma sugestão ou marque no mapa.");
+        }
+      } catch {
+        if (active) setNumberError("Não foi possível localizar o endereço. Tente novamente.");
+      }
+    }, 320);
+    return () => { active = false; clearTimeout(timer); };
+  }, [value, onChange]);
 
   const handleSelectSuggestion = (item: GeocodingSuggestion) => {
     setDraft(null);
@@ -213,8 +231,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           )}
         </div>
       </div>
-
-      {/* Main Search Input */}
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
           <SearchIcon size={15} />
@@ -232,14 +248,12 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           }}
           onChange={(e) => {
             const nextVal = e.target.value;
-            setDraft({ forValue: value, text: nextVal });
+            setNumberError("");
+            setDraft({ forValue: onClear ? null : value, text: nextVal });
             onQueryChange?.(nextVal);
             setIsOpen(true);
-            if (!nextVal.trim() && onClear) {
-              onClear();
-            } else if (value) {
-              onChange({ ...value, label: nextVal });
-            }
+            if (onClear) onClear();
+            else if (value) onChange({ ...value, label: nextVal, coordinatesVerified: false });
           }}
           className={`w-full pl-9 pr-4 py-2.5 rounded-md text-sm border bg-surface-2 text-text placeholder:text-text-muted outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/30 ${
             value ? "border-border-strong" : "border-border"
@@ -250,8 +264,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
             Buscando…
           </span>
         )}
-
-        {/* Autocomplete Suggestions Dropdown */}
         {isOpen && visibleSuggestions.length > 0 && (
           <ul className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 rounded-md border border-border-strong bg-surface shadow-lg overflow-hidden max-h-60 overflow-y-auto">
             {visibleSuggestions.map((item) => (
@@ -283,8 +295,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           </ul>
         )}
       </div>
-
-      {/* Saved Personal Addresses Quick Pills */}
       {showSavedAddresses && savedAddresses.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-medium mr-0.5 text-text-muted">Salvos:</span>
@@ -319,8 +329,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           })}
         </div>
       )}
-
-      {/* UFRGS Campus Quick Pills */}
       {showCampusShortcuts && (
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-medium mr-0.5 text-text-muted">Campi:</span>
@@ -345,8 +353,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           })}
         </div>
       )}
-
-      {/* Selected Location Region Indicator */}
       {value && (
         <div className="flex items-center font-mono text-[11px] px-0.5 text-text-muted">
           <span>
@@ -361,16 +367,20 @@ export const LocationField: React.FC<LocationFieldProps> = ({
 
       {gpsError && <p className="text-xs text-danger px-0.5">{gpsError}</p>}
 
-      {value && mapAddress && (
+      {value && !value.campusId && mapAddress && (
         <Input
           id={`${inputId}-number`}
-          label={`Número · ${label}`}
+          label="Número"
           value={mapAddress.number}
-          placeholder="Número (se houver)"
+          placeholder={requireNumber ? "Informe o número" : "Número (se houver)"}
+          required={requireNumber}
           maxLength={20}
+          error={value.coordinatesVerified === false ? numberError : undefined}
+          hint={value.coordinatesVerified === false && !numberError ? "Localizando endereço…" : undefined}
           onChange={(event) => {
+            setNumberError("");
             const address = { ...mapAddress, number: event.target.value };
-            onChange({ ...value, mapAddress: address, label: formatMapAddress(address) });
+            onChange({ ...value, campusId: undefined, addressId: undefined, coordinatesVerified: false, mapAddress: address, label: formatMapAddress(address) });
           }}
         />
       )}

@@ -6,7 +6,7 @@ Uses the configured DATABASE_URL, but only writes to a temporary schema.
 
 import importlib.util
 import unittest
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.database import Base, engine, get_db
 from app.main import app
-from app.models import Block, Match, MatchStatus, Ride, RideStatus, User
+from app.models import Gender, Block, Match, MatchStatus, Ride, RideStatus, User
 
 
 class RideMessagesTest(unittest.TestCase):
@@ -33,7 +33,7 @@ class RideMessagesTest(unittest.TestCase):
         self.connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         self.connection.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
         # Test the actual new migration against a pre-chat schema.
-        tables = [t for t in Base.metadata.sorted_tables if t.name not in ("conversations", "chat_messages")]
+        tables = [t for t in Base.metadata.sorted_tables if t.name not in ("conversations", "chat_messages", "conversation_deletions")]
         Base.metadata.create_all(self.connection, tables=tables, checkfirst=False)
         path = Path(__file__).resolve().parents[1] / "alembic/versions/e9f4a5b6c7d8_ride_messages.py"
         spec = importlib.util.spec_from_file_location("chat_migration", path)
@@ -41,11 +41,20 @@ class RideMessagesTest(unittest.TestCase):
         spec.loader.exec_module(self.migration)
         with Operations.context(MigrationContext.configure(self.connection)):
             self.migration.upgrade()
+        path = Path(__file__).resolve().parents[1] / "alembic/versions/c89e01234567_conversation_deletions.py"
+        spec = importlib.util.spec_from_file_location("deletion_migration", path)
+        deletion_migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(deletion_migration)
+        self.deletion_migration = deletion_migration
+        with Operations.context(MigrationContext.configure(self.connection)):
+            deletion_migration.upgrade()
         self.db = Session(bind=self.connection, join_transaction_mode="create_savepoint")
         self.addCleanup(self.db.close)
         for id in range(1, 6):
             self.db.add(User(id=id, email=f"test{id}@ufrgs.br", name=f"Pessoa {id}",
-                             hashed_password="unused", is_verified=True, is_active=True, is_driver=id == 1))
+                             hashed_password="unused", is_verified=True, is_active=True, is_driver=id == 1,
+                             course="Computação", gender=Gender.MALE, birth_date=date(2000, 1, 1), phone="51999999999",
+                             car_brand="VW", car_model="Gol", car_color="Prata", car_plate="ABC1C34"))
         self.db.flush()
         self.ride = Ride(id=1, driver_id=1, origin_label="Campus", destination_label="Casa",
                          campus_point="campus_vale", departure_at=datetime.now(UTC) - timedelta(minutes=10),
@@ -76,6 +85,23 @@ class RideMessagesTest(unittest.TestCase):
         response = self.client.post("/messages", json={"ride_id": 1, "passenger_id": passenger_id})
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()["id"]
+
+    def test_delete_is_personal_persistent_and_reopenable(self):
+        conversation = self.open(2)
+        url = f"/messages/{conversation}"
+        self.client.post(url + "/items", json={"body": "Olá"})
+        self.user_id = 3
+        self.assertEqual(self.client.delete(url).status_code, 403)
+        self.user_id = 2
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertNotIn(conversation, [c["id"] for c in self.client.get("/messages").json()])
+        self.user_id = 1
+        self.assertIn(conversation, [c["id"] for c in self.client.get("/messages").json()])
+        self.assertEqual(len(self.client.get(url + "/items").json()), 1)
+        self.user_id = 2
+        self.assertEqual(self.open(2), conversation)
+        self.assertIn(conversation, [c["id"] for c in self.client.get("/messages").json()])
 
     def test_group_private_authorization_and_validation(self):
         group = self.open()
@@ -161,5 +187,6 @@ class RideMessagesTest(unittest.TestCase):
         self.assertEqual(self.client.get(url, params={"after": 1, "before": 5}).status_code, 400)
         self.db.close()
         with Operations.context(MigrationContext.configure(self.connection)):
+            self.deletion_migration.downgrade()
             self.migration.downgrade()
         self.assertIsNone(self.connection.scalar(text("SELECT to_regclass(current_schema() || '.chat_messages')")))

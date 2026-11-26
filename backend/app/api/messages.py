@@ -5,7 +5,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import DbSession, VerifiedUser
-from app.models.chat import ChatMessage, Conversation
+from app.models.chat import ChatMessage, Conversation, ConversationDeletion
 from app.models.match import Match, MatchStatus
 from app.models.ride import Ride
 from app.schemas.chat import (
@@ -87,6 +87,7 @@ def list_conversations(db: DbSession, current_user: VerifiedUser):
     conversations = db.scalars(
         select(Conversation).join(Ride).where(
             Ride.status.in_(LIVE_RIDE_STATUSES),
+            Conversation.id.notin_(select(ConversationDeletion.conversation_id).where(ConversationDeletion.user_id == current_user.id)),
             or_(Ride.driver_id == current_user.id, Ride.id.in_(accepted)),
             or_(Conversation.passenger_id.is_(None), Conversation.passenger_id == current_user.id,
                 Ride.driver_id == current_user.id),
@@ -115,6 +116,9 @@ def open_conversation(body: ConversationCreate, db: DbSession, current_user: Ver
         conversation = Conversation(ride_id=ride.id, scope=scope, passenger_id=body.passenger_id)
         db.add(conversation)
         db.flush()
+    deletion = db.get(ConversationDeletion, (conversation.id, current_user.id))
+    if deletion is not None:
+        db.delete(deletion)
     result = _public(conversation, current_user.id)
     db.commit()
     return result
@@ -149,3 +153,11 @@ def send_message(conversation_id: int, body: MessageCreate, db: DbSession, curre
     db.commit()
     db.refresh(message)
     return message
+
+
+@router.delete("/{conversation_id}", status_code=204)
+def delete_conversation(conversation_id: int, db: DbSession, current_user: VerifiedUser):
+    _authorized(db, conversation_id, current_user.id, lock=True)
+    if db.get(ConversationDeletion, (conversation_id, current_user.id)) is None:
+        db.add(ConversationDeletion(conversation_id=conversation_id, user_id=current_user.id))
+    db.commit()

@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { BrandMark, KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ShieldCheckIcon } from "@/components/ui/Icons";
+
 import { getErrorMessage } from "@/lib/errors";
-import { extractUfrgsAffiliation, isValidUfrgsEmail } from "@/lib/validators";
+import { isValidUfrgsEmail } from "@/lib/validators";
 import { useToastStore } from "@/store/toastStore";
 
 export const RegisterPage: React.FC = () => {
@@ -20,12 +20,6 @@ export const RegisterPage: React.FC = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const isUfrgsValid = useMemo(() => isValidUfrgsEmail(form.email), [form.email]);
-  const affiliation = useMemo(
-    () => (isUfrgsValid ? extractUfrgsAffiliation(form.email) : null),
-    [form.email, isUfrgsValid]
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +76,7 @@ export const RegisterPage: React.FC = () => {
               <span className="font-display font-bold text-base text-text">Carona Aí</span>
             </Link>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold uppercase tracking-wider bg-surface-2 text-accent-text border border-border">
-              <ShieldCheckIcon size={12} /> UFRGS
+               UFRGS
             </span>
           </div>
 
@@ -110,12 +104,6 @@ export const RegisterPage: React.FC = () => {
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
             />
-            {affiliation && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/10 border border-secondary/30 text-secondary font-mono text-[11px] font-semibold">
-                <ShieldCheckIcon size={13} className="shrink-0" />
-                <span>{affiliation.fullBadge}</span>
-              </div>
-            )}
           </div>
 
           <Input

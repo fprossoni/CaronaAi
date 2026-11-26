@@ -35,45 +35,8 @@
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* ─── Semantic Design Tokens (Dark Mode Default) ─────────────────────────── */
-:root,
-[data-theme="dark"] {
-  --color-primary:        #fa952d;
-  --color-primary-dark:   #e07b14;
-  --color-primary-light:  #ffad57;
-  --color-on-primary:     #0b0c0d;
-  --color-accent-text:    #fa952d;
-  --color-secondary:      #22c55e;
-  --color-danger:         #ef4444;
-  --color-warning:        #f3f536;
-  --color-warning-bg:     rgba(243, 245, 54, 0.14);
-  --color-warning-text:   #f3f536;
-
-  --color-bg:             #0b0c0d;
-  --color-bg-elevated:    #111214;
-  --color-surface:        #141619;
-  --color-surface-2:      #1b1e22;
-  --color-surface-hover:  #23272d;
-  --color-border:         #272b31;
-  --color-border-strong:  #3a4049;
-  --color-text:           #f4f5f2;
-  --color-text-secondary: #a5aab2;
-  --color-text-muted:     #6e747e;
-
-  --gradient-primary:     linear-gradient(180deg, #fa952d 0%, #f0861c 100%);
-  --gradient-brand:       linear-gradient(180deg, #1b1e22 0%, #141619 100%);
-  --gradient-card:        linear-gradient(180deg, #16181c 0%, #141619 100%);
-  --gradient-cover:       linear-gradient(180deg, #16181c 0%, #0f1113 100%);
-
-  --dot-color:            rgba(244, 245, 242, 0.08);
-  --shadow-sm:            0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md:            0 6px 20px rgba(0, 0, 0, 0.45);
-  --shadow-lg:            0 14px 36px rgba(0, 0, 0, 0.6);
-  --shadow-glow:          0 0 0 1px rgba(250, 149, 45, 0.25);
-  --glass-bg:             rgba(18, 20, 23, 0.88);
-}
-
 /* ─── Light Mode Tokens (Editorial Warm Monochrome) ──────────────────────── */
+:root,
 [data-theme="light"] {
   --color-primary:        #fa952d;
   --color-primary-dark:   #c96906;
@@ -191,9 +154,7 @@ background-size: 320px 320px;
   z-index: 10;
 }
 
-[data-theme="dark"] .map-osm-fallback .leaflet-tile-pane {
-  filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(94%) saturate(18%);
-}
+
 
 [data-theme="light"] .map-osm-fallback .leaflet-tile-pane {
   filter: grayscale(85%) contrast(104%) brightness(102%);

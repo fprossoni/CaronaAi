@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type { ChatMessage, Conversation } from "@/types/chat";
 
 export const messagesApi = {
+  remove: (id: number) => apiClient.delete(`/messages/${id}`),
   list: () => apiClient.get<Conversation[]>("/messages"),
   open: (rideId: number, passengerId?: number) =>
     apiClient.post<Conversation>("/messages", { ride_id: rideId, passenger_id: passengerId }),

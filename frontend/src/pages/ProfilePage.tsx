@@ -1,10 +1,3 @@
-/**
- * ProfilePage ("Meu Perfil")
- *
- * Technical academic profile with topographic banner, Mercosul plate card,
- * saved addresses, and moderation reports.
- */
-
 import React, { useState } from "react";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
@@ -20,7 +13,7 @@ import {
   getGenderLabel,
   isValidCarPlate,
 } from "@/lib/formatters";
-import { extractUfrgsAffiliation, validateBirthDate } from "@/lib/validators";
+import { validateBirthDate } from "@/lib/validators";
 import { getErrorMessage } from "@/lib/errors";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -28,16 +21,7 @@ import { CourseAutocomplete } from "@/components/ui/CourseAutocomplete";
 import { Input } from "@/components/ui/Input";
 import { SavedAddressesManager } from "@/components/profile/SavedAddressesManager";
 import { ReportsManager } from "@/components/profile/ReportsManager";
-import {
-  CarIcon,
-  EditIcon,
-  GraduationCapIcon,
-  InstagramIcon,
-  LogOutIcon,
-  MapPinIcon,
-  ShieldCheckIcon,
-  StarIcon,
-} from "@/components/ui/Icons";
+import { StarIcon } from "@/components/ui/Icons";
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "male", label: "Masculino" },
@@ -69,7 +53,6 @@ export const ProfilePage: React.FC = () => {
 
   if (!user) return null;
 
-  const affiliation = extractUfrgsAffiliation(user.email);
   const displaySocial = user.instagram || user.social_link;
 
   const startEditing = () => {
@@ -160,17 +143,9 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-      {/* Main Profile Header Card */}
       <div className="rounded-[10px] overflow-hidden border border-border-strong bg-surface shadow-md">
-        {/* Topographic Cover Banner */}
         <div className="h-28 md:h-32 relative z-0 bg-bg-elevated bg-topo-pattern border-b border-border">
-          <div className="absolute top-3 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] bg-surface/90 backdrop-blur-md text-secondary font-mono text-[11px] font-semibold border border-border-strong">
-            <ShieldCheckIcon size={13} />
-            <span>{affiliation.fullBadge}</span>
-          </div>
         </div>
-
-        {/* Avatar + Identity Bar */}
         <div className="px-5 sm:px-6 pb-6 relative z-10">
           <div className="-mt-10 mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div className="flex items-end gap-4">
@@ -196,7 +171,7 @@ export const ProfilePage: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-sm font-medium flex items-center gap-1.5 mt-0.5 text-text-secondary">
-                  <GraduationCapIcon size={15} className="text-accent-text shrink-0" />
+
                   <span>{user.course ?? "Curso não informado"}</span>
                 </p>
               </div>
@@ -205,7 +180,7 @@ export const ProfilePage: React.FC = () => {
             <div className="flex items-center gap-2 shrink-0">
               {!isEditing ? (
                 <Button variant="secondary" size="sm" onClick={startEditing}>
-                  <EditIcon size={14} />
+
                   <span>Editar</span>
                 </Button>
               ) : (
@@ -215,14 +190,12 @@ export const ProfilePage: React.FC = () => {
               )}
 
               <Button variant="danger" size="sm" onClick={handleLogout}>
-                <LogOutIcon size={14} />
+
                 <span>Sair</span>
               </Button>
             </div>
           </div>
-
-          {/* Stats Strip */}
-          <div className="grid grid-cols-3 gap-2 p-3 rounded-md border border-border bg-surface-2 text-center">
+          <div className="grid grid-cols-2 gap-2 p-3 rounded-md border border-border bg-surface-2 text-center">
             <div>
               <div className="flex items-center justify-center gap-1 text-accent-text font-mono font-bold text-lg">
                 <StarIcon size={15} filled />
@@ -241,23 +214,11 @@ export const ProfilePage: React.FC = () => {
                 Avaliações
               </span>
             </div>
-
-            <div>
-              <span className="font-mono font-bold text-sm md:text-base block text-text truncate px-1 leading-7">
-                {affiliation.shortBadge}
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                Vínculo
-              </span>
-            </div>
           </div>
         </div>
       </div>
-
-      {/* View Mode vs Edit Mode */}
       {!isEditing ? (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-          {/* Left Column */}
           <div className="md:col-span-7 rounded-[10px] p-5 border border-border bg-surface space-y-5">
             <div>
               <h2 className="font-mono text-[11px] font-bold uppercase tracking-wider mb-2 text-text-muted">
@@ -285,7 +246,7 @@ export const ProfilePage: React.FC = () => {
                         key={cId}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[2px] font-mono text-xs font-medium border border-border bg-surface-2 text-text"
                       >
-                        <MapPinIcon size={12} className="text-accent-text" />
+
                         {c.name}
                       </span>
                     );
@@ -336,7 +297,7 @@ export const ProfilePage: React.FC = () => {
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-accent-text hover:underline inline-flex items-center gap-1 mt-0.5"
                   >
-                    <InstagramIcon size={12} />
+
                     <span>{displaySocial}</span>
                   </a>
                 ) : (
@@ -345,13 +306,11 @@ export const ProfilePage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Right Column: Vehicle */}
           <div className="md:col-span-5 rounded-[10px] p-5 border border-border bg-surface flex flex-col justify-between space-y-5">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-text-muted">
-                  <CarIcon size={14} className="text-accent-text" />
+
                   Veículo
                 </h2>
                 <span
@@ -367,7 +326,6 @@ export const ProfilePage: React.FC = () => {
 
               {user.is_driver ? (
                 <div className="space-y-3.5">
-                  {/* Minimalist Technical Plate */}
                   <div className="rounded-[4px] overflow-hidden border border-border-strong bg-white text-[#0b0c0d] shadow-sm max-w-56 mx-auto">
                     <div className="bg-[#0b0c0d] text-[#f4f5f2] font-mono text-[9px] font-bold px-2.5 py-1 flex items-center justify-between tracking-widest border-b border-border-strong">
                       <span>BRASIL</span>
@@ -397,7 +355,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <Button variant="secondary" fullWidth size="sm" onClick={startEditing}>
-              <EditIcon size={14} />
+
               <span>Editar dados</span>
             </Button>
           </div>
@@ -556,7 +514,7 @@ export const ProfilePage: React.FC = () => {
           {isDriver && (
             <div className="p-4 rounded-md border border-border bg-surface-2 space-y-3">
               <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-accent-text flex items-center gap-1.5">
-                <CarIcon size={14} /> Veículo
+                 Veículo
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input label="Marca" value={carBrand} onChange={(e) => setCarBrand(e.target.value)} required />

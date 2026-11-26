@@ -1,7 +1,3 @@
-/**
- * UserProfileModal Component
- */
-
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { UserPublic } from "@/types/user";
@@ -99,7 +95,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         className="w-full max-w-md rounded-[10px] overflow-hidden border border-border-strong bg-surface shadow-lg animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Topographic Cover Banner */}
         <div className="h-24 relative z-0 bg-bg-elevated bg-topo-pattern border-b border-border">
           <button
             type="button"
@@ -115,8 +110,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <span>UFRGS</span>
           </div>
         </div>
-
-        {/* Profile Header & Avatar */}
         <div className="px-5 pb-5 relative z-10">
           <div className="-mt-10 mb-3 flex items-end justify-between gap-3">
             <Avatar name={profile.name} photoUrl={profile.photo_url} size="xl" ring />
@@ -140,8 +133,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Name & Course */}
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-display text-lg font-bold text-text">
@@ -172,8 +163,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               “{profile.bio}”
             </div>
           )}
-
-          {/* Campuses & Vehicle */}
           <div className="mt-3.5 space-y-2.5">
             {profile.campuses && profile.campuses.length > 0 && (
               <div>
@@ -210,8 +199,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             )}
           </div>
-
-          {/* Footer */}
           <div className="mt-5 pt-3.5 border-t border-border flex items-center justify-between gap-3">
             {!isSelf ? (
               <button

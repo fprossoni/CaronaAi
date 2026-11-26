@@ -22,6 +22,9 @@ class MatchTrip(PickupWindow):
     # Optional / Direct coordinates (computed automatically if address is provided)
     pickup_lat: float | None = Field(default=None, ge=-90, le=90)
     pickup_lng: float | None = Field(default=None, ge=-180, le=180)
+    pickup_street: str | None = Field(default=None, max_length=255)
+    pickup_number: str | None = Field(default=None, max_length=50)
+    pickup_neighborhood: str | None = Field(default=None, max_length=255)
     pickup_label: str | None = None
     dropoff_lat: float | None = Field(default=None, ge=-90, le=90)
     dropoff_lng: float | None = Field(default=None, ge=-180, le=180)
@@ -75,6 +78,7 @@ class MatchForDriver(BaseModel):
     created_at: datetime
 
     # Revealed only after acceptance
+    confirmed_dropoff_label: str | None = None
     confirmed_pickup_label: str | None = None
     pickup_lat: float | None = None
     pickup_lng: float | None = None

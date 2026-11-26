@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
 import { KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
-import { ShieldCheckIcon } from "@/components/ui/Icons";
+
 import { getErrorMessage } from "@/lib/errors";
 
 export const VerifyEmailPage: React.FC = () => {
@@ -92,7 +92,7 @@ export const VerifyEmailPage: React.FC = () => {
       <div className="w-full max-w-md rounded-[10px] p-7 sm:p-8 border border-border-strong bg-surface bg-topo-pattern shadow-lg animate-fade-in">
         <div className="flex flex-col items-center text-center mb-7">
           <div className="w-11 h-11 rounded-md bg-secondary/15 border border-secondary/30 text-secondary flex items-center justify-center mb-4">
-            <ShieldCheckIcon size={22} />
+
           </div>
           <h1 className="font-display text-2xl font-bold text-text">
             Verificar e-mail

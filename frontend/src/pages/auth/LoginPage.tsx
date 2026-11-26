@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { BrandMark, KineticChevrons } from "@/components/ui/BrandMotifs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ShieldCheckIcon } from "@/components/ui/Icons";
+
 import { getErrorMessage } from "@/lib/errors";
 
 interface LoginLocationState {
@@ -61,7 +61,7 @@ export const LoginPage: React.FC = () => {
               <span className="font-display font-bold text-base text-text">Carona Aí</span>
             </Link>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[2px] font-mono text-[10px] font-semibold uppercase tracking-wider bg-surface-2 text-accent-text border border-border">
-              <ShieldCheckIcon size={12} /> @ufrgs.br
+               @ufrgs.br
             </span>
           </div>
 

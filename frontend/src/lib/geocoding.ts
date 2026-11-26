@@ -21,10 +21,11 @@ export interface LocationValue {
   lng: number;
   campusId?: CampusId;
   addressId?: number;
+  coordinatesVerified?: boolean;
   mapAddress?: MapAddress;
 }
 
-interface MapAddress {
+export interface MapAddress {
   street: string;
   number: string;
   neighborhood: string;
@@ -72,6 +73,7 @@ interface NominatimItem {
   lat: string;
   lon: string;
   display_name: string;
+  name?: string;
   address?: NominatimAddress;
 }
 
@@ -89,7 +91,6 @@ function campusSuggestion(campusId: string): GeocodingSuggestion {
 }
 
 function campusFromSearchResult(item: NominatimItem): CampusId | undefined {
-  // Only identify named campus results, never nearby streets or buildings.
   const name = normalizeCampusText(item.display_name.split(",")[0]);
   const description = normalizeCampusText(item.display_name);
   const isUfrgs = /\bufrgs\b/.test(description) || description.includes("universidade federal do rio grande do sul");
@@ -225,7 +226,8 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
       const url = new URL("https://nominatim.openstreetmap.org/reverse");
       url.searchParams.set("format", "jsonv2");
       url.searchParams.set("addressdetails", "1");
-      url.searchParams.set("layer", "address");
+      url.searchParams.set("layer", "address,poi");
+      url.searchParams.set("zoom", "18");
       url.searchParams.set("lat", String(lat));
       url.searchParams.set("lon", String(lng));
 
@@ -234,7 +236,31 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
       });
       if (!res.ok) throw new Error("Reverse geocoding failed");
       const item = (await res.json()) as NominatimItem;
-      return { ...parseNominatimAddress(item, lat, lng), lat, lng };
+      const parsed = parseNominatimAddress(item, lat, lng);
+      if (parsed.mapAddress?.number.trim() && straightLineDistanceMeters({ lat, lng }, parsed) <= 200) return { ...parsed, lat, lng };
+      try {
+        const query = `[out:json][timeout:10];nwr(around:200,${lat},${lng})["addr:housenumber"]["addr:street"];out center tags;`;
+        const nearby = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST", body: new URLSearchParams({ data: query }),
+          signal: AbortSignal.timeout(12000),
+        });
+        if (nearby.ok) {
+          const data = await nearby.json() as { elements: { lat?: number; lon?: number; center?: { lat: number; lon: number }; tags: Record<string, string> }[] };
+          const candidates = data.elements.map((entry) => {
+            const point = entry.center ?? entry;
+            return { entry, distance: point.lat != null && point.lon != null
+              ? straightLineDistanceMeters({ lat, lng }, { lat: point.lat, lng: point.lon }) : Infinity };
+          }).filter(({ distance }) => distance <= 200).sort((a, b) => a.distance - b.distance);
+          const closest = candidates[0]?.entry;
+          if (closest) {
+            const mapAddress = { street: closest.tags["addr:street"], number: closest.tags["addr:housenumber"], neighborhood: parsed.mapAddress?.neighborhood ?? parsed.region };
+            return { ...parsed, lat, lng, mapAddress, label: formatMapAddress(mapAddress) };
+          }
+        }
+      } catch {
+        return { ...parsed, lat, lng };
+      }
+      return { ...parsed, lat, lng };
     } catch {
       return {
         label: "Local selecionado no mapa",
@@ -333,4 +359,20 @@ export async function fetchRoutePreview(
       coordinates: points.map((p) => [p.lng, p.lat]),
     },
   };
+}
+
+export function hasCompleteLocation(point: LocationValue | null): boolean {
+  return Boolean(point?.coordinatesVerified !== false && (point?.campusId || (point?.mapAddress?.street.trim() && /[0-9]/.test(point.mapAddress.number))));
+}
+
+export async function resolveNumberedLocation(point: LocationValue): Promise<LocationValue | null> {
+  const address = point.mapAddress;
+  if (!address?.street.trim() || !/[0-9]/.test(address.number)) return null;
+  const normalize = (value: string) => normalizeCampusText(value).replace(/\s+/g, "");
+  const results = await geocodingService.searchAddress(`${address.street}, ${address.number}, ${point.region}`);
+  const match = results.find((item) => item.mapAddress &&
+    normalize(item.mapAddress.number) === normalize(address.number) &&
+    normalize(item.mapAddress.street) === normalize(address.street));
+  if (!match) return null;
+  return { ...match, coordinatesVerified: true };
 }

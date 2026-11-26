@@ -1,9 +1,3 @@
-/**
- * HistoryPage ("Histórico")
- *
- * Past completed and cancelled trips with role filtering, ratings, and reports.
- */
-
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ridesApi } from "@/api/rides";
@@ -11,13 +5,7 @@ import type { TripHistory, TripParticipant } from "@/types/ride";
 import type { UserPublic } from "@/types/user";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import {
-  AlertTriangleIcon,
-  CheckCircleIcon,
-  GraduationCapIcon,
-  HistoryIcon,
-  StarIcon,
-} from "@/components/ui/Icons";
+import { StarIcon } from "@/components/ui/Icons";
 import { RatingModal } from "@/components/rides/RatingModal";
 import { ReportUserModal } from "@/components/rides/ReportUserModal";
 import { UserProfileModal } from "@/components/users/UserProfileModal";
@@ -85,7 +73,6 @@ export const HistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <button
@@ -130,9 +117,7 @@ export const HistoryPage: React.FC = () => {
 
       {filteredTrips.length === 0 ? (
         <div className="rounded-[10px] p-10 border border-border bg-surface bg-dot-matrix text-center space-y-2">
-          <div className="w-11 h-11 rounded-md border border-border-strong bg-surface-2 text-accent-text flex items-center justify-center mx-auto mb-2">
-            <HistoryIcon size={20} />
-          </div>
+
           <p className="text-sm font-medium text-text-secondary">
             Nenhuma viagem encontrada.
           </p>
@@ -166,8 +151,6 @@ export const HistoryPage: React.FC = () => {
                     {formatDate(trip.departure_at)}
                   </span>
                 </div>
-
-                {/* Route Summary */}
                 <div className="p-3 rounded-md border border-border bg-surface-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-text">
                   <span className="size-2 rounded-full bg-primary shrink-0" />
                   <span>{trip.origin_label}</span>
@@ -175,8 +158,6 @@ export const HistoryPage: React.FC = () => {
                   <span className="size-2 rounded-full bg-secondary shrink-0" />
                   <span>{trip.destination_label}</span>
                 </div>
-
-                {/* Participants */}
                 <div className="space-y-2">
                   <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-text-muted">
                     Participantes
@@ -231,7 +212,7 @@ export const HistoryPage: React.FC = () => {
                                 </span>
                               </div>
                               <p className="text-xs truncate flex items-center gap-1 mt-0.5 text-text-muted">
-                                <GraduationCapIcon size={11} className="shrink-0" />
+
                                 {p.course ?? "Curso não informado"}
                               </p>
                             </div>
@@ -256,7 +237,7 @@ export const HistoryPage: React.FC = () => {
 
                             {p.already_rated && (
                               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] font-mono text-[10px] font-bold uppercase bg-secondary/15 text-secondary">
-                                <CheckCircleIcon size={12} /> Avaliado
+                                 Avaliado
                               </span>
                             )}
 
@@ -272,7 +253,7 @@ export const HistoryPage: React.FC = () => {
                               title="Reportar ou bloquear usuário"
                               aria-label="Reportar usuário"
                             >
-                              <AlertTriangleIcon size={14} />
+                              Denunciar
                             </button>
                           </div>
                         </div>

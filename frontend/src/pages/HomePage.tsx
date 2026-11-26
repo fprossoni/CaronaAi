@@ -1,23 +1,10 @@
-/**
- * HomePage (`/`)
- *
- * Technical minimal landing page with topographic hero, dual-tone typography,
- * ride request button, Bento differentiators, and UFRGS campus grid.
- */
-
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import { Button } from "@/components/ui/Button";
 import { KineticChevrons } from "@/components/ui/BrandMotifs";
-import {
-  CarIcon,
-  LockIcon,
-  NavigationIcon,
-  SearchIcon,
-  ShieldCheckIcon,
-} from "@/components/ui/Icons";
+
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
@@ -37,7 +24,6 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-10 animate-fade-in">
-      {/* ─── Hero Section ────────────────────────────────────────────────── */}
       <section className="rounded-[10px] p-5 sm:p-8 border border-border-strong bg-surface bg-topo-pattern relative shadow-md">
         <div className="space-y-6">
           <div className="space-y-4">
@@ -59,7 +45,7 @@ export const HomePage: React.FC = () => {
               )
             }
           >
-            <SearchIcon size={16} />
+
             <span>Pedir carona</span>
             <KineticChevrons />
           </Button>
@@ -77,23 +63,18 @@ export const HomePage: React.FC = () => {
           </div>
         )}
       </section>
-
-      {/* ─── Bento Differentiators ──────────────────────────────────────── */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {[
           {
             code: "01 · VÍNCULO UFRGS",
-            icon: <ShieldCheckIcon size={18} />,
             desc: "Acesso restrito a e-mails @ufrgs.br e institutos.",
           },
           {
             code: "02 · OPÇÕES DE CARONA",
-            icon: <NavigationIcon size={18} />,
             desc: "Compare os horários e escolha a carona que funciona para você.",
           },
           {
             code: "03 · ENDEREÇO OCULTO",
-            icon: <LockIcon size={18} />,
             desc: "Apenas seu bairro é exibido até a confirmação da vaga.",
           },
         ].map((feat) => (
@@ -105,14 +86,12 @@ export const HomePage: React.FC = () => {
               <span className="font-mono text-[11px] font-bold tracking-wider text-accent-text">
                 {feat.code}
               </span>
-              <span className="text-text-muted">{feat.icon}</span>
+
             </div>
             <p className="text-sm text-text-secondary leading-snug">{feat.desc}</p>
           </div>
         ))}
       </section>
-
-      {/* ─── Campi UFRGS Grid ──────────────────────────────────────────── */}
       <section className="space-y-3.5">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold tracking-tight text-text">
@@ -137,14 +116,11 @@ export const HomePage: React.FC = () => {
           ))}
         </div>
       </section>
-
-      {/* ─── Driver CTA Strip ──────────────────────────────────────────── */}
       <section className="rounded-[10px] p-5 sm:p-6 border border-border-strong bg-surface bg-dot-matrix flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <h3 className="font-display text-lg font-bold text-text">
             Vai de carro para o campus?
           </h3>
-          <p className="text-xs text-text-muted">Publique seu trajeto em segundos.</p>
         </div>
 
         <Button
@@ -157,7 +133,7 @@ export const HomePage: React.FC = () => {
             )
           }
         >
-          <CarIcon size={16} />
+
           <span>Oferecer carona</span>
           <KineticChevrons />
         </Button>

@@ -157,7 +157,7 @@ export const OfferRidePage: React.FC = () => {
   }
 
   return (
-    <section className="mx-auto max-w-5xl space-y-5 animate-fade-in">
+    <section className="mx-auto w-full min-w-0 space-y-5 animate-fade-in">
       <h1 className="font-display text-2xl font-bold tracking-tight text-text">Oferecer carona</h1>
       <TripRouteFields
         route={route}

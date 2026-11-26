@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/Icons";
 import { UFRGS_CAMPUS } from "@/types/ride";
 import type { AddressCreate, AddressPublic } from "@/types/address";
-import { campusToLocation, geocodingService, type LocationValue } from "@/lib/geocoding";
+import { campusToLocation, hasCompleteLocation, geocodingService, type LocationValue } from "@/lib/geocoding";
 import { hasTripCampus, type TripRoute } from "@/lib/tripRoute";
 
 type Endpoint = keyof TripRoute;
@@ -60,8 +60,8 @@ function detectPointMode(point: LocationValue | null): Mode {
 }
 
 function getInitialStep(route: TripRoute): WizardStep {
-  if (route.origin && route.destination && hasTripCampus(route)) return 3;
-  if (route.origin) return 2;
+  if (hasCompleteLocation(route.origin) && hasCompleteLocation(route.destination) && hasTripCampus(route)) return 3;
+  if (hasCompleteLocation(route.origin)) return 2;
   return 1;
 }
 
@@ -155,15 +155,20 @@ function savedLocation(address: AddressPublic): LocationValue {
     lat: address.lat,
     lng: address.lng,
     addressId: address.id,
+    mapAddress: { street: address.street, number: address.number, neighborhood: address.neighborhood || address.city },
   };
 }
 
-function TripRoutePreview({ origin, destination }: { origin: LocationValue; destination: LocationValue }) {
-  const [geometry, setGeometry] = useState<GeoJSON.LineString | null>();
-  const { lat: originLat, lng: originLng } = origin;
-  const { lat: destinationLat, lng: destinationLng } = destination;
+function useTripRouteGeometry(origin: LocationValue | null, destination: LocationValue | null) {
+  const originLat = origin?.lat;
+  const originLng = origin?.lng;
+  const destinationLat = destination?.lat;
+  const destinationLng = destination?.lng;
+  const key = `${originLat},${originLng}:${destinationLat},${destinationLng}`;
+  const [result, setResult] = useState<{ key: string; geometry: GeoJSON.LineString | null }>();
 
   useEffect(() => {
+    if (originLat == null || originLng == null || destinationLat == null || destinationLng == null) return;
     const controller = new AbortController();
     ridesApi
       .previewRoute(
@@ -172,13 +177,19 @@ function TripRoutePreview({ origin, destination }: { origin: LocationValue; dest
         controller.signal
       )
       .then(({ data }) => {
-        if (!controller.signal.aborted) setGeometry(data.route_geojson);
+        if (!controller.signal.aborted) setResult({ key, geometry: data.route_geojson });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setGeometry(null);
+        if (!controller.signal.aborted) setResult({ key, geometry: null });
       });
     return () => controller.abort();
-  }, [originLat, originLng, destinationLat, destinationLng]);
+  }, [originLat, originLng, destinationLat, destinationLng, key]);
+
+  return result?.key === key ? result.geometry : undefined;
+}
+
+function TripRoutePreview({ origin, destination }: { origin: LocationValue; destination: LocationValue }) {
+  const geometry = useTripRouteGeometry(origin, destination);
 
   return (
     <section aria-label="Prévia do trajeto" className="space-y-2">
@@ -203,7 +214,8 @@ function TripRoutePreview({ origin, destination }: { origin: LocationValue; dest
         routeGeoJson={geometry}
         approximateRoute={!geometry}
         scrollWheelZoom={false}
-        height="220px"
+        height="var(--trip-preview-height)"
+        className="[--trip-preview-height:220px] lg:[--trip-preview-height:clamp(260px,40dvh,480px)]"
       />
     </section>
   );
@@ -231,6 +243,10 @@ export function TripRouteFields({
   children,
 }: TripRouteFieldsProps) {
   const [step, setStep] = useState<WizardStep>(() => getInitialStep(route));
+  const mapGeometry = useTripRouteGeometry(
+    step === 2 && hasTripCampus(route) ? route.origin : null,
+    step === 2 && hasTripCampus(route) ? route.destination : null,
+  );
   const [mode, setMode] = useState<Record<Endpoint, Mode>>(() => ({
     origin: detectPointMode(route.origin),
     destination: route.destination
@@ -304,9 +320,9 @@ export function TripRouteFields({
         setMode((curr) => (curr[endpoint] === targetMode ? curr : { ...curr, [endpoint]: targetMode }));
         onChange((curr) => {
           const next = curr[endpoint] ? curr : { ...curr, [endpoint]: loc };
-          if (next.origin && next.destination && hasTripCampus(next)) {
+          if (hasCompleteLocation(next.origin) && hasCompleteLocation(next.destination) && hasTripCampus(next)) {
             setStep(3);
-          } else if (next.origin && !next.destination) {
+          } else if (hasCompleteLocation(next.origin) && !hasCompleteLocation(next.destination)) {
             setStep(2);
           }
           return next;
@@ -403,8 +419,6 @@ export function TripRouteFields({
   async function pickOnMap(lat: number, lng: number) {
     if (!picking || disabled) return;
     const targetEndpoint = picking;
-    const existingPoint = route[targetEndpoint];
-    const typedLabel = typedQueries[targetEndpoint]?.trim();
     const request = ++mapRequest.current;
     const point = await geocodingService.reverseGeocode(lat, lng);
     if (request !== mapRequest.current) return;
@@ -415,29 +429,14 @@ export function TripRouteFields({
       return;
     }
 
-    const preservedLabel = existingPoint?.label?.trim() || typedLabel;
-    if (preservedLabel && !point.campusId) {
-      selectPoint(
-        targetEndpoint,
-        {
-          ...point,
-          label: preservedLabel,
-          region: existingPoint?.region || point.region,
-          addressId: existingPoint?.addressId,
-          mapAddress: existingPoint?.mapAddress ?? point.mapAddress,
-        },
-        mode[targetEndpoint]
-      );
-    } else {
-      selectPoint(targetEndpoint, point);
-    }
+    selectPoint(targetEndpoint, point);
   }
 
   const activeKey: Endpoint = step === 1 ? "origin" : "destination";
   const activeMeta = endpointMeta[activeKey];
   const activePoint = route[activeKey];
-  const canGoStep2 = Boolean(origin);
-  const canGoStep3 = Boolean(origin && destination && hasTripCampus(route));
+  const canGoStep2 = hasCompleteLocation(origin);
+  const canGoStep3 = Boolean(hasCompleteLocation(origin) && hasCompleteLocation(destination) && hasTripCampus(route));
 
   return (
     <>
@@ -455,12 +454,15 @@ export function TripRouteFields({
             if (canGoStep3) goToStep(3);
             return;
           }
+          if (!hasCompleteLocation(origin) || !hasCompleteLocation(destination)) {
+            event.preventDefault();
+            return;
+          }
           onSubmit(event);
         }}
         className="min-w-0"
       >
         <fieldset disabled={disabled} className="min-w-0 space-y-4">
-          {/* ─── Stepper Progress Bar ────────────────────────────────────── */}
           <nav
             aria-label="Etapas do preenchimento"
             className="grid grid-cols-3 gap-1.5 rounded-md border border-border bg-surface p-1.5"
@@ -497,8 +499,6 @@ export function TripRouteFields({
               );
             })}
           </nav>
-
-          {/* ─── STEP 1 & STEP 2 ─────────────────────────────────────────── */}
           {(step === 1 || step === 2) && (
             <div className="space-y-4 animate-fade-in">
               {step === 2 && origin && (
@@ -529,203 +529,199 @@ export function TripRouteFields({
                   </div>
                 </div>
               )}
+              <div className="rounded-[10px] border border-border bg-surface p-4 shadow-sm sm:p-5 grid min-w-0 gap-4 lg:grid-cols-[minmax(320px,2fr)_minmax(0,3fr)] lg:gap-x-6 lg:items-start">
+                <div className="min-w-0 space-y-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h2 className="font-display text-lg font-bold text-text flex items-center gap-2">
+                      <span
+                        className="size-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: activeMeta.color }}
+                      />
+                      <span>{activeMeta.stepTitle}</span>
+                    </h2>
 
-              {/* Active Step Card */}
-              <div className="rounded-[10px] border border-border bg-surface p-5 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <h2 className="font-display text-lg font-bold text-text flex items-center gap-2">
-                    <span
-                      className="size-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: activeMeta.color }}
+                    <div className="flex flex-wrap gap-1.5">
+                      {modes.map(({ key: option, label: optionLabel }) => (
+                        <Button
+                          key={option}
+                          type="button"
+                          size="sm"
+                          variant={mode[activeKey] === option ? "primary" : "secondary"}
+                          aria-pressed={mode[activeKey] === option}
+                          onClick={() => {
+                            if (mode[activeKey] === option) return;
+                            setMeetingPointMode((curr) => ({ ...curr, [activeKey]: false }));
+                            const remembered = lastByMode.current[activeKey][option] ?? null;
+                            setMode((current) => ({ ...current, [activeKey]: option }));
+                            selectPoint(activeKey, remembered, option);
+                          }}
+                        >
+                          {optionLabel}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {mode[activeKey] === "address" && !meetingPointMode[activeKey] && (
+                    <LocationField
+                      label="Endereço"
+                      requireNumber
+                      placeholder="Rua, número, bairro ou campus"
+                      value={activePoint}
+                      initialQuery={initialQueries?.[activeKey]}
+                      onQueryChange={(q) => setTypedQueries((prev) => ({ ...prev, [activeKey]: q }))}
+                      onChange={(point) => {
+                        setTypedQueries((prev) => ({ ...prev, [activeKey]: point.label }));
+                        selectPoint(activeKey, point);
+                      }}
+                      onClear={() => selectPoint(activeKey, null, "address")}
+                      showCampusShortcuts={false}
+                      showSavedAddresses={false}
+                      dotColor={activeMeta.color}
                     />
-                    <span>{activeMeta.stepTitle}</span>
-                  </h2>
+                  )}
 
-                  <div className="flex flex-wrap gap-1.5">
-                    {modes.map(({ key: option, label: optionLabel }) => (
+                  {mode[activeKey] === "saved" && !meetingPointMode[activeKey] && (
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                        Endereço salvo ({activeMeta.label.toLowerCase()})
+                      </label>
+                      <select
+                        aria-label={`Endereço salvo de ${activeMeta.label.toLowerCase()}`}
+                        className={selectClass}
+                        value={activePoint?.addressId ?? ""}
+                        disabled={!addresses?.length}
+                        onChange={(event) => {
+                          const address = addresses?.find(
+                            ({ id }) => id === Number(event.target.value)
+                          );
+                          if (address) selectPoint(activeKey, savedLocation(address), "saved");
+                        }}
+                      >
+                        <option value="" disabled>
+                          {addresses?.length
+                            ? "Selecione um endereço"
+                            : addressError
+                            ? "Erro ao carregar"
+                            : addresses
+                            ? "Nenhum endereço salvo"
+                            : "Carregando…"}
+                        </option>
+                        {addresses?.map((address) => (
+                          <option key={address.id} value={address.id}>
+                            {address.label} · {address.street}, {address.number}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {mode[activeKey] === "campus" && (
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                        Campus UFRGS ({activeMeta.label.toLowerCase()})
+                      </label>
+                      <select
+                        aria-label={`Campus de ${activeMeta.label.toLowerCase()}`}
+                        className={selectClass}
+                        value={activePoint?.campusId ?? ""}
+                        onChange={(event) =>
+                          selectPoint(activeKey, campusToLocation(event.target.value), "campus")
+                        }
+                      >
+                        <option value="" disabled>
+                          Selecione um campus
+                        </option>
+                        {UFRGS_CAMPUS.map(({ id, name }) => (
+                          <option key={id} value={id}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {mode[activeKey] !== "campus" && meetingPointMode[activeKey] && (
+                    <div className="rounded-md border border-secondary/40 bg-secondary/10 p-3.5 space-y-3">
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div className="flex items-start gap-2">
+                          <ShieldCheckIcon size={15} className="text-secondary shrink-0 mt-0.5" />
+                          <div>
+                            <span className="text-xs font-bold text-secondary block">
+                              Ponto de encontro
+                            </span>
+                            <p className="text-[11px] text-text-secondary mt-0.5">
+                              Endereço exato oculto; marque uma esquina próxima no mapa.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => disableMeetingPoint(activeKey)}
+                          className="text-xs font-semibold text-text-muted hover:text-text hover:underline"
+                        >
+                          Usar endereço exato
+                        </button>
+                      </div>
+
+                      {activePoint ? (
+                        <Input
+                          label="Referência"
+                          placeholder="Ex.: Esquina Av. Osvaldo Aranha"
+                          value={activePoint.label}
+                          onChange={(e) => {
+                            onChange((prev) => ({
+                              ...prev,
+                              [activeKey]: {
+                                ...activePoint,
+                                label: e.target.value,
+                                addressId: undefined,
+                                mapAddress: undefined,
+                              },
+                            }));
+                          }}
+                        />
+                      ) : (
+                        <p className="font-mono text-xs text-warning-text">
+                          Toque no mapa para definir o ponto.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {mode[activeKey] !== "campus" && !meetingPointMode[activeKey] && (
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      {allowMeetingPoint ? (
+                        <button
+                          type="button"
+                          onClick={() => enableMeetingPoint(activeKey)}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-secondary hover:underline text-left"
+                        >
+                          <ShieldCheckIcon size={14} className="shrink-0" />
+                          <span>Ponto de encontro</span>
+                        </button>
+                      ) : (
+                        <span />
+                      )}
+
                       <Button
-                        key={option}
                         type="button"
                         size="sm"
-                        variant={mode[activeKey] === option ? "primary" : "secondary"}
-                        aria-pressed={mode[activeKey] === option}
+                        variant="ghost"
                         onClick={() => {
-                          if (mode[activeKey] === option) return;
-                          setMeetingPointMode((curr) => ({ ...curr, [activeKey]: false }));
-                          const remembered = lastByMode.current[activeKey][option] ?? null;
-                          setMode((current) => ({ ...current, [activeKey]: option }));
-                          selectPoint(activeKey, remembered, option);
+                          mapRequest.current++;
+                          setPicking(null);
+                          setSavingFor(activeKey);
                         }}
                       >
-                        {optionLabel}
+                        + Salvar endereço
                       </Button>
-                    ))}
-                  </div>
-                </div>
-
-                {mode[activeKey] === "address" && !meetingPointMode[activeKey] && (
-                  <LocationField
-                    label={activeMeta.label}
-                    placeholder="Rua, número, bairro ou campus"
-                    value={activePoint}
-                    initialQuery={initialQueries?.[activeKey]}
-                    onQueryChange={(q) => setTypedQueries((prev) => ({ ...prev, [activeKey]: q }))}
-                    onChange={(point) => {
-                      setTypedQueries((prev) => ({ ...prev, [activeKey]: point.label }));
-                      selectPoint(activeKey, point);
-                    }}
-                    onClear={() => selectPoint(activeKey, null, "address")}
-                    showCampusShortcuts={false}
-                    showSavedAddresses={false}
-                    dotColor={activeMeta.color}
-                  />
-                )}
-
-                {mode[activeKey] === "saved" && !meetingPointMode[activeKey] && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      Endereço salvo ({activeMeta.label.toLowerCase()})
-                    </label>
-                    <select
-                      aria-label={`Endereço salvo de ${activeMeta.label.toLowerCase()}`}
-                      className={selectClass}
-                      value={activePoint?.addressId ?? ""}
-                      disabled={!addresses?.length}
-                      onChange={(event) => {
-                        const address = addresses?.find(
-                          ({ id }) => id === Number(event.target.value)
-                        );
-                        if (address) selectPoint(activeKey, savedLocation(address), "saved");
-                      }}
-                    >
-                      <option value="" disabled>
-                        {addresses?.length
-                          ? "Selecione um endereço"
-                          : addressError
-                          ? "Erro ao carregar"
-                          : addresses
-                          ? "Nenhum endereço salvo"
-                          : "Carregando…"}
-                      </option>
-                      {addresses?.map((address) => (
-                        <option key={address.id} value={address.id}>
-                          {address.label} · {address.street}, {address.number}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {mode[activeKey] === "campus" && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      Campus UFRGS ({activeMeta.label.toLowerCase()})
-                    </label>
-                    <select
-                      aria-label={`Campus de ${activeMeta.label.toLowerCase()}`}
-                      className={selectClass}
-                      value={activePoint?.campusId ?? ""}
-                      onChange={(event) =>
-                        selectPoint(activeKey, campusToLocation(event.target.value), "campus")
-                      }
-                    >
-                      <option value="" disabled>
-                        Selecione um campus
-                      </option>
-                      {UFRGS_CAMPUS.map(({ id, name }) => (
-                        <option key={id} value={id}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Meeting Point Privacy Box */}
-                {mode[activeKey] !== "campus" && meetingPointMode[activeKey] && (
-                  <div className="rounded-md border border-secondary/40 bg-secondary/10 p-3.5 space-y-3">
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div className="flex items-start gap-2">
-                        <ShieldCheckIcon size={15} className="text-secondary shrink-0 mt-0.5" />
-                        <div>
-                          <span className="text-xs font-bold text-secondary block">
-                            Ponto de encontro
-                          </span>
-                          <p className="text-[11px] text-text-secondary mt-0.5">
-                            Endereço exato oculto; marque uma esquina próxima no mapa.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => disableMeetingPoint(activeKey)}
-                        className="text-xs font-semibold text-text-muted hover:text-text hover:underline"
-                      >
-                        Usar endereço exato
-                      </button>
                     </div>
+                  )}
 
-                    {activePoint ? (
-                      <Input
-                        label="Referência"
-                        placeholder="Ex.: Esquina Av. Osvaldo Aranha"
-                        value={activePoint.label}
-                        onChange={(e) => {
-                          onChange((prev) => ({
-                            ...prev,
-                            [activeKey]: {
-                              ...activePoint,
-                              label: e.target.value,
-                              addressId: undefined,
-                              mapAddress: undefined,
-                            },
-                          }));
-                        }}
-                      />
-                    ) : (
-                      <p className="font-mono text-xs text-warning-text">
-                        Toque no mapa para definir o ponto.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Secondary Actions Row */}
-                {mode[activeKey] !== "campus" && !meetingPointMode[activeKey] && (
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    {allowMeetingPoint ? (
-                      <button
-                        type="button"
-                        onClick={() => enableMeetingPoint(activeKey)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-secondary hover:underline text-left"
-                      >
-                        <ShieldCheckIcon size={14} className="shrink-0" />
-                        <span>Ponto de encontro</span>
-                      </button>
-                    ) : (
-                      <span />
-                    )}
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        mapRequest.current++;
-                        setPicking(null);
-                        setSavingFor(activeKey);
-                      }}
-                    >
-                      + Salvar endereço
-                    </Button>
-                  </div>
-                )}
-
-                {/* Map Section */}
+                </div>
                 <section
                   ref={mapSection}
                   aria-label="Mapa de localização"
-                  className="space-y-2.5 pt-3 border-t border-border"
+                  className="min-w-0 space-y-2.5 pt-3 border-t border-border lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0"
                 >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="min-w-0">
@@ -763,13 +759,22 @@ export function TripRouteFields({
                     )}
                   </div>
 
+                  {step === 2 && origin && destination && hasTripCampus(route) && !mapGeometry && (
+                    <p role="status" className="text-xs text-text-muted">
+                      {mapGeometry === undefined
+                        ? "Calculando trajeto…"
+                        : "Não foi possível calcular o trajeto. Exibindo linha aproximada."}
+                    </p>
+                  )}
                   <InteractiveMap
-                    height="250px"
+                    height="var(--trip-map-height)"
+                    className="[--trip-map-height:250px] lg:[--trip-map-height:clamp(320px,55dvh,640px)]"
                     origin={origin}
                     destination={step === 2 ? destination : null}
                     interactivePickMode={picking}
                     onMapClick={picking === activeKey ? pickOnMap : undefined}
-                    approximateRoute={Boolean(step === 2 && origin && destination)}
+                    routeGeoJson={mapGeometry}
+                    approximateRoute={!mapGeometry}
                     scrollWheelZoom={picking === activeKey}
                   />
                 </section>
@@ -777,13 +782,13 @@ export function TripRouteFields({
                 {step === 2 && origin && destination && !hasTripCampus(route) && (
                   <div
                     role="alert"
-                    className="p-3 rounded-md border border-danger/30 bg-danger/10 text-xs text-danger font-medium"
+                    className="lg:col-start-1 p-3 rounded-md border border-danger/30 bg-danger/10 text-xs text-danger font-medium"
                   >
                     Origem ou destino deve ser um Campus da UFRGS.
                   </div>
                 )}
 
-                <div className="pt-2 flex items-center justify-between gap-3 flex-wrap">
+                <div className="pt-2 flex items-center justify-between gap-3 flex-wrap lg:col-start-1">
                   {step === 2 ? (
                     <Button type="button" variant="secondary" onClick={() => goToStep(1)}>
                       ← Origem
@@ -815,10 +820,8 @@ export function TripRouteFields({
               </div>
             </div>
           )}
-
-          {/* ─── STEP 3: Schedule & Final Action ──────────────────────────── */}
           {step === 3 && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-2 lg:items-start animate-fade-in">
               <div className="rounded-[10px] border border-border bg-surface p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-text-muted">

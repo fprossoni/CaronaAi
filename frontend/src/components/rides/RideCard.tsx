@@ -1,10 +1,3 @@
-/**
- * RideCard Component
- *
- * Technical Bento card with tabular pickup/dropoff times, telemetry delta,
- * vertical bar SeatMeter, and crisp driver identity.
- */
-
 import React, { useState } from "react";
 import type { RideSearchResult } from "@/types/ride";
 import type { MatchStatus } from "@/types/match";
@@ -68,7 +61,6 @@ export const RideCard: React.FC<RideCardProps> = ({
   return (
     <>
       <div className="rounded-[10px] border border-border bg-surface p-4 sm:p-5 transition-colors hover:border-border-strong animate-fade-in">
-        {/* Top Bento Time Block */}
         <dl className="grid grid-cols-2 gap-3 rounded-md border border-border bg-surface-2 p-3 sm:p-3.5 relative">
           {[
             { label: "EMBARQUE", estimate: ride.estimated_pickup_at, color: "bg-primary" },
@@ -96,8 +88,6 @@ export const RideCard: React.FC<RideCardProps> = ({
             </div>
           ))}
         </dl>
-
-        {/* Telemetry Strip */}
         {(ride.pickup_difference_seconds != null || ride.detour_meters != null) && (
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
             {ride.pickup_difference_seconds != null && (
@@ -115,8 +105,6 @@ export const RideCard: React.FC<RideCardProps> = ({
             )}
           </div>
         )}
-
-        {/* Driver Row */}
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <Avatar
@@ -162,8 +150,6 @@ export const RideCard: React.FC<RideCardProps> = ({
               </div>
             </div>
           </div>
-
-          {/* SeatMeter + Vehicle Tag */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <SeatMeter available={ride.available_seats} total={ride.total_seats} />
             {ride.driver.car_model && (
@@ -176,8 +162,6 @@ export const RideCard: React.FC<RideCardProps> = ({
             )}
           </div>
         </div>
-
-        {/* Footer Actions */}
         {onRequestMatch && (
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-end gap-3 flex-wrap">
             {resolvedMatchStatus === "accepted" ? (
