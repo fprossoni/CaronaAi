@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { addressesApi } from "@/api/addresses";
 import type { AddressCreate, AddressPublic } from "@/types/address";
-import { useToastStore } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { Button } from "@/components/ui/Button";
@@ -34,7 +33,6 @@ interface SavedAddressFormProps {
 }
 
 export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddressFormProps) {
-  const toast = useToastStore();
   const [submitting, setSubmitting] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepHint, setCepHint] = useState("");
@@ -156,7 +154,7 @@ export function SavedAddressForm({ onSaved, onCancel, initialValues }: SavedAddr
         lng: effectiveCoords?.lng ?? null,
       });
       onSaved(created);
-      toast.success("Endereço salvo", created.label);
+
       setForm(EMPTY_FORM);
       setCoords(null);
       setManualOverride(false);

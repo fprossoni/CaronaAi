@@ -64,7 +64,7 @@ export const VerifyEmailPage: React.FC = () => {
       const res = await authApi.verifyEmail({ email, token });
       setTokens(res.data.access_token, res.data.refresh_token);
       const user = await fetchUser();
-      toast.success("E-mail verificado");
+
       navigate(user && !user.profile_complete ? "/profile/complete" : "/find");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Código inválido ou expirado."));
@@ -79,7 +79,7 @@ export const VerifyEmailPage: React.FC = () => {
       const { data } = await authApi.resendVerification(email);
       setDevToken(data.dev_token ?? "");
       if (data.dev_token) setDigits(data.dev_token.split(""));
-      toast.info("Código reenviado", data.dev_token ? "Modo de desenvolvimento: envio simulado." : "Verifique sua caixa de entrada.");
+
     } catch (err: unknown) {
       toast.error("Erro ao reenviar", getErrorMessage(err));
     } finally {

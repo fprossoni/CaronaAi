@@ -319,7 +319,7 @@ function MessagesInbox({ userId }: { userId: number }) {
       deletedIds.current.add(selected.id);
       setConversations((prev) => prev.filter((c) => c.id !== selected.id));
       setParams({});
-      toast.info("Conversa excluída.");
+
     } catch (err) {
       setError(getErrorMessage(err, "Não foi possível excluir a conversa."));
     } finally {

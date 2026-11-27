@@ -7,11 +7,9 @@ import { Input } from "@/components/ui/Input";
 
 import { getErrorMessage } from "@/lib/errors";
 import { isValidUfrgsEmail } from "@/lib/validators";
-import { useToastStore } from "@/store/toastStore";
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const toast = useToastStore();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -47,12 +45,7 @@ export const RegisterPage: React.FC = () => {
         email: cleanEmail,
         password: form.password,
       });
-      toast.success(
-        "Conta criada",
-        res.data.dev_token
-          ? "Modo de desenvolvimento: código disponível na próxima tela, sem envio de e-mail."
-          : "Enviamos um código de verificação para seu e-mail UFRGS."
-      );
+
       navigate("/verify-email", {
         state: {
           email: cleanEmail,

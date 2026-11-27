@@ -44,7 +44,7 @@ export const SavedAddressesManager: React.FC = () => {
     try {
       await addressesApi.delete(addr.id);
       setAddresses((prev) => prev.filter((item) => item.id !== addr.id));
-      toast.info("Endereço removido.");
+
     } catch (err: unknown) {
       toast.error("Erro ao remover", getErrorMessage(err));
     }

@@ -1,6 +1,10 @@
-"""Users router — /users/*"""
+"""Users router â€” /users/*"""
 
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession, VerifiedUser
@@ -36,6 +40,37 @@ def update_my_profile(
     return current_user
 
 
+PHOTO_DIR = Path(__file__).resolve().parents[2] / "uploads" / "profiles"
+MAX_PHOTO_BYTES = 2 * 1024 * 1024
+
+
+@router.post("/me/photo")
+async def upload_photo(request: Request, current_user: VerifiedUser) -> dict[str, str]:
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > MAX_PHOTO_BYTES:
+            raise HTTPException(status_code=413, detail="A foto deve ter até 2 MB.")
+    if not data.startswith(b"\xff\xd8\xff") or not data.endswith(b"\xff\xd9"):
+        raise HTTPException(status_code=400, detail="Arquivo de imagem inválido.")
+    PHOTO_DIR.mkdir(parents=True, exist_ok=True)
+    filename = uuid4().hex + ".jpg"
+    (PHOTO_DIR / filename).write_bytes(data)
+    return {"photo_url": str(request.url_for("profile_photo", filename=filename))}
+
+
+@router.get("/photos/{filename}", name="profile_photo")
+def profile_photo(filename: str) -> FileResponse:
+    import re
+
+    if not re.fullmatch(r"[a-f0-9]{32}\.jpg", filename):
+        raise HTTPException(status_code=404, detail="Foto não encontrada.")
+    path = PHOTO_DIR / filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Foto não encontrada.")
+    return FileResponse(path, media_type="image/jpeg", headers={"X-Content-Type-Options": "nosniff"})
+
+
 @router.get("/{user_id}", response_model=UserPublic)
 def get_user(user_id: int, db: DbSession, current_user: VerifiedUser) -> User:
     """Get public profile of another user."""
@@ -47,7 +82,7 @@ def get_user(user_id: int, db: DbSession, current_user: VerifiedUser) -> User:
     return user
 
 
-# ─── Block/Unblock ───────────────────────────────────────────────────────────
+# â”€â”€â”€ Block/Unblock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @router.post("/{user_id}/block", status_code=201)
 def block_user(user_id: int, current_user: VerifiedUser, db: DbSession) -> dict:
@@ -80,7 +115,7 @@ def unblock_user(user_id: int, current_user: VerifiedUser, db: DbSession) -> dic
     return {"message": "User unblocked"}
 
 
-# ─── Reports / Complaints ────────────────────────────────────────────────────
+# â”€â”€â”€ Reports / Complaints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @router.get("/me/reports", response_model=list[ReportPublic])
 def get_my_reports(current_user: VerifiedUser, db: DbSession) -> list[ReportPublic]:

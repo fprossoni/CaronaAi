@@ -30,7 +30,6 @@ interface LocationFieldProps {
   showCampusShortcuts?: boolean;
   showSavedAddresses?: boolean;
   helperText?: string;
-  requireNumber?: boolean;
 }
 
 export const LocationField: React.FC<LocationFieldProps> = ({
@@ -48,7 +47,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   showCampusShortcuts = true,
   showSavedAddresses = true,
   helperText,
-  requireNumber = false,
 }) => {
   const { isAuthenticated, user } = useAuthStore();
   const inputId = useId();
@@ -61,7 +59,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
   const [searching, setSearching] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState("");
-  const [numberError, setNumberError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const displayedQuery = draft && draft.forValue === value ? draft.text : (value?.label ?? "");
@@ -121,18 +118,8 @@ export const LocationField: React.FC<LocationFieldProps> = ({
     if (!value || value.coordinatesVerified !== false || !value.mapAddress?.number.trim()) return;
     let active = true;
     const timer = setTimeout(async () => {
-      try {
-        const resolved = await resolveNumberedLocation(value);
-        if (!active) return;
-        if (resolved) {
-          setNumberError("");
-          onChange(resolved);
-        } else {
-          setNumberError("Endereço não localizado. Selecione uma sugestão ou marque no mapa.");
-        }
-      } catch {
-        if (active) setNumberError("Não foi possível localizar o endereço. Tente novamente.");
-      }
+      const resolved = await resolveNumberedLocation(value);
+      if (active) onChange(resolved);
     }, 320);
     return () => { active = false; clearTimeout(timer); };
   }, [value, onChange]);
@@ -248,7 +235,6 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           }}
           onChange={(e) => {
             const nextVal = e.target.value;
-            setNumberError("");
             setDraft({ forValue: onClear ? null : value, text: nextVal });
             onQueryChange?.(nextVal);
             setIsOpen(true);
@@ -372,15 +358,11 @@ export const LocationField: React.FC<LocationFieldProps> = ({
           id={`${inputId}-number`}
           label="Número"
           value={mapAddress.number}
-          placeholder={requireNumber ? "Informe o número" : "Número (se houver)"}
-          required={requireNumber}
+          placeholder="Número (opcional)"
           maxLength={20}
-          error={value.coordinatesVerified === false ? numberError : undefined}
-          hint={value.coordinatesVerified === false && !numberError ? "Localizando endereço…" : undefined}
           onChange={(event) => {
-            setNumberError("");
             const address = { ...mapAddress, number: event.target.value };
-            onChange({ ...value, campusId: undefined, addressId: undefined, coordinatesVerified: false, mapAddress: address, label: formatMapAddress(address) });
+            onChange({ ...value, campusId: undefined, addressId: undefined, coordinatesVerified: !address.number.trim(), numberNotFound: false, mapAddress: address, label: formatMapAddress(address) });
           }}
         />
       )}

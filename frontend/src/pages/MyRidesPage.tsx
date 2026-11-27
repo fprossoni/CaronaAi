@@ -196,7 +196,7 @@ export const MyRidesPage: React.FC = () => {
     try {
       await (completing ? ridesApi.complete(ride.id) : ridesApi.start(ride.id));
       refresh();
-      toast.info(completing ? "Carona concluída." : "Carona iniciada.");
+
     } catch (err) {
       toast.error("Erro ao atualizar carona", getErrorMessage(err));
     } finally {
@@ -219,7 +219,7 @@ export const MyRidesPage: React.FC = () => {
       setRides((prev) =>
         prev.map((r) => (r.id === ride.id ? { ...r, status: "cancelled" } : r))
       );
-      toast.info("Carona cancelada.");
+
     } catch (err: unknown) {
       toast.error("Erro ao cancelar carona", getErrorMessage(err));
     } finally {
@@ -246,7 +246,7 @@ export const MyRidesPage: React.FC = () => {
         prev.map((m) => (m.id === match.id ? { ...m, status: "cancelled" } : m))
       );
       refresh();
-      toast.info(match.status === "accepted" ? "Você desistiu da viagem. Sua vaga foi liberada." : "Solicitação retirada.");
+
     } catch (err: unknown) {
       toast.error("Erro ao cancelar", getErrorMessage(err));
     } finally {
@@ -267,7 +267,7 @@ export const MyRidesPage: React.FC = () => {
     try {
       await matchesApi.cancel(match.id);
       refresh();
-      toast.info("Passageiro removido. A vaga foi liberada.");
+
     } catch (err: unknown) {
       toast.error("Não foi possível remover o passageiro", getErrorMessage(err));
     } finally {

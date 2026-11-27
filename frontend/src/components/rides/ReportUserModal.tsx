@@ -57,10 +57,7 @@ export const ReportUserModal: React.FC<ReportUserModalProps> = ({
       if (alsoBlock) {
         setUserBlocked(targetUser.id, true);
       }
-      toast.success(
-        "Relato registrado",
-        alsoBlock ? `${targetUser.name ?? "Usuário"} bloqueado.` : undefined
-      );
+
       onClose();
     } catch (err: unknown) {
       toast.error("Erro ao enviar relato", getErrorMessage(err));

@@ -55,7 +55,7 @@ export const OfferRidePage: React.FC = () => {
         car_plate: carPlate.trim() ? formatCarPlate(carPlate) : undefined,
       });
       setUser(data);
-      toast.success("Modo motorista ativado");
+
     } catch (err: unknown) {
       toast.error("Erro ao ativar", getErrorMessage(err));
     } finally {
@@ -99,7 +99,7 @@ export const OfferRidePage: React.FC = () => {
         total_seats: Number(totalSeats),
         women_only: canOfferWomenOnly && womenOnly,
       });
-      toast.success("Carona publicada");
+
       navigate("/rides");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Erro ao publicar carona."));
@@ -171,7 +171,7 @@ export const OfferRidePage: React.FC = () => {
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <Input
-            label="Saída"
+            label="Data e horário de saída"
             type="datetime-local"
             value={departureAt}
             onChange={(event) => {

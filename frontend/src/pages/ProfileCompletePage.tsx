@@ -1,3 +1,4 @@
+import { PhotoField } from "@/components/profile/PhotoField";
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { usersApi } from "@/api/auth";
@@ -59,6 +60,7 @@ export const ProfileCompletePage: React.FC = () => {
 
   const { user, setUser } = useAuthStore();
 
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [form, setForm] = useState<FormState>(() => ({
     name: user?.name ?? "",
     course: user?.course ?? "",
@@ -111,6 +113,7 @@ export const ProfileCompletePage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (photoUploading) return;
     const nextErrors: typeof errors = {};
     if (!form.name.trim()) nextErrors.name = "Informe seu nome.";
     if (!form.course.trim()) nextErrors.course = "Informe seu curso.";
@@ -196,12 +199,7 @@ export const ProfileCompletePage: React.FC = () => {
                     {user.email}
                   </p>
                 </div>
-                <Input
-                  label="URL da foto (opcional)"
-                  placeholder="https://..."
-                  value={form.photoUrl}
-                  onChange={(e) => setField("photoUrl", e.target.value)}
-                />
+                <PhotoField onUploading={setPhotoUploading} onChange={(url) => setField("photoUrl", url)} />
               </div>
             </div>
           </section>
@@ -381,7 +379,6 @@ export const ProfileCompletePage: React.FC = () => {
               <Input
                 required
                 error={errors.phone}
-                hint="Compartilhado apenas após a confirmação da carona."
                 label="WhatsApp"
                 placeholder="(51) 99999-9999"
                 type="tel"
@@ -415,7 +412,7 @@ export const ProfileCompletePage: React.FC = () => {
                 placeholder="Horários habituais, campus, preferências..."
                 value={form.bio}
                 onChange={(e) => setField("bio", e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-md border border-border bg-surface-2 text-text text-sm outline-none transition-colors resize-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                className="block min-w-0 max-w-full h-28 max-h-28 overflow-y-auto wrap-anywhere w-full px-3.5 py-2.5 rounded-md border border-border bg-surface-2 text-text text-sm outline-none transition-colors resize-none focus:border-primary focus:ring-1 focus:ring-primary/30"
               />
             </div>
           </section>
@@ -426,7 +423,7 @@ export const ProfileCompletePage: React.FC = () => {
             </div>
           )}
 
-          <Button type="submit" fullWidth loading={loading} size="lg">
+          <Button disabled={photoUploading} type="submit" fullWidth loading={loading} size="lg">
             <span>Concluir cadastro</span>
             <KineticChevrons />
           </Button>

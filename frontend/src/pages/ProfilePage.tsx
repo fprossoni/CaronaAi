@@ -1,3 +1,4 @@
+import { PhotoField } from "@/components/profile/PhotoField";
 import React, { useState } from "react";
 import { usersApi } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
@@ -42,6 +43,7 @@ export const ProfilePage: React.FC = () => {
   const [gender, setGender] = useState<Gender>(user?.gender ?? "prefer_not_to_say");
   const [isDriver, setIsDriver] = useState<boolean>(user?.is_driver ?? false);
   const [photoUrl, setPhotoUrl] = useState(user?.photo_url ?? "");
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [bio, setBio] = useState(user?.bio ?? "");
   const [instagram, setInstagram] = useState(user?.instagram ?? user?.social_link ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
@@ -80,6 +82,7 @@ export const ProfilePage: React.FC = () => {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (photoUploading) return;
     if (!course.trim()) {
       toast.error("Curso obrigatório", "Informe seu curso na UFRGS.");
       return;
@@ -123,7 +126,7 @@ export const ProfilePage: React.FC = () => {
       const { data } = await usersApi.updateMe(payload);
       setUser(data);
       setIsEditing(false);
-      toast.success("Perfil atualizado");
+
     } catch (err: unknown) {
       toast.error("Erro ao atualizar", getErrorMessage(err));
     } finally {
@@ -219,13 +222,13 @@ export const ProfilePage: React.FC = () => {
       </div>
       {!isEditing ? (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-          <div className="md:col-span-7 rounded-[10px] p-5 border border-border bg-surface space-y-5">
+          <div className="md:col-span-7 min-w-0 rounded-[10px] p-5 border border-border bg-surface space-y-5">
             <div>
               <h2 className="font-mono text-[11px] font-bold uppercase tracking-wider mb-2 text-text-muted">
                 Bio
               </h2>
               {user.bio ? (
-                <p className="text-sm leading-relaxed p-3 rounded-md border border-border bg-surface-2 text-text-secondary">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere min-w-0 max-h-40 overflow-y-auto p-3 rounded-md border border-border bg-surface-2 text-text-secondary">
                   “{user.bio}”
                 </p>
               ) : (
@@ -404,12 +407,7 @@ export const ProfilePage: React.FC = () => {
               onChange={(e) => setInstagram(e.target.value)}
             />
 
-            <Input
-              label="URL da foto (opcional)"
-              placeholder="https://..."
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-            />
+            <PhotoField onUploading={setPhotoUploading} onChange={setPhotoUrl} />
           </div>
 
           <div>
@@ -425,7 +423,7 @@ export const ProfilePage: React.FC = () => {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Horários, campus, preferências..."
-              className="w-full p-3 rounded-md text-sm border border-border bg-surface-2 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-none"
+              className="block min-w-0 max-w-full h-28 max-h-28 overflow-y-auto wrap-anywhere w-full p-3 rounded-md text-sm border border-border bg-surface-2 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -548,7 +546,7 @@ export const ProfilePage: React.FC = () => {
             <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
               Cancelar
             </Button>
-            <Button type="submit" variant="primary" loading={saving}>
+            <Button disabled={photoUploading} type="submit" variant="primary" loading={saving}>
               Salvar
             </Button>
           </div>

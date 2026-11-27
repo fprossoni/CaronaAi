@@ -156,10 +156,7 @@ export const FindRidePage: React.FC = () => {
         ...matchPoints,
       });
       setMyMatches((previous) => [data, ...previous]);
-      toast.success(
-        "Solicitação enviada",
-        `Bairro "${matchPoints.pickup_region}" compartilhado.`
-      );
+
     } catch (err: unknown) {
       toast.error("Não foi possível solicitar", getErrorMessage(err));
     } finally {
@@ -286,7 +283,7 @@ export const FindRidePage: React.FC = () => {
                 required
               />
               <Input
-                label="Horário desejado"
+                label="Horário de saída"
                 type="time"
                 value={startTime}
                 onChange={(event) => setSchedule({ date, startTime: event.target.value })}

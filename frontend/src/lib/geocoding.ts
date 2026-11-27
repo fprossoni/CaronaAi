@@ -22,6 +22,7 @@ export interface LocationValue {
   campusId?: CampusId;
   addressId?: number;
   coordinatesVerified?: boolean;
+  numberNotFound?: boolean;
   mapAddress?: MapAddress;
 }
 
@@ -181,6 +182,7 @@ class OpenStreetMapGeocodingProvider implements GeocodingProvider {
 
       const res = await fetch(url.toString(), {
         headers: { "Accept-Language": "pt-BR" },
+        signal: AbortSignal.timeout(8000),
       });
 
       if (!res.ok) return campusMatches;
@@ -362,17 +364,25 @@ export async function fetchRoutePreview(
 }
 
 export function hasCompleteLocation(point: LocationValue | null): boolean {
-  return Boolean(point?.coordinatesVerified !== false && (point?.campusId || (point?.mapAddress?.street.trim() && /[0-9]/.test(point.mapAddress.number))));
+  return Boolean(point && point.coordinatesVerified !== false && point.label.trim() &&
+    Number.isFinite(point.lat) && Math.abs(point.lat) <= 90 &&
+    Number.isFinite(point.lng) && Math.abs(point.lng) <= 180);
 }
 
-export async function resolveNumberedLocation(point: LocationValue): Promise<LocationValue | null> {
+export async function resolveNumberedLocation(point: LocationValue): Promise<LocationValue> {
   const address = point.mapAddress;
-  if (!address?.street.trim() || !/[0-9]/.test(address.number)) return null;
+  // Keep the selected street/pin when the provider cannot locate this number.
+  // Preserve the user's number as text rather than replacing it with a neighbour's.
+  const fallback = { ...point, coordinatesVerified: true, numberNotFound: Boolean(address?.number.trim()) };
+  if (!address?.street.trim() || !address.number.trim()) return fallback;
   const normalize = (value: string) => normalizeCampusText(value).replace(/\s+/g, "");
-  const results = await geocodingService.searchAddress(`${address.street}, ${address.number}, ${point.region}`);
-  const match = results.find((item) => item.mapAddress &&
-    normalize(item.mapAddress.number) === normalize(address.number) &&
-    normalize(item.mapAddress.street) === normalize(address.street));
-  if (!match) return null;
-  return { ...match, coordinatesVerified: true };
+  try {
+    const results = await geocodingService.searchAddress(`${address.street}, ${address.number}, ${point.region}`);
+    const match = results.find((item) => item.mapAddress &&
+      normalize(item.mapAddress.number) === normalize(address.number) &&
+      normalize(item.mapAddress.street) === normalize(address.street));
+    return match ? { ...match, coordinatesVerified: true, numberNotFound: false } : fallback;
+  } catch {
+    return fallback;
+  }
 }

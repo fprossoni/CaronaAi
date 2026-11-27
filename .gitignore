@@ -45,3 +45,5 @@ pgdata/
 frontend/dist/
 frontend/dist-ssr/
 *.tsbuildinfo
+# User-uploaded photos
+backend/uploads/

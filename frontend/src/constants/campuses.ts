@@ -3,8 +3,7 @@ export type CampusId =
   | "campus_saude"
   | "campus_olimpico"
   | "campus_vale"
-  | "campus_agronomia"
-  | "campus_litoral_norte";
+  | "campus_agronomia";
 
 export interface CampusInfo {
   id: CampusId;
@@ -20,7 +19,6 @@ export const CAMPUS_LIST: CampusInfo[] = [
   { id: "campus_olimpico", name: "Campus Olímpico (ESEFID)", shortName: "Olímpico (ESEFID)", lat: -30.051421, lng: -51.182585 }, // ok -30.051421, -51.182585
   { id: "campus_vale", name: "Campus do Vale", shortName: "Vale", lat: -30.075477, lng: -51.124666 }, // ok -30.075477, -51.124666
   { id: "campus_agronomia", name: "Campus Agronomia", shortName: "Agronomia", lat: -30.069883, lng: -51.142024 }, // ok -30.069883, -51.142024
-  { id: "campus_litoral_norte", name: "Campus Litoral Norte", shortName: "Litoral Norte", lat: -29.971383, lng: -50.226691 }, // ok -29.971383, -50.226691
 ];
 
 export const CAMPUS_BY_ID: Record<CampusId, CampusInfo> = Object.fromEntries(

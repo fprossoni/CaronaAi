@@ -72,11 +72,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       if (isBlocked) {
         await usersApi.unblockUser(profile.id);
         setUserBlocked(profile.id, false);
-        toast.info("Usuário desbloqueado.");
+
       } else {
         await usersApi.blockUser(profile.id);
         setUserBlocked(profile.id, true);
-        toast.success("Usuário bloqueado");
+
       }
       onBlockedChange?.();
     } catch (err: unknown) {

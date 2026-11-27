@@ -52,7 +52,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
         stars,
         comment: comment.trim() || undefined,
       });
-      toast.success("Avaliação enviada");
+
       onSuccess();
       onClose();
     } catch (err: unknown) {

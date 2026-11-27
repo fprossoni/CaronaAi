@@ -30,7 +30,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         replace
         state={{
           returnTo: location.pathname,
-          message: "Faça login com seu e-mail institucional UFRGS para acessar esta funcionalidade.",
+
         }}
       />
     );

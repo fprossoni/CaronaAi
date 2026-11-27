@@ -115,10 +115,7 @@ export const RideRequestsModal: React.FC<RideRequestsModalProps> = ({
     try {
       const { data: confirmed } = await matchesApi.respond(matchId, action);
       if (action === "accept") {
-        toast.success("Passageiro confirmado", "Embarque e contato liberados.");
         setConfirmedDetails((prev) => ({ ...prev, [matchId]: confirmed }));
-      } else {
-        toast.info("Solicitação recusada.");
       }
       onChanged();
       const refreshed = await load();

@@ -70,11 +70,6 @@ export const LoginPage: React.FC = () => {
           </h1>
         </div>
 
-        {navState?.message && (
-          <div className="mb-5 p-3 rounded-md bg-primary/10 border border-primary/30 text-xs text-text-secondary leading-relaxed">
-            {navState.message}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

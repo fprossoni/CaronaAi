@@ -565,7 +565,6 @@ export function TripRouteFields({
                   {mode[activeKey] === "address" && !meetingPointMode[activeKey] && (
                     <LocationField
                       label="Endereço"
-                      requireNumber
                       placeholder="Rua, número, bairro ou campus"
                       value={activePoint}
                       initialQuery={initialQueries?.[activeKey]}

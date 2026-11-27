@@ -39,3 +39,5 @@ htmlcov/
 # Alembic generated files that should be committed but not affect cache
 # (keep versions/ tracked but exclude unneeded files)
 *.pyc
+
+uploads/
